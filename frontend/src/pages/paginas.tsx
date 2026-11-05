@@ -22,10 +22,10 @@ function IrParaContabilidade() {
 
 /** Sem contabilidade ou sem empresa selecionada (usado pelas páginas que dependem de empresa). */
 export function EstadoSemEmpresa({ icone }: { icone: typeof LayoutDashboard }) {
-  const saude = useSaude();
-  if (saude.isLoading) return <Esqueleto className="h-64 w-full" />;
-  if (saude.isError) return <EstadoErro mensagem={(saude.error as Error).message} tentarDeNovo={() => saude.refetch()} />;
-  if (!saude.data?.tem_contabilidade)
+  const sessao = useSessao();
+  if (sessao.isLoading) return <Esqueleto className="h-64 w-full" />;
+  if (sessao.isError) return <EstadoErro mensagem={(sessao.error as Error).message} tentarDeNovo={() => sessao.refetch()} />;
+  if (!sessao.data?.tem_contabilidade)
     return (
       <EstadoVazio icone={icone} titulo="Nenhuma empresa cadastrada" acao={<IrParaContabilidade />}>
         Primeiro uso: cadastre a contabilidade e o certificado dela. Depois, cadastre as empresas pelo CNPJ e a
@@ -60,7 +60,6 @@ export function Configuracoes() {
   const { data, isLoading, isError, error, refetch } = useSaude();
   const sessao = useSessao();
   const uso = useUso();
-  const online = !!sessao.data?.login_ativo;
   const n = (v: number) => v.toLocaleString("pt-BR");
   return (
     <>
@@ -73,11 +72,11 @@ export function Configuracoes() {
             <Linha rotulo="Versão" valor={data.versao} />
             <Linha rotulo="Banco de dados" valor={`SQLite (${data.banco.journal_mode.toUpperCase()})`} ok={data.banco.ok} />
             <Linha
-              rotulo={online ? "Chave-mestra dos certificados" : "Chave-mestra (Gerenciador de Credenciais)"}
+              rotulo="Chave-mestra dos certificados"
               valor={data.chave_mestra ? "disponível" : "indisponível"}
               ok={data.chave_mestra}
             />
-            <Linha rotulo="Empresas cadastradas" valor={String(data.empresas)} />
+            <Linha rotulo="Empresas cadastradas" valor={sessao.data ? String(sessao.data.empresas) : "…"} />
             {uso.isError && <Linha rotulo="XMLs novos no mês" valor="não foi possível consultar" ok={false} />}
             {uso.data?.teste && (
               <Linha rotulo="Teste grátis" valor={`${n(uso.data.usados)} de ${n(uso.data.teste.max_xmls)} XMLs`} ok={!uso.data.teste.concluido} />

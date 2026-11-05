@@ -9,7 +9,7 @@ import {
 import { api } from "@/lib/api";
 import { useSessao } from "@/lib/sessao";
 
-/** Só aparece quando o login está ativo (servidor na internet). */
+/** Conta da sessão: e-mail e saída. */
 export function MenuUsuario() {
   const { data } = useSessao();
   const qc = useQueryClient();
@@ -24,7 +24,7 @@ export function MenuUsuario() {
     onError: (e) => toast.error((e as Error).message),
   });
   const u = data?.usuario;
-  if (!data?.login_ativo || !u) return null;
+  if (!u) return null;
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

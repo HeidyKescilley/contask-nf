@@ -7,6 +7,7 @@ from pydantic import ValidationError
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
+from app.api.escopo import escritorio_atual, obter_empresa, obter_exportacao
 from app.core.config import config
 from app.core.db import sessao
 from app.jobs import exportador_ativo
@@ -16,11 +17,8 @@ from app.models import Empresa, Exportacao
 router = APIRouter(prefix="/api", tags=["exportacoes"])
 
 
-def _empresa(db: Session, empresa_id: int) -> Empresa:
-    e = db.get(Empresa, empresa_id)
-    if e is None:
-        raise HTTPException(404, "Empresa não encontrada.")
-    return e
+def _empresa(db: Session, empresa_id: int, escritorio_id: int) -> Empresa:
+    return obter_empresa(db, empresa_id, escritorio_id)
 
 
 def _filtros(dados: dict) -> Filtros:
@@ -40,14 +38,14 @@ def _out(db: Session, x: Exportacao) -> dict:
 
 
 @router.post("/empresas/{empresa_id}/exportacoes/previa")
-def previa_exportacao(empresa_id: int, dados: dict, db: Session = Depends(sessao)):
-    _empresa(db, empresa_id)
+def previa_exportacao(empresa_id: int, dados: dict, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
+    _empresa(db, empresa_id, esc)
     return previa(db, empresa_id, _filtros(dados))
 
 
 @router.post("/empresas/{empresa_id}/exportacoes", status_code=201)
-def criar_exportacao(empresa_id: int, dados: dict, db: Session = Depends(sessao)):
-    _empresa(db, empresa_id)
+def criar_exportacao(empresa_id: int, dados: dict, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
+    _empresa(db, empresa_id, esc)
     f = _filtros(dados)
     if not previa(db, empresa_id, f)["total"]:
         raise HTTPException(422, "Nenhuma nota com esses filtros: não há o que exportar.")
@@ -65,20 +63,20 @@ def criar_exportacao(empresa_id: int, dados: dict, db: Session = Depends(sessao)
 
 
 @router.get("/empresas/{empresa_id}/exportacoes")
-def historico(empresa_id: int, db: Session = Depends(sessao)):
-    _empresa(db, empresa_id)
-    # Da empresa + as de "todas as empresas" (feitas a partir de qualquer empresa)
-    itens = db.scalars(select(Exportacao).where(or_(Exportacao.empresa_id == empresa_id,
-                                                    func.json_extract(Exportacao.filtros, "$.escopo") == "todas"))
+def historico(empresa_id: int, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
+    _empresa(db, empresa_id, esc)
+    # Da empresa + as de "todas as empresas" feitas neste escritório
+    itens = db.scalars(select(Exportacao).join(Empresa, Empresa.id == Exportacao.empresa_id)
+                       .where(Empresa.escritorio_id == esc,
+                              or_(Exportacao.empresa_id == empresa_id,
+                                  func.json_extract(Exportacao.filtros, "$.escopo") == "todas"))
                        .order_by(Exportacao.criado_em.desc(), Exportacao.id.desc()).limit(50)).all()
     return [_out(db, x) for x in itens]
 
 
 @router.get("/exportacoes/{exp_id}/arquivo")
-def baixar(exp_id: int, db: Session = Depends(sessao)):
-    x = db.get(Exportacao, exp_id)
-    if x is None:
-        raise HTTPException(404, "Exportação não encontrada.")
+def baixar(exp_id: int, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
+    x = obter_exportacao(db, exp_id, esc)
     if x.status != "concluido" or not x.zip_path:
         raise HTTPException(409, "A exportação ainda não terminou.")
     p = config().dados_dir / x.zip_path

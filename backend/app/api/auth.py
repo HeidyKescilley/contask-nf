@@ -1,16 +1,24 @@
-"""Login, saída e troca de senha (servidor na internet)."""
+"""Cadastro, login, saída e troca de senha."""
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core import autenticacao as auth
 from app.core.config import config
 from app.core.db import sessao
+from app.models import Empresa, Escritorio
 
 router = APIRouter(prefix="/api/auth", tags=["login"])
 
 
 class Entrada(BaseModel):
+    email: str
+    senha: str
+
+
+class Cadastro(BaseModel):
+    nome: str
     email: str
     senha: str
 
@@ -26,28 +34,57 @@ def _usuario_json(u) -> dict | None:
     return {"id": u.id, "email": u.email, "nome": u.nome, "trocar_senha": u.trocar_senha}
 
 
+def _eu(db: Session, u) -> dict:
+    if u is None:
+        return {"usuario": None, "escritorio": None, "tem_contabilidade": False, "empresas": 0}
+    esc = db.get(Escritorio, u.escritorio_id)
+    empresas = int(db.scalar(select(func.count()).select_from(Empresa).where(Empresa.escritorio_id == u.escritorio_id)) or 0)
+    tem = db.scalar(select(Empresa.id).where(Empresa.escritorio_id == u.escritorio_id, Empresa.is_contabilidade))
+    return {
+        "usuario": _usuario_json(u),
+        "escritorio": {"id": esc.id, "nome": esc.nome} if esc else None,
+        "tem_contabilidade": tem is not None,
+        "empresas": empresas,
+    }
+
+
 def ip_cliente(request: Request) -> str:
     return request.client.host if request.client else "?"
 
 
+def _cookie(response: Response, token: str) -> None:
+    cfg = config()
+    response.set_cookie(auth.COOKIE, token, max_age=cfg.sessao_dias * 86400, httponly=True,
+                        secure=cfg.cookie_secure, samesite="strict", path="/")
+
+
 @router.get("/eu")
 def eu(request: Request, db: Session = Depends(sessao)):
-    cfg = config()
-    u = auth.usuario_da_sessao(db, request.cookies.get(auth.COOKIE)) if cfg.login_ativo else None
-    return {"login_ativo": cfg.login_ativo, "usuario": _usuario_json(u)}
+    u = auth.usuario_da_sessao(db, request.cookies.get(auth.COOKIE))
+    return _eu(db, u)
+
+
+@router.post("/cadastrar", status_code=201)
+def cadastrar(dados: Cadastro, request: Request, response: Response, db: Session = Depends(sessao)):
+    try:
+        auth.criar_usuario(db, dados.email, dados.nome, dados.senha, trocar_senha=False)
+        db.commit()
+        u, token = auth.entrar(db, dados.email, dados.senha, ip_cliente(request))
+    except auth.ErroLogin as e:
+        db.rollback()
+        status = 409 if "Já existe" in str(e) else 400
+        raise HTTPException(status, str(e)) from None
+    _cookie(response, token)
+    return _eu(db, u)
 
 
 @router.post("/entrar")
 def entrar(dados: Entrada, request: Request, response: Response, db: Session = Depends(sessao)):
-    if not config().login_ativo:
-        raise HTTPException(400, "O login não está ativo nesta instalação.")
     try:
         u, token = auth.entrar(db, dados.email, dados.senha, ip_cliente(request))
     except auth.ErroLogin as e:
         raise HTTPException(401, str(e)) from None
-    cfg = config()
-    response.set_cookie(auth.COOKIE, token, max_age=cfg.sessao_dias * 86400, httponly=True,
-                        secure=cfg.cookie_seguro, samesite="strict", path="/")
+    _cookie(response, token)
     return {"usuario": _usuario_json(u)}
 
 
@@ -79,6 +116,6 @@ def trocar_senha(dados: TrocaSenha, request: Request, db: Session = Depends(sess
         raise HTTPException(400, str(e)) from None
     u.senha_hash = auth.gerar_hash(dados.senha_nova)
     u.trocar_senha = False
-    auth.encerrar_sessoes(db, u.id, exceto_token=token)  # derruba outras sessões abertas
+    auth.encerrar_sessoes(db, u.id, exceto_token=token)
     db.commit()
     return {"usuario": _usuario_json(u)}

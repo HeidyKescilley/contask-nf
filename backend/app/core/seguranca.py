@@ -3,8 +3,8 @@
 - Host: só 127.0.0.1/localhost ou o domínio configurado (bloqueia DNS rebinding).
 - Origin: quando presente, só a própria aplicação (bloqueia sites abertos no mesmo navegador).
 - Sec-Fetch-Site cross-site em requisições que mudam estado também é recusado.
-- Com login ativo: toda rota /api exige sessão válida, exceto as públicas; quem precisa trocar a
-  senha só acessa as rotas de login até trocar.
+- Toda rota /api exige sessão válida, exceto as públicas; quem precisa trocar a senha só acessa
+  as rotas de login até trocar.
 """
 from starlette.concurrency import run_in_threadpool
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -14,7 +14,9 @@ from starlette.responses import JSONResponse
 from app.core.config import config
 
 METODOS_ESCRITA = {"POST", "PUT", "PATCH", "DELETE"}
-ROTAS_PUBLICAS = {"/api/auth/eu", "/api/auth/entrar", "/api/auth/sair", "/api/ping"}
+ROTAS_PUBLICAS = {
+    "/api/auth/eu", "/api/auth/entrar", "/api/auth/sair", "/api/auth/cadastrar", "/api/ping", "/api/saude",
+}
 ROTAS_TROCA_SENHA = ROTAS_PUBLICAS | {"/api/auth/senha"}
 
 
@@ -44,7 +46,7 @@ class ProtecaoLocalMiddleware(BaseHTTPMiddleware):
             return JSONResponse({"detail": "Origem não permitida."}, status_code=403)
 
         caminho = request.url.path
-        if cfg.login_ativo and caminho.startswith("/api/") and caminho not in ROTAS_PUBLICAS:
+        if caminho.startswith("/api/") and caminho not in ROTAS_PUBLICAS:
             from app.core.autenticacao import COOKIE
 
             u = await run_in_threadpool(_usuario, request.cookies.get(COOKIE))
@@ -58,7 +60,7 @@ class ProtecaoLocalMiddleware(BaseHTTPMiddleware):
         resposta.headers.setdefault("X-Content-Type-Options", "nosniff")
         resposta.headers.setdefault("X-Frame-Options", "DENY")
         resposta.headers.setdefault("Referrer-Policy", "no-referrer")
-        if cfg.cookie_seguro:
+        if cfg.cookie_secure:
             resposta.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
         if caminho.startswith("/api/"):
             resposta.headers.setdefault("Cache-Control", "no-store")

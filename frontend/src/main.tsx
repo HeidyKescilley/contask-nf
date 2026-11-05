@@ -13,7 +13,7 @@ import { PaginaNotas } from "@/features/notas/PaginaNotas";
 import { Dashboard } from "@/features/dashboard/Dashboard";
 import { Exportacoes } from "@/features/exportacoes/Exportacoes";
 import { Notificacoes } from "@/layout/Notificacoes";
-import { Entrar, TrocarSenha } from "@/features/acesso/Acesso";
+import { Cadastrar, Entrar, TrocarSenha } from "@/features/acesso/Acesso";
 import { Protegido } from "@/lib/sessao";
 import { TemaProvider } from "@/lib/tema";
 import {
@@ -27,6 +27,7 @@ const consultas = new QueryClient({
 
 const rotas = createBrowserRouter([
   { path: "entrar", element: <Entrar /> },
+  { path: "cadastrar", element: <Cadastrar /> },
   { path: "trocar-senha", element: <TrocarSenha /> },
   {
     element: <Protegido><Estrutura /></Protegido>,

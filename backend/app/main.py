@@ -19,11 +19,13 @@ log = logging.getLogger("contask")
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     cfg = config()
-    if cfg.host not in ("127.0.0.1", "localhost") and not cfg.dominio:
-        raise RuntimeError("Fora de 127.0.0.1 é obrigatório definir CONTASK_DOMINIO.")
+    if cfg.host not in ("127.0.0.1", "localhost") and not cfg.lista_hosts:
+        raise RuntimeError("Fora de 127.0.0.1 é obrigatório definir CONTASK_HOSTS.")
     migrar()
     if not cripto.chave_disponivel():
-        log.error("Chave-mestra indisponível (variável, arquivo ou Gerenciador de Credenciais do Windows).")
+        raise RuntimeError(
+            "Defina CONTASK_CHAVE_MESTRA (chave Fernet em base64) no ambiente ou no .env. Sem ela a API não sobe."
+        )
     cfg = config()
     g = None
     if cfg.fila_ativa:

@@ -6,9 +6,10 @@ Tudo roda neste computador: a API escuta só em `127.0.0.1`, e os dados ficam na
 
 ## Como usar
 
-1. Dê **duplo clique em `iniciar.bat`**. Na primeira vez, ele prepara o Python e compila a interface.
-2. O navegador abre em `http://127.0.0.1:8765`.
-3. No primeiro uso, cadastre a **contabilidade** e o certificado dela. Depois, cadastre as empresas pelo CNPJ, e a busca de todo o histórico começa sozinha.
+1. Copie `.env.example` para `.env` e preencha `CONTASK_CHAVE_MESTRA` (sem ela a API não sobe).
+2. Dê **duplo clique em `iniciar.bat`**. Na primeira vez, ele prepara o Python e compila a interface.
+3. O navegador abre em `http://127.0.0.1:8765`. Entre ou cadastre o escritório (nome, e-mail e senha).
+4. No primeiro uso, cadastre a **contabilidade** e o certificado dela. Depois, cadastre as empresas pelo CNPJ, e a busca de todo o histórico começa sozinha.
 
 Para encerrar, feche a janela minimizada **"Contask NF - servidor"**.
 
@@ -46,25 +47,23 @@ Para encerrar, feche a janela minimizada **"Contask NF - servidor"**.
   - A marca d'água CANCELADA/SUBSTITUÍDA vem do status.
 - **Valores**: os totais em R$ somam só notas autorizadas.
 - **Datas**: o dashboard e a exportação usam a **competência** por padrão; a lista de notas usa a emissão, com opção de competência.
-- **Limites da busca**: no máximo 2 buscas ao mesmo tempo e 1 por certificado, com pausa de 1,5 s entre páginas. Respeita o 429 e tenta de novo até 6 vezes em erros 5xx ou de rede.
+- **Limites da busca**: no máximo 2 buscas por escritório e 1 por certificado, com pausa de 1,5 s entre páginas. Respeita o 429 e tenta de novo até 6 vezes em erros 5xx ou de rede. A fila periódica varre todos os escritórios no mesmo processo.
 - **Quando busca**: ao cadastrar, ao abrir o sistema e a cada 6 horas, para todas as empresas ativas.
 
 ## Segurança
 
-- O `.pfx` e a senha ficam **cifrados** (Fernet). A chave-mestra fica no **Gerenciador de Credenciais do Windows** (serviço `ContaskNF`), nunca em disco.
-- A senha nunca aparece em log nem em resposta da API.
-- O servidor recusa `Host` e `Origin` que não sejam o próprio computador.
+- O `.pfx` e a senha ficam **cifrados** (Fernet). A chave-mestra é `CONTASK_CHAVE_MESTRA` no ambiente ou no `.env`, nunca no disco do banco e nunca em log. Sem ela a API não sobe. Certificado cifrado com outra chave não abre: as notas e os XMLs ficam, e o `.pfx` é enviado de novo.
+- A senha de acesso nunca aparece em log nem em resposta da API.
+- O servidor recusa `Host` e `Origin` que não sejam o próprio computador ou um domínio listado em `CONTASK_HOSTS`.
 - No ADN, só são feitas chamadas de **leitura**: o sistema não emite, não cancela e não manifesta notas.
 
 ## Servidor na internet
 
-Para vender a outros escritórios, cada um ganha uma instância isolada numa VPS, com login, HTTPS e limite mensal de XMLs. O passo a passo está em [deploy/LEIA-ME.md](deploy/LEIA-ME.md).
+Vários escritórios usam o mesmo banco. O cadastro público cria o escritório e o primeiro usuário. A hospedagem (VPS, HTTPS, contrato) fica fora deste recorte; o guia antigo de uma instância por cliente está em [deploy/LEIA-ME.md](deploy/LEIA-ME.md).
 
-- **Login** (`CONTASK_LOGIN=true`; obrigatório fora de 127.0.0.1):
-  - usuários criados com `python -m app.tools.usuarios`;
-  - troca de senha obrigatória no primeiro acesso.
-- **Chave-mestra** por arquivo (`CONTASK_CHAVE_MESTRA_ARQUIVO`), no lugar do Gerenciador de Credenciais do Windows.
-- **Domínio público** em `CONTASK_DOMINIO`: libera Host e Origin `https://<domínio>`.
+- **Login** é obrigatório também em `127.0.0.1`. A sessão fica num cookie `HttpOnly` e na tabela `sessao_usuario`.
+- **Chave-mestra** em `CONTASK_CHAVE_MESTRA`. Sem ela a API não sobe.
+- **Domínio público** em `CONTASK_HOSTS` (separado por vírgula): libera Host e Origin `https://<domínio>`. `CONTASK_COOKIE_SECURE=true` marca o cookie como `Secure` (HTTPS).
 - **Limite do plano** em `CONTASK_LIMITE_XMLS_MES`:
   - conta os XMLs das buscas incrementais do mês;
   - a carga inicial do histórico não conta;
@@ -76,7 +75,7 @@ Para vender a outros escritórios, cada um ganha uma instância isolada numa VPS
   - baixa no máximo 5 XMLs;
   - depois da assinatura, `cliente.sh <cliente> liberar`: a busca continua do NSU salvo, e o restante do histórico não conta no limite do mês.
 
-No uso local (`iniciar.bat`), nada disso muda: sem login, sem limite e sem teste.
+No uso local (`iniciar.bat`) o login e a chave-mestra valem do mesmo jeito. Limite mensal e teste grátis só entram se as variáveis correspondentes estiverem ligadas; a contagem é por escritório.
 
 ## Backup
 
@@ -88,7 +87,23 @@ Gera `backups\contask_backup_<data>.zip` com o banco (copiado de forma consisten
 
 **Para restaurar:** feche o sistema, extraia a pasta `dados` do ZIP sobre a atual e abra o `iniciar.bat`.
 
-**Limitação:** os certificados do backup só abrem com a chave-mestra deste Windows. Em outro computador, ou depois de reinstalar o Windows, envie os certificados de novo pela tela. As notas continuam disponíveis, e os XMLs também podem ser baixados de novo do ADN.
+**Limitação:** os certificados do backup só abrem com a mesma `CONTASK_CHAVE_MESTRA`. Sem ela, envie os certificados de novo pela tela. As notas continuam disponíveis, e os XMLs também podem ser baixados de novo do ADN.
+
+## Site público
+
+A landing page fica em `site/` e é HTML estático. A Cloudflare Pages publica só essa pasta. A API e a interface do aplicativo não entram nesse deploy.
+
+No painel da Cloudflare Pages, crie um projeto a partir deste repositório:
+
+- Diretório de saída: `site`
+- Comando de build: vazio
+- Framework: nenhum
+
+O endereço inicial é `https://contask-nf.pages.dev`. Ele está no `canonical`, no Open Graph de `site/index.html` e em `site/sitemap.xml`. Com um domínio próprio, troque esse endereço nesses três pontos e ligue o domínio no painel.
+
+O WhatsApp e o e-mail ficam em `CONTATO`, no final de `site/index.html`. O número é só dígitos, com 55 e DDD. Sem o número, o botão de WhatsApp não abre conversa. Sem o e-mail, o botão some.
+
+Cada push na branch ligada ao projeto republica a pasta.
 
 ## Desenvolvimento
 

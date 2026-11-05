@@ -55,7 +55,7 @@ class Contexto:
 
 def certificado_da_empresa(db: Session, e: Empresa) -> Certificado | None:
     if e.modo_certificado == "contabilidade" and not e.is_contabilidade:
-        c = db.scalar(select(Empresa).where(Empresa.is_contabilidade))
+        c = db.scalar(select(Empresa).where(Empresa.escritorio_id == e.escritorio_id, Empresa.is_contabilidade))
         return db.get(Certificado, c.certificado_id) if c and c.certificado_id else None
     return db.get(Certificado, e.certificado_id) if e.certificado_id else None
 
@@ -77,12 +77,14 @@ def registrar(db: Session, job: BuscaJob, mensagem: str, nivel: str = "info") ->
 
 def resumo_job(db: Session, job: BuscaJob) -> dict:
     sync = db.get(SyncEstado, job.empresa_id)
+    empresa = db.get(Empresa, job.empresa_id)
     return {
         "tipo": "job", "id": job.id, "empresa_id": job.empresa_id, "status": job.status, "tipo_job": job.tipo,
         "paginas": job.paginas, "docs_recebidos": job.docs_recebidos, "notas_ok": job.notas_ok,
         "eventos_ok": job.eventos_ok, "docs_com_erro": job.docs_com_erro, "eventos_sem_nota": job.eventos_sem_nota,
         "ultimo_nsu": job.ultimo_nsu, "mensagem": job.mensagem,
         "situacao_empresa": sync.situacao if sync else None,
+        "escritorio_id": empresa.escritorio_id if empresa else None,
     }
 
 
@@ -260,12 +262,12 @@ def executar_job(job_id: int, sessao_factory: Callable[[], Session], ctx: Contex
                     db.commit()
                     return job.status
 
-                restante = restante_teste(db)
+                restante = restante_teste(db, empresa.escritorio_id)
                 if restante == 0:
                     return _finalizar_erro(db, job, sync, "limite_teste",
                                            "Teste grátis concluído: os XMLs de demonstração já foram baixados. "
                                            "Assine o plano para liberar o histórico completo e todas as empresas.", ctx)
-                if job.tipo == "incremental" and limite_atingido(db):
+                if job.tipo == "incremental" and limite_atingido(db, empresa.escritorio_id):
                     return _finalizar_erro(db, job, sync, "limite_mes",
                                            "Limite mensal de XMLs do plano atingido. As buscas voltam no próximo mês "
                                            "ou após ampliar o plano.", ctx)
@@ -274,7 +276,8 @@ def executar_job(job_id: int, sessao_factory: Callable[[], Session], ctx: Contex
                     with sessao_factory() as db2:
                         db2.add(BuscaLog(job_id=job.id, momento=agora(), nivel="aviso", mensagem=msg))
                         db2.commit()
-                    ctx.publicar({"tipo": "log", "id": job.id, "nivel": "aviso", "mensagem": msg})
+                    ctx.publicar({"tipo": "log", "id": job.id, "empresa_id": empresa.id,
+                                  "escritorio_id": empresa.escritorio_id, "nivel": "aviso", "mensagem": msg})
 
                 try:
                     resp = cliente.distribuicao(nsu, cnpj=empresa.cnpj, ao_esperar=_esperando)
