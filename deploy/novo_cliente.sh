@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # Cria a instância de um escritório: pasta, contêiner, endereço HTTPS e primeiro usuário.
+# Todo escritório começa no TESTE GRÁTIS (1 empresa, 5 XMLs). Depois da assinatura:
+#   bash cliente.sh <cliente> liberar
 #   bash novo_cliente.sh contabil-silva ana@contabilsilva.com.br "Ana Silva" [limite_xmls_mes]
 # Endereço criado: https://contabil-silva.<DOMINIO_BASE>
 set -euo pipefail
@@ -20,6 +22,7 @@ mkdir -p "$DIR/dados" "$DIR/segredos" "$BACKUPS/$C"
 cat > "$DIR/cliente.env" <<EOF
 CONTASK_DOMINIO=$DOMINIO
 CONTASK_LIMITE_XMLS_MES=$LIMITE
+CONTASK_TESTE=true
 EOF
 chown -R 1000:1000 "$DIR/dados" "$DIR/segredos" "$BACKUPS/$C"
 chmod 700 "$DIR/segredos"
@@ -43,7 +46,8 @@ usuarios "$C" criar "$EMAIL" "$NOME"
 cat <<EOF
 
 Cliente $C criado: https://$DOMINIO
-Limite: $LIMITE XMLs novos por mês.
+Situação: TESTE GRÁTIS (1 empresa, 5 XMLs). Após a assinatura: bash cliente.sh $C liberar
+Limite do plano depois de liberado: $LIMITE XMLs novos por mês.
 Envie o endereço, o e-mail e a senha inicial acima ao cliente por um canal privado.
 A chave dos certificados deste cliente está em $DIR/segredos/chave.key: guarde uma cópia
 no seu gerenciador de senhas (ela não vai no backup, de propósito).

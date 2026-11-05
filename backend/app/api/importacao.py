@@ -18,6 +18,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.uso import LimiteTeste, exigir_vaga_empresa
 from app.core import brasilapi
 from app.core.db import sessao
 from app.fiscal.documentos import cnpj_valido, formatar_cnpj, limpar_cnpj
@@ -168,6 +169,12 @@ def importar(pedido: PedidoImportar, db: Session = Depends(sessao)):
     _exigir_contabilidade(db)
     if len(pedido.linhas) > MAX_LINHAS:
         raise HTTPException(422, f"No máximo {MAX_LINHAS} empresas por importação.")
+    novas = {_cnpj_celula(l.cnpj) for l in pedido.linhas}
+    novas = [c for c in novas if cnpj_valido(c) and not db.scalar(select(Empresa.id).where(Empresa.cnpj == c))]
+    try:
+        exigir_vaga_empresa(db, len(novas))
+    except LimiteTeste as erro:
+        raise HTTPException(403, str(erro)) from None
     resultado = []
     for l in pedido.linhas:
         cnpj = _cnpj_celula(l.cnpj)

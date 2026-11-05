@@ -13,8 +13,20 @@ const CHAVE = "contask-menu-recolhido";
 /** Aviso do limite mensal de XMLs do plano (a partir de 80%). */
 function AvisoUso() {
   const { data } = useUso();
-  if (!data || (data.situacao !== "aviso" && data.situacao !== "atingido")) return null;
   const n = (v: number) => v.toLocaleString("pt-BR");
+  if (data?.teste)
+    return (
+      <div className="mb-5">
+        <Aviso tom="info">
+          {data.teste.concluido
+            ? <><strong>Teste grátis concluído:</strong> os {n(data.teste.max_xmls)} XMLs de demonstração já foram baixados.
+              Confira as notas e, para liberar o histórico completo e todas as empresas, fale com o suporte e assine o plano.</>
+            : <><strong>Teste grátis:</strong> {n(data.usados)} de {n(data.teste.max_xmls)} XMLs baixados, com {data.teste.max_empresas} empresa.
+              Cadastre o certificado do escritório e uma empresa para ver as notas chegando.</>}
+        </Aviso>
+      </div>
+    );
+  if (!data || (data.situacao !== "aviso" && data.situacao !== "atingido")) return null;
   return (
     <div className="mb-5">
       <Aviso tom={data.situacao === "atingido" ? "erro" : "alerta"}>

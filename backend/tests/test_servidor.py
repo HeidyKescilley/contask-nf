@@ -216,3 +216,70 @@ def test_empresa_nunca_buscada_conta_como_historico(cliente, monkeypatch):
 
 def test_sem_limite(cliente):
     assert cliente.get("/api/uso").json()["situacao"] == "sem_limite"
+
+
+# --- teste grátis (1 empresa, 5 XMLs) ------------------------------------------
+
+@pytest.fixture()
+def modo_teste(monkeypatch):
+    from app.core import config as cfgmod
+    monkeypatch.setenv("CONTASK_TESTE", "true")
+    cfgmod.config.cache_clear()
+    yield
+    cfgmod.config.cache_clear()
+
+
+def test_teste_baixa_so_5_xmls_e_continua_depois_de_liberar(cliente, modo_teste, monkeypatch):
+    eid, adn = _preparar(cliente, 120)
+    with nova_sessao() as db:  # a contabilidade não foi agendada; só a empresa escolhida
+        tipos = {(j.empresa_id, j.tipo) for j in db.query(BuscaJob)}
+    assert tipos == {(eid, "inicial")}
+    j = _rodar(adn, eid)
+    assert j.status == "erro" and "Teste grátis concluído" in j.mensagem and j.docs_recebidos == 5
+    with nova_sessao() as db:
+        from app.models import DocumentoDfe, Nota
+        assert db.query(DocumentoDfe).count() == 5 and db.query(Nota).count() == 5
+        sync = db.get(SyncEstado, eid)
+        assert sync.situacao == "limite_teste" and sync.ultima_busca_em is None
+        nsu_salvo = sync.ultimo_nsu
+    u = cliente.get("/api/uso").json()
+    assert u["situacao"] == "teste" and u["usados"] == 5 and u["teste"]["concluido"] is True
+
+    j = _rodar(adn, eid, "incremental")  # nova tentativa: nem chama o ADN
+    assert j.status == "erro" and j.docs_recebidos == 0
+
+    # Assinou: desliga o teste; a busca continua do NSU salvo e o histórico não conta no limite do mês
+    from app.core import config as cfgmod
+    monkeypatch.setenv("CONTASK_TESTE", "false")
+    monkeypatch.setenv("CONTASK_LIMITE_XMLS_MES", "10")
+    cfgmod.config.cache_clear()
+    j = _rodar(adn, eid, "incremental")
+    assert j.tipo == "inicial" and j.status == "concluido" and j.docs_recebidos == 115
+    assert nsu_salvo > 0
+    with nova_sessao() as db:
+        from app.models import Nota
+        assert db.query(Nota).count() == 120
+    assert cliente.get("/api/uso").json()["usados"] == 0
+
+
+def test_teste_aceita_uma_empresa(cliente, modo_teste):
+    _preparar(cliente, 1)
+    r = cliente.post("/api/empresas", data={"cnpj": dv_cnpj("223334440001"), "razao_social": "Outra",
+                                            "modo_certificado": "contabilidade"})
+    assert r.status_code == 403 and "teste grátis" in r.json()["detail"]
+    r = cliente.post("/api/importacao/empresas", json={"linhas": [{"cnpj": dv_cnpj("223334440001")}]})
+    assert r.status_code == 403
+    # Reenviar a mesma empresa que já existe não conta como nova
+    r = cliente.post("/api/importacao/empresas", json={"linhas": [{"cnpj": EMP}]})
+    assert r.status_code == 200
+
+
+def test_teste_nao_busca_a_contabilidade(cliente, modo_teste):
+    eid, adn = _preparar(cliente, 3)
+    with nova_sessao() as db:
+        from app.models import Empresa
+        contab = db.query(Empresa).filter(Empresa.is_contabilidade).one()
+        db.add(BuscaJob(empresa_id=contab.id, tipo="incremental", status="fila"))
+        db.commit()
+    j = _rodar(adn, contab.id)
+    assert j.status == "cancelado" and "contabilidade" in j.mensagem and j.docs_recebidos == 0

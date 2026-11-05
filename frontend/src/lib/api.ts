@@ -65,7 +65,7 @@ export interface Certificado {
   responsavel: string | null;
 }
 
-export type SituacaoBusca = "nunca_buscada" | "buscando" | "em_dia" | "sem_procuracao" | "erro_certificado" | "erro" | "limite_mes";
+export type SituacaoBusca = "nunca_buscada" | "buscando" | "em_dia" | "sem_procuracao" | "erro_certificado" | "erro" | "limite_mes" | "limite_teste";
 
 export interface Empresa {
   id: number;

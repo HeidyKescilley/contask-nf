@@ -61,6 +61,7 @@ export function SeloBusca({ situacao, pendente }: { situacao: SituacaoBusca; pen
     erro_certificado: ["erro", ShieldX, "Erro de certificado"],
     erro: ["erro", AlertTriangle, "Erro na busca"],
     limite_mes: ["alerta", Gauge, "Limite do mês"],
+    limite_teste: ["neutro", Gauge, "Teste concluído"],
   };
   const [tom, icone, texto] = m[situacao];
   return <Selo tom={tom} icone={icone}>{texto}</Selo>;

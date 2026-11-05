@@ -48,10 +48,11 @@ O script faz o seguinte:
 
 ## 4. Teste do ADN a partir da VPS (antes de qualquer cliente)
 
-Crie o seu próprio escritório como primeiro cliente:
+Crie o seu próprio escritório como primeiro cliente e libere o teste:
 
 ```bash
 bash /opt/contask/codigo/deploy/novo_cliente.sh piloto seu@email.com "Seu Nome"
+bash /opt/contask/codigo/deploy/cliente.sh piloto liberar
 ```
 
 Depois, faça o seguinte:
@@ -63,7 +64,8 @@ Depois, faça o seguinte:
 
 | Tarefa | Comando (`cd /opt/contask/codigo/deploy`) |
 |---|---|
-| Novo escritório | `bash novo_cliente.sh <cliente> <email> "<nome>" [limite]` |
+| Novo escritório (começa em teste grátis: 1 empresa, 5 XMLs) | `bash novo_cliente.sh <cliente> <email> "<nome>" [limite]` |
+| Liberar depois da assinatura | `bash cliente.sh <cliente> liberar` |
 | Listar escritórios | `bash cliente.sh lista` |
 | Suspender (falta de pagamento) | `bash cliente.sh <cliente> parar` |
 | Reativar | `bash cliente.sh <cliente> iniciar` |

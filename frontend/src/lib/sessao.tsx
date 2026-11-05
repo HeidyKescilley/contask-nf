@@ -21,7 +21,8 @@ export interface Uso {
   usados: number;
   limite: number | null;
   percentual: number | null;
-  situacao: "sem_limite" | "ok" | "aviso" | "atingido";
+  situacao: "sem_limite" | "ok" | "aviso" | "atingido" | "teste";
+  teste: { max_xmls: number; max_empresas: number; concluido: boolean } | null;
 }
 
 /** Disparado pelo cliente da API quando o servidor responde 401/403 de sessão. */

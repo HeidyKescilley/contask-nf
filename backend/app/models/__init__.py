@@ -59,7 +59,7 @@ class SyncEstado(Base):
     __tablename__ = "sync_estado"
     empresa_id: Mapped[int] = mapped_column(ForeignKey("empresa.id", ondelete="CASCADE"), primary_key=True)
     ultimo_nsu: Mapped[int] = mapped_column(Integer, default=0)
-    # nunca_buscada|buscando|em_dia|sem_procuracao|erro_certificado|erro|limite_mes
+    # nunca_buscada|buscando|em_dia|sem_procuracao|erro_certificado|erro|limite_mes|limite_teste
     situacao: Mapped[str] = mapped_column(String(20), default="nunca_buscada")
     tipo_consulta: Mapped[str | None] = mapped_column(String(30))
     ultima_busca_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

@@ -25,7 +25,7 @@ from app.adn.cliente import (
 )
 from app.core.certificados import carregar_pfx, situacao_validade
 from app.core.config import config
-from app.core.uso import limite_atingido
+from app.core.uso import limite_atingido, restante_teste
 from app.fiscal.parser import XmlInvalido, parse_evento, parse_nfse
 from app.fiscal.status import DESCRICOES, EventoStatus, calcular_status
 from app.models import BuscaJob, BuscaLog, Certificado, DocumentoDfe, Empresa, EventoNota, Nota, SyncEstado
@@ -213,8 +213,15 @@ def executar_job(job_id: int, sessao_factory: Callable[[], Session], ctx: Contex
         if job.tipo == "refazer" and primeira_vez:
             sync.ultimo_nsu = 0
             registrar(db, job, "Refazer do zero: a busca recomeça do NSU 0 (documentos já salvos não são duplicados).")
-        if job.tipo == "incremental" and sync.ultima_busca_em is None and sync.ultimo_nsu == 0:
-            job.tipo = "inicial"  # empresa nunca buscada: é carga do histórico, não conta no limite
+        if job.tipo == "incremental" and sync.ultima_busca_em is None:
+            job.tipo = "inicial"  # histórico ainda não terminou (nunca chegou ao fim da fila): não conta no limite
+        if config().teste and empresa.is_contabilidade:
+            job.status, job.finalizado_em = "cancelado", agora()
+            job.mensagem = "No teste grátis, só a empresa escolhida é buscada; a contabilidade entra pelo certificado."
+            registrar(db, job, job.mensagem)
+            db.commit()
+            ctx.publicar(resumo_job(db, job))
+            return job.status
         job.status, job.iniciado_em = "rodando", job.iniciado_em or agora()
         job.ultimo_nsu = sync.ultimo_nsu
         sync.situacao, sync.ultimo_erro = "buscando", None
@@ -253,6 +260,11 @@ def executar_job(job_id: int, sessao_factory: Callable[[], Session], ctx: Contex
                     db.commit()
                     return job.status
 
+                restante = restante_teste(db)
+                if restante == 0:
+                    return _finalizar_erro(db, job, sync, "limite_teste",
+                                           "Teste grátis concluído: os XMLs de demonstração já foram baixados. "
+                                           "Assine o plano para liberar o histórico completo e todas as empresas.", ctx)
                 if job.tipo == "incremental" and limite_atingido(db):
                     return _finalizar_erro(db, job, sync, "limite_mes",
                                            "Limite mensal de XMLs do plano atingido. As buscas voltam no próximo mês "
@@ -276,6 +288,10 @@ def executar_job(job_id: int, sessao_factory: Callable[[], Session], ctx: Contex
 
                 if resp.tipo_consulta:
                     sync.tipo_consulta = resp.tipo_consulta
+                if restante is not None and len(resp.documentos) > restante:
+                    # Teste: guarda só os primeiros pela ordem do NSU; o NSU salvo para no último guardado,
+                    # e a busca continua dele quando o plano for liberado.
+                    resp.documentos = sorted(resp.documentos, key=lambda d: d.nsu)[:restante]
                 if resp.fim:
                     job.eventos_sem_nota = contar_eventos_sem_nota(db, empresa.id)
                     job.status, job.finalizado_em = "concluido", agora()

@@ -71,7 +71,12 @@ Para vender a outros escritórios, cada um ganha uma instância isolada numa VPS
   - avisa a partir de 80%;
   - ao atingir, as buscas param até o mês seguinte.
 
-No uso local (`iniciar.bat`), nada disso muda: sem login e sem limite.
+- **Teste grátis** (`CONTASK_TESTE=true`, padrão de todo escritório novo na VPS):
+  - aceita 1 empresa, além da contabilidade, que entra só pelo certificado;
+  - baixa no máximo 5 XMLs;
+  - depois da assinatura, `cliente.sh <cliente> liberar`: a busca continua do NSU salvo, e o restante do histórico não conta no limite do mês.
+
+No uso local (`iniciar.bat`), nada disso muda: sem login, sem limite e sem teste.
 
 ## Backup
 

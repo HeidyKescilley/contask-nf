@@ -31,6 +31,11 @@ class Config(BaseSettings):
     cookie_seguro: bool = False  # só HTTPS (ligar atrás do Caddy)
     # Limite mensal de XMLs novos baixados (0 = sem limite). A carga inicial do histórico não conta.
     limite_xmls_mes: int = 0
+    # Teste grátis: só 1 empresa (além da contabilidade, que entra só pelo certificado) e no máximo
+    # `teste_max_xmls` XMLs no total. Liberado ao desligar CONTASK_TESTE (as buscas continuam do NSU salvo).
+    teste: bool = False
+    teste_max_xmls: int = 5
+    teste_max_empresas: int = 1
 
     # Motor de busca
     adn_url: str = "https://adn.nfse.gov.br"

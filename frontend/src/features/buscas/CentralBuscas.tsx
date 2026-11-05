@@ -36,6 +36,7 @@ function StatusJob({ j }: { j: Job }) {
   if (j.status === "concluido") return <Selo tom="ok" icone={CheckCircle2}>Concluída</Selo>;
   if (j.status === "cancelado") return <Selo tom="neutro" icone={XCircle}>Cancelada</Selo>;
   if (j.situacao_empresa === "sem_procuracao") return <Selo tom="alerta" icone={AlertTriangle}>Procuração pendente</Selo>;
+  if (j.situacao_empresa === "limite_teste") return <Selo tom="neutro" icone={Gauge}>Teste concluído</Selo>;
   if (j.situacao_empresa === "limite_mes") return <Selo tom="alerta" icone={Gauge}>Limite do mês</Selo>;
   if (j.situacao_empresa === "erro_certificado") return <Selo tom="erro" icone={ShieldX}>Erro de certificado</Selo>;
   return <Selo tom="erro" icone={AlertTriangle}>Erro</Selo>;

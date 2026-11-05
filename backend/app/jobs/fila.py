@@ -17,6 +17,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import case, select
 from sqlalchemy.orm import Session
 
+from app.core.config import config
 from app.models import BuscaJob, Empresa, SyncEstado
 from .barramento import barramento
 from .sincronizador import Contexto, FabricaCliente, certificado_da_empresa, executar_job, resumo_job
@@ -104,7 +105,10 @@ class Gerenciador:
     def enfileirar_incrementais(self) -> int:
         n = 0
         with self._sf() as db:
-            for e in db.scalars(select(Empresa).where(Empresa.ativa)):
+            q = select(Empresa).where(Empresa.ativa)
+            if config().teste:
+                q = q.where(Empresa.is_contabilidade.is_(False))
+            for e in db.scalars(q):
                 if db.scalar(select(BuscaJob.id).where(BuscaJob.empresa_id == e.id, BuscaJob.status.in_(PENDENTES))):
                     continue
                 enfileirar(db, e.id, "incremental")

@@ -116,7 +116,7 @@ def retomar(job_id: int, db: Session = Depends(sessao)):
         # Erro: abre um novo job que continua do NSU salvo (o histórico do anterior é mantido)
         novo = enfileirar(db, j.empresa_id, "incremental")
         s = db.get(SyncEstado, j.empresa_id)
-        if s and s.situacao in ("erro", "sem_procuracao", "erro_certificado", "limite_mes"):
+        if s and s.situacao in ("erro", "sem_procuracao", "erro_certificado", "limite_mes", "limite_teste"):
             s.situacao = "buscando"
         db.commit()
         acordar_fila()

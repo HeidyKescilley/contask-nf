@@ -79,7 +79,10 @@ export function Configuracoes() {
             />
             <Linha rotulo="Empresas cadastradas" valor={String(data.empresas)} />
             {uso.isError && <Linha rotulo="XMLs novos no mês" valor="não foi possível consultar" ok={false} />}
-            {uso.data && (
+            {uso.data?.teste && (
+              <Linha rotulo="Teste grátis" valor={`${n(uso.data.usados)} de ${n(uso.data.teste.max_xmls)} XMLs`} ok={!uso.data.teste.concluido} />
+            )}
+            {uso.data && !uso.data.teste && (
               <Linha
                 rotulo={`XMLs novos em ${uso.data.mes.slice(5)}/${uso.data.mes.slice(0, 4)}`}
                 valor={uso.data.limite ? `${n(uso.data.usados)} de ${n(uso.data.limite)}` : `${n(uso.data.usados)} (sem limite)`}
@@ -89,7 +92,7 @@ export function Configuracoes() {
           </>
         )}
       </section>
-      {uso.data?.limite && (
+      {uso.data?.limite && !uso.data.teste && (
         <p className="mt-3 max-w-xl text-xs text-texto-2">
           O limite conta os XMLs (notas e eventos) baixados nas buscas do mês. A carga inicial do histórico de cada empresa não conta.
         </p>

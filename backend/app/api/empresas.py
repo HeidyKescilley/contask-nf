@@ -14,6 +14,7 @@ from app.core.certificados import (
     situacao_validade, validar_para_uso,
 )
 from app.core.config import config
+from app.core.uso import LimiteTeste, exigir_vaga_empresa
 from app.core.db import sessao
 from app.fiscal.documentos import cnpj_valido, formatar_cnpj, limpar_cnpj, raiz_cnpj
 from app.jobs import acordar_fila
@@ -127,6 +128,8 @@ def _aviso_situacao(situacao: str | None) -> str | None:
 
 def _agendar_busca_inicial(db: Session, e: Empresa) -> None:
     db.flush()
+    if config().teste and e.is_contabilidade:
+        return  # no teste, a contabilidade entra só pelo certificado
     enfileirar(db, e.id, "inicial" if not db.get(SyncEstado, e.id) or not db.get(SyncEstado, e.id).ultimo_nsu else "incremental")
 
 
@@ -276,6 +279,10 @@ async def criar_empresa(
         raise HTTPException(422, "Informe a razão social.")
     if db.scalar(select(Empresa).where(Empresa.cnpj == c)):
         raise HTTPException(409, f"O CNPJ {formatar_cnpj(c)} já está cadastrado.")
+    try:
+        exigir_vaga_empresa(db)
+    except LimiteTeste as erro:
+        raise HTTPException(403, str(erro)) from None
     avisos: list[str] = []
     e = Empresa(cnpj=c, razao_social=razao_social.strip(), nome_fantasia=_texto(nome_fantasia),
                 apelido=_texto(apelido), uf=_texto(uf), municipio=_texto(municipio),

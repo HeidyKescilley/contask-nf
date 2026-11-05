@@ -2,6 +2,7 @@
 # Operação do dia a dia de um cliente:
 #   bash cliente.sh lista
 #   bash cliente.sh <cliente> parar | iniciar | logs | estado
+#   bash cliente.sh <cliente> liberar        # fim do teste grátis: libera empresas e histórico
 #   bash cliente.sh <cliente> limite 5000
 #   bash cliente.sh <cliente> usuarios criar|redefinir|desativar|listar [email] ["nome"]
 set -euo pipefail
@@ -33,6 +34,12 @@ case "$ACAO" in
     [[ "${1:-}" =~ ^[0-9]+$ ]] || erro "uso: cliente.sh $C limite <xmls_por_mes> (0 = sem limite)"
     sed -i "s/^CONTASK_LIMITE_XMLS_MES=.*/CONTASK_LIMITE_XMLS_MES=$1/" "$CLIENTES/$C/cliente.env"
     subir_cliente "$C" && esperar_saude "$C" && echo "Limite de $C: $1 XMLs por mês." ;;
+  liberar)
+    env="$CLIENTES/$C/cliente.env"
+    if grep -q "^CONTASK_TESTE=" "$env"; then sed -i "s/^CONTASK_TESTE=.*/CONTASK_TESTE=false/" "$env"
+    else echo "CONTASK_TESTE=false" >> "$env"; fi
+    subir_cliente "$C" && esperar_saude "$C"
+    echo "$C liberado: as buscas continuam de onde o teste parou, com todas as empresas e o histórico completo." ;;
   usuarios) usuarios "$C" "$@" ;;
-  *) erro "ação desconhecida: $ACAO (parar, iniciar, logs, estado, limite, usuarios)" ;;
+  *) erro "ação desconhecida: $ACAO (parar, iniciar, logs, estado, liberar, limite, usuarios)" ;;
 esac
