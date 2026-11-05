@@ -48,7 +48,8 @@ docker build -t "$IMAGEM" "$CODIGO"
 echo "==> Caddy (HTTPS)"
 docker rm -f contask-caddy >/dev/null 2>&1 || true
 docker run -d --name contask-caddy --restart unless-stopped --network "$REDE" \
-  -p 80:80 -p 443:443 -p 443:443/udp -e ACME_EMAIL="$ACME_EMAIL" \
+  -p 80:80 -p 443:443 -p 443:443/udp -e ACME_EMAIL="$ACME_EMAIL" -e DOMINIO_BASE="$DOMINIO_BASE" \
+  -v "$CODIGO/site:/srv/site:ro" \
   -v "$BASE/caddy/Caddyfile:/etc/caddy/Caddyfile:ro" -v "$BASE/caddy/sites:/etc/caddy/sites:ro" \
   -v "$BASE/caddy/data:/data" -v "$BASE/caddy/config:/config" \
   --log-opt max-size=10m --log-opt max-file=3 \

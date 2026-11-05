@@ -26,4 +26,6 @@ for d in "$CLIENTES"/*/; do
   esperar_saude "$c"
 done
 docker image prune -f >/dev/null
+# O site de vendas é lido direto da pasta site/ do git; só o Caddyfile precisa ser recopiado
+cp "$CODIGO/deploy/Caddyfile" "$BASE/caddy/Caddyfile" && recarregar_caddy
 echo "Atualização concluída."

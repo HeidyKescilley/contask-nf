@@ -25,7 +25,9 @@ Cada instância usa cerca de 150 MB de memória. Uma VPS de 8 GB comporta 30 ou 
 No Cloudflare (ou no DNS do Registro.br), crie apontando para o IP da VPS:
 
 - `A  *    <IP da VPS>` (curinga: todos os escritórios)
-- `A  @    <IP da VPS>` (site de vendas, depois)
+- `A  @    <IP da VPS>` (site de vendas em `https://contasknf.com.br`, servido da pasta `site/`)
+
+Antes de divulgar o site, preencha o WhatsApp e o e-mail de contato no fim de `site/index.html` (objeto `CONTATO`).
 
 Na Cloudflare, deixe a nuvem **cinza** ("DNS only"). Assim o próprio Caddy emite o HTTPS.
 

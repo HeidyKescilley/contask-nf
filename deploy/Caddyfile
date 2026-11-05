@@ -4,4 +4,20 @@
 	email {$ACME_EMAIL}
 }
 
+# Site de vendas no domínio principal (pasta site/ do repositório)
+{$DOMINIO_BASE} {
+	root * /srv/site
+	file_server
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+}
+
+www.{$DOMINIO_BASE} {
+	redir https://{$DOMINIO_BASE}{uri} permanent
+}
+
 import /etc/caddy/sites/*.caddy

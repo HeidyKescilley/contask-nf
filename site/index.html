@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contask NF: NFS-e dos seus clientes, baixadas sozinhas</title>
+<meta name="description" content="O Contask NF baixa do Ambiente Nacional (ADN) todas as NFS-e prestadas e tomadas dos clientes do seu escritório contábil, por procuração eletrônica. Teste grátis com uma empresa sua.">
+<meta property="og:title" content="Contask NF: NFS-e dos seus clientes, baixadas sozinhas">
+<meta property="og:description" content="Chega de entrar no Portal Nacional empresa por empresa. Notas, cancelamentos, DANFSe e exportação por período, para todo o escritório.">
+<meta property="og:type" content="website">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="icone.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --fundo: #f6f7f7; --superficie: #ffffff; --superficie-2: #eef0f0; --borda: #e3e6e6; --borda-forte: #cdd3d3;
+    --texto: #15191a; --texto-2: #5f6a6c; --destaque: #0e7490; --destaque-forte: #0b5f76; --destaque-texto: #ffffff;
+    --destaque-suave: #e2f1f4; --ok: #15803d; --ok-suave: #e6f4ea; --erro: #b91c1c; --erro-suave: #fbe9e9;
+    --alerta: #b45309; --alerta-suave: #fbf0e1; --sombra: 0 24px 60px -30px rgb(14 40 48 / 0.35);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fundo: #0e1112; --superficie: #171b1c; --superficie-2: #1f2426; --borda: #2a2f31; --borda-forte: #3a4143;
+      --texto: #eceff0; --texto-2: #9aa5a7; --destaque: #38bdd8; --destaque-forte: #67cfe4; --destaque-texto: #0e1112;
+      --destaque-suave: #12313a; --ok: #4ade80; --ok-suave: #12301f; --erro: #f87171; --erro-suave: #3a1717;
+      --alerta: #fbbf24; --alerta-suave: #3a2c0e; --sombra: 0 24px 60px -30px rgb(0 0 0 / 0.8);
+    }
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--fundo); color: var(--texto);
+    font: 16px/1.6 "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased; overflow-x: hidden;
+  }
+  a { color: inherit; }
+  [hidden] { display: none !important; }
+  img, svg { display: block; max-width: 100%; }
+  :focus-visible { outline: 2px solid var(--destaque); outline-offset: 3px; border-radius: 6px; }
+  .mono { font-family: "Geist Mono", ui-monospace, monospace; font-feature-settings: "tnum" 1; }
+  .container { width: 100%; max-width: 1120px; margin: 0 auto; padding: 0 20px; }
+  .pular { position: absolute; left: -9999px; }
+  .pular:focus { left: 16px; top: 12px; z-index: 100; background: var(--superficie); padding: 8px 12px; border-radius: 8px; }
+
+  /* Topo */
+  header.topo { position: sticky; top: 0; z-index: 50; background: color-mix(in srgb, var(--fundo) 88%, transparent);
+    backdrop-filter: blur(10px); border-bottom: 1px solid var(--borda); }
+  .topo .container { display: flex; align-items: center; gap: 24px; height: 64px; }
+  .marca { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 17px; text-decoration: none; letter-spacing: -0.01em; }
+  .marca span { color: var(--destaque); }
+  .marca svg { width: 28px; height: 28px; }
+  nav.links { display: flex; gap: 22px; margin-left: auto; font-size: 14px; }
+  nav.links a { text-decoration: none; color: var(--texto-2); }
+  nav.links a:hover { color: var(--texto); }
+
+  .botao { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 44px; padding: 0 20px;
+    border-radius: 12px; font-weight: 500; font-size: 15px; text-decoration: none; border: 1px solid transparent;
+    transition: background .15s, border-color .15s, transform .15s; white-space: nowrap; cursor: pointer; }
+  .botao svg { width: 18px; height: 18px; flex-shrink: 0; }
+  .botao.primario { background: var(--destaque); color: var(--destaque-texto); }
+  .botao.primario:hover { background: var(--destaque-forte); }
+  .botao.secundario { background: var(--superficie); border-color: var(--borda-forte); }
+  .botao.secundario:hover { background: var(--superficie-2); }
+  .botao.pequeno { height: 38px; padding: 0 14px; font-size: 14px; border-radius: 10px; }
+
+  /* Hero */
+  .hero { padding: 72px 0 40px; }
+  .hero .container { display: grid; grid-template-columns: 1.02fr 1fr; gap: 56px; align-items: center; }
+  .selo { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; color: var(--destaque);
+    background: var(--destaque-suave); padding: 5px 12px; border-radius: 999px; }
+  h1 { font-size: clamp(34px, 5vw, 52px); line-height: 1.08; letter-spacing: -0.03em; margin: 18px 0 18px; font-weight: 650; text-wrap: balance; }
+  h1 em { font-style: normal; color: var(--destaque); }
+  .hero p.lead { font-size: 18px; color: var(--texto-2); margin: 0 0 28px; max-width: 34em; text-wrap: pretty; }
+  .acoes { display: flex; flex-wrap: wrap; gap: 12px; }
+  .garantias { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 22px; font-size: 14px; color: var(--texto-2); list-style: none; padding: 0; }
+  .garantias li { display: flex; align-items: center; gap: 7px; }
+  .garantias svg { width: 16px; height: 16px; color: var(--ok); }
+
+  /* Ilustração do sistema (fictícia) */
+  .tela { background: var(--superficie); border: 1px solid var(--borda); border-radius: 18px; box-shadow: var(--sombra); overflow: hidden; }
+  .tela-barra { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--borda); font-size: 13px; color: var(--texto-2); }
+  .tela-barra i { width: 9px; height: 9px; border-radius: 50%; background: var(--borda-forte); }
+  .tela-barra b { margin-left: 8px; font-weight: 500; color: var(--texto); }
+  .tela-corpo { padding: 16px; display: grid; gap: 12px; }
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .card-mini { background: var(--fundo); border-radius: 12px; padding: 12px; }
+  .card-mini small { display: block; font-size: 11.5px; color: var(--texto-2); }
+  .card-mini strong { font-size: 19px; font-weight: 600; letter-spacing: -0.02em; }
+  .lista { border: 1px solid var(--borda); border-radius: 12px; overflow: hidden; }
+  .linha { display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: center; padding: 10px 12px; font-size: 13px; border-bottom: 1px solid var(--borda); }
+  .linha:last-child { border-bottom: 0; }
+  .linha .nome { min-width: 0; }
+  .linha .nome b { display: block; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .linha .nome small { color: var(--texto-2); font-size: 11.5px; }
+  .tag { font-size: 11.5px; font-weight: 500; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .tag.ok { color: var(--ok); background: var(--ok-suave); }
+  .tag.erro { color: var(--erro); background: var(--erro-suave); }
+  .tag.busca { color: var(--destaque); background: var(--destaque-suave); }
+  .tela-rodape { font-size: 11.5px; color: var(--texto-2); text-align: center; }
+
+  /* Seções */
+  section.bloco { padding: 80px 0; }
+  section.bloco.alt { background: var(--superficie); border-top: 1px solid var(--borda); border-bottom: 1px solid var(--borda); }
+  .titulo-secao { max-width: 680px; margin-bottom: 44px; }
+  .titulo-secao .sobre { font-size: 13px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--destaque); }
+  h2 { font-size: clamp(27px, 3.4vw, 36px); line-height: 1.15; letter-spacing: -0.025em; margin: 10px 0 12px; font-weight: 650; text-wrap: balance; }
+  .titulo-secao p { color: var(--texto-2); margin: 0; font-size: 17px; }
+  h3 { font-size: 17px; margin: 0 0 6px; font-weight: 600; letter-spacing: -0.01em; }
+
+  .comparacao { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .coluna { border-radius: 16px; padding: 26px; border: 1px solid var(--borda); background: var(--fundo); }
+  .coluna.depois { border-color: color-mix(in srgb, var(--destaque) 35%, var(--borda)); background: var(--destaque-suave); }
+  .coluna h3 { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+  .coluna ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 11px; }
+  .coluna li { display: grid; grid-template-columns: 20px 1fr; gap: 10px; font-size: 15px; }
+  .coluna li svg { width: 18px; height: 18px; margin-top: 3px; }
+  .antes li svg { color: var(--erro); }
+  .depois li svg { color: var(--destaque); }
+
+  .passos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; counter-reset: passo; }
+  .passo { background: var(--superficie); border: 1px solid var(--borda); border-radius: 16px; padding: 24px; }
+  .alt .passo { background: var(--fundo); }
+  .passo .num { display: inline-flex; width: 34px; height: 34px; align-items: center; justify-content: center; border-radius: 10px;
+    background: var(--destaque); color: var(--destaque-texto); font-weight: 600; margin-bottom: 16px; }
+  .passo p { margin: 0; color: var(--texto-2); font-size: 15px; }
+
+  .recursos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .recurso { padding: 22px; border-radius: 16px; border: 1px solid var(--borda); background: var(--superficie); }
+  .recurso .icone { width: 40px; height: 40px; border-radius: 11px; background: var(--destaque-suave); color: var(--destaque);
+    display: flex; align-items: center; justify-content: center; margin-bottom: 14px; }
+  .recurso .icone svg { width: 20px; height: 20px; }
+  .alt .recurso { background: var(--fundo); }
+  .recurso p { margin: 0; color: var(--texto-2); font-size: 15px; }
+
+  .seguranca { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 48px; align-items: start; }
+  .itens-seg { display: grid; gap: 14px; }
+  .item-seg { display: grid; grid-template-columns: 40px 1fr; gap: 14px; padding: 18px; border-radius: 14px; background: var(--superficie); border: 1px solid var(--borda); }
+  .item-seg .icone { width: 40px; height: 40px; border-radius: 11px; background: var(--ok-suave); color: var(--ok); display: flex; align-items: center; justify-content: center; }
+  .item-seg .icone svg { width: 20px; height: 20px; }
+  .item-seg p { margin: 0; color: var(--texto-2); font-size: 15px; }
+
+  .preco-grade { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
+  .plano { background: var(--superficie); border: 2px solid var(--destaque); border-radius: 22px; padding: 32px; box-shadow: var(--sombra); }
+  .plano .nome { font-weight: 600; color: var(--destaque); font-size: 15px; }
+  .valor { display: flex; align-items: baseline; gap: 6px; margin: 8px 0 4px; }
+  .valor strong { font-size: 52px; letter-spacing: -0.04em; line-height: 1; font-weight: 650; }
+  .valor span { color: var(--texto-2); }
+  .plano .obs { color: var(--texto-2); font-size: 14px; margin: 0 0 22px; }
+  .plano ul { list-style: none; padding: 0; margin: 0 0 26px; display: grid; gap: 11px; }
+  .plano li { display: grid; grid-template-columns: 20px 1fr; gap: 10px; font-size: 15px; }
+  .plano li svg { width: 18px; height: 18px; color: var(--ok); margin-top: 3px; }
+  .plano .botao { width: 100%; }
+  .conta { font-size: 15px; color: var(--texto-2); }
+  .conta p { margin: 0 0 14px; }
+  .conta .destaque-num { color: var(--texto); font-weight: 600; }
+
+  .faq { display: grid; gap: 10px; }
+  details { background: var(--superficie); border: 1px solid var(--borda); border-radius: 14px; padding: 0 20px; }
+  .alt details { background: var(--fundo); }
+  summary { cursor: pointer; list-style: none; padding: 18px 0; font-weight: 500; display: flex; justify-content: space-between; gap: 16px; }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: "+"; color: var(--texto-2); font-size: 22px; line-height: 1; transition: transform .2s; }
+  details[open] summary::after { transform: rotate(45deg); }
+  details p { margin: 0 0 18px; color: var(--texto-2); font-size: 15px; }
+
+  .final { text-align: center; padding: 88px 0; }
+  .final h2 { max-width: 640px; margin: 0 auto 12px; }
+  .final p { color: var(--texto-2); margin: 0 auto 28px; max-width: 520px; font-size: 17px; }
+  .final .acoes { justify-content: center; }
+
+  footer { border-top: 1px solid var(--borda); padding: 32px 0; font-size: 14px; color: var(--texto-2); }
+  footer .container { display: flex; flex-wrap: wrap; gap: 12px 28px; align-items: center; justify-content: space-between; }
+  footer nav { display: flex; gap: 20px; flex-wrap: wrap; }
+  footer a { text-decoration: none; }
+  footer a:hover { color: var(--texto); }
+
+  @media (max-width: 900px) {
+    .hero .container, .seguranca, .preco-grade { grid-template-columns: 1fr; gap: 40px; }
+    .recursos { grid-template-columns: 1fr 1fr; }
+    .passos { grid-template-columns: 1fr; }
+    nav.links { display: none; }
+    .topo .botao { margin-left: auto; }
+    .hero { padding-top: 48px; }
+    section.bloco { padding: 60px 0; }
+  }
+  @media (max-width: 640px) {
+    .comparacao, .recursos { grid-template-columns: 1fr; }
+    .cards { grid-template-columns: 1fr 1fr; }
+    .cards .card-mini:last-child { display: none; }
+    .acoes .botao { flex: 1 1 100%; }
+    .linha { grid-template-columns: 1fr auto; }
+    .linha .mono { display: none; }
+    .topo .botao span.longo { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; } }
+</style>
+</head>
+<body>
+<a class="pular" href="#conteudo">Pular para o conteúdo</a>
+
+<!-- Ícones (sprite) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-zap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></symbol>
+  <symbol id="i-whats" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.4.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.2.6.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.3-.2-.5-.3z"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5M3 21v-5h5"/></symbol>
+  <symbol id="i-badge" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 3 6v6c0 5 3.8 9.4 9 10 5.2-.6 9-5 9-10V6l-9-4z"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></symbol>
+  <symbol id="i-zip" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1zM10 12h4"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M8 17v-5M13 17V8M18 17v-9"/></symbol>
+  <symbol id="i-table" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.3-9.3M17 6l3 3M14 9l2 2"/></symbol>
+</svg>
+
+<header class="topo">
+  <div class="container">
+    <a class="marca" href="#" aria-label="Contask NF, início">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#0E7490"/><path d="M10 8h8l5 5v11a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2z" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"/><path d="M12 17l3 3 5-6" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div>Contask <span>NF</span></div>
+    </a>
+    <nav class="links" aria-label="Seções">
+      <a href="#como-funciona">Como funciona</a>
+      <a href="#recursos">Recursos</a>
+      <a href="#seguranca">Segurança</a>
+      <a href="#preco">Preço</a>
+      <a href="#duvidas">Dúvidas</a>
+    </nav>
+    <a class="botao primario pequeno" data-whats="Olá! Quero fazer o teste grátis do Contask NF." href="#contato">Teste grátis</a>
+  </div>
+</header>
+
+<main id="conteudo">
+  <section class="hero">
+    <div class="container">
+      <div>
+        <span class="selo"><svg width="14" height="14" aria-hidden="true"><use href="#i-zap"/></svg> NFS-e do Padrão Nacional</span>
+        <h1>As NFS-e de todos os seus clientes, <em>baixadas sozinhas.</em></h1>
+        <p class="lead">O Contask NF busca no Ambiente Nacional as notas prestadas e tomadas de cada empresa do escritório, usando a procuração eletrônica. Sem entrar no portal empresa por empresa e sem baixar XML um a um.</p>
+        <div class="acoes">
+          <a class="botao primario" data-whats="Olá! Quero fazer o teste grátis do Contask NF." href="#contato">
+            <svg aria-hidden="true"><use href="#i-whats"/></svg> Testar de graça
+          </a>
+          <a class="botao secundario" href="#como-funciona">Ver como funciona</a>
+        </div>
+        <ul class="garantias">
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg> Teste grátis com uma empresa sua</li>
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg> Sem instalar nada</li>
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg> Empresas ilimitadas</li>
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg> Sem fidelidade</li>
+        </ul>
+      </div>
+
+      <figure class="tela" aria-label="Ilustração da tela do Contask NF com empresas fictícias" style="margin:0">
+        <div class="tela-barra"><i></i><i></i><i></i><b>Dashboard · outubro/2026</b></div>
+        <div class="tela-corpo">
+          <div class="cards">
+            <div class="card-mini"><small>NFS-e no mês</small><strong class="mono">1.248</strong></div>
+            <div class="card-mini"><small>Valor autorizado</small><strong class="mono">R$ 2,4 mi</strong></div>
+            <div class="card-mini"><small>Canceladas</small><strong class="mono">17</strong></div>
+          </div>
+          <div class="lista" role="list">
+            <div class="linha" role="listitem"><div class="nome"><b>Clínica Bem Estar Ltda</b><small>86 notas novas hoje</small></div><span class="mono" style="color:var(--texto-2)">12:04</span><span class="tag ok">Em dia</span></div>
+            <div class="linha" role="listitem"><div class="nome"><b>Alfa Engenharia e Obras</b><small>Buscando página 14...</small></div><span class="mono" style="color:var(--texto-2)">12:05</span><span class="tag busca">Buscando</span></div>
+            <div class="linha" role="listitem"><div class="nome"><b>Studio Criativo ME</b><small>NFS-e 3.112 cancelada pelo emitente</small></div><span class="mono" style="color:var(--texto-2)">11:58</span><span class="tag erro">Cancelada</span></div>
+            <div class="linha" role="listitem"><div class="nome"><b>Transportes Rota Sul</b><small>214 notas no histórico</small></div><span class="mono" style="color:var(--texto-2)">11:52</span><span class="tag ok">Em dia</span></div>
+          </div>
+          <figcaption class="tela-rodape">Ilustração com empresas fictícias</figcaption>
+        </div>
+      </figure>
+    </div>
+  </section>
+
+  <section class="bloco alt" aria-labelledby="t-dor">
+    <div class="container">
+      <div class="titulo-secao">
+        <span class="sobre">O problema</span>
+        <h2 id="t-dor">Baixar nota de serviço não deveria atrasar o fechamento</h2>
+        <p>Com a NFS-e no padrão nacional, as notas dos seus clientes estão todas num lugar só. Buscá-las à mão, empresa por empresa, é que continua lento.</p>
+      </div>
+      <div class="comparacao">
+        <div class="coluna antes">
+          <h3>Do jeito manual</h3>
+          <ul>
+            <li><svg aria-hidden="true"><use href="#i-x"/></svg> Entrar no portal com o certificado, empresa por empresa, todo mês</li>
+            <li><svg aria-hidden="true"><use href="#i-x"/></svg> Baixar XML e PDF um a um e organizar em pastas</li>
+            <li><svg aria-hidden="true"><use href="#i-x"/></svg> Descobrir a nota cancelada só depois de lançada</li>
+            <li><svg aria-hidden="true"><use href="#i-x"/></svg> Cobrar o cliente pelas notas tomadas que ele esqueceu de mandar</li>
+          </ul>
+        </div>
+        <div class="coluna depois">
+          <h3>Com o Contask NF</h3>
+          <ul>
+            <li><svg aria-hidden="true"><use href="#i-check"/></svg> Todas as empresas atualizadas sozinhas, várias vezes ao dia</li>
+            <li><svg aria-hidden="true"><use href="#i-check"/></svg> XMLs prontos num ZIP por período, uma pasta por empresa</li>
+            <li><svg aria-hidden="true"><use href="#i-check"/></svg> Status pelos eventos oficiais: cancelada, substituída ou rejeitada</li>
+            <li><svg aria-hidden="true"><use href="#i-check"/></svg> Prestadas e tomadas separadas, sem depender do cliente</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="bloco" id="como-funciona" aria-labelledby="t-como">
+    <div class="container">
+      <div class="titulo-secao">
+        <span class="sobre">Como funciona</span>
+        <h2 id="t-como">Três passos, e as notas começam a chegar</h2>
+        <p>Você usa o certificado do próprio escritório. Os clientes não precisam enviar nada.</p>
+      </div>
+      <div class="passos">
+        <div class="passo">
+          <div class="num">1</div>
+          <h3>Envie o certificado do escritório</h3>
+          <p>O e-CNPJ A1 da contabilidade. Ele é guardado cifrado e usado só para consultar notas.</p>
+        </div>
+        <div class="passo">
+          <div class="num">2</div>
+          <h3>Importe suas empresas</h3>
+          <p>Uma planilha com os CNPJs ou o cadastro de uma a uma. Razão social e município vêm sozinhos.</p>
+        </div>
+        <div class="passo">
+          <div class="num">3</div>
+          <h3>Pronto: o histórico e as notas novas chegam</h3>
+          <p>O sistema baixa todo o histórico de cada empresa e depois volta a buscar as novas sozinho, a cada 6 horas.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="bloco alt" id="recursos" aria-labelledby="t-rec">
+    <div class="container">
+      <div class="titulo-secao">
+        <span class="sobre">Recursos</span>
+        <h2 id="t-rec">Feito por quem fecha a escrita fiscal todo mês</h2>
+        <p>Nasceu dentro de um escritório contábil e hoje mantém mais de 120 empresas em dia.</p>
+      </div>
+      <div class="recursos">
+        <div class="recurso"><div class="icone"><svg aria-hidden="true"><use href="#i-refresh"/></svg></div><h3>Busca automática</h3><p>Pela procuração eletrônica ou pelo certificado da própria empresa. Mostra quais clientes ainda não deram procuração.</p></div>
+        <div class="recurso"><div class="icone"><svg aria-hidden="true"><use href="#i-badge"/></svg></div><h3>Status confiável</h3><p>Cancelamento, substituição, rejeição pelo tomador e bloqueio vêm dos eventos do ADN, não de adivinhação.</p></div>
+        <div class="recurso"><div class="icone"><svg aria-hidden="true"><use href="#i-file"/></svg></div><h3>DANFSe em PDF</h3><p>Gerado a partir do XML no modelo oficial, com marca d'água quando a nota está cancelada.</p></div>
+        <div class="recurso"><div class="icone"><svg aria-hidden="true"><use href="#i-zip"/></svg></div><h3>Exportação por período</h3><p>ZIP com os XMLs de uma empresa ou de todas, cada uma na pasta "CNPJ e nome", com filtros por status e papel.</p></div>
+        <div class="recurso"><div class="icone"><svg aria-hidden="true"><use href="#i-chart"/></svg></div><h3>Dashboard por competência</h3><p>Prestados, tomados, valor autorizado, canceladas e rejeitadas do mês, com os últimos 6 meses.</p></div>
+        <div class="recurso"><div class="icone"><svg aria-hidden="true"><use href="#i-table"/></svg></div><h3>Relatório em Excel e PDF</h3><p>Lista de notas do período com totais, pronta para conferência ou para mandar ao cliente.</p></div>
+        <div class="recurso"><div class="icone"><svg aria-hidden="true"><use href="#i-search"/></svg></div><h3>Busca rápida</h3><p>Ache qualquer nota pela chave, número, valor ou nome do prestador ou tomador.</p></div>
+        <div class="recurso"><div class="icone"><svg aria-hidden="true"><use href="#i-eye"/></svg></div><h3>Central de buscas</h3><p>Acompanhe ao vivo o que está sendo baixado, pause, retome e veja o histórico de cada busca.</p></div>
+        <div class="recurso"><div class="icone"><svg aria-hidden="true"><use href="#i-box"/></svg></div><h3>Planilha de empresas</h3><p>Cadastre dezenas de clientes de uma vez a partir de uma planilha XLSX ou CSV.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="bloco" id="seguranca" aria-labelledby="t-seg">
+    <div class="container seguranca">
+      <div class="titulo-secao" style="margin-bottom:0">
+        <span class="sobre">Segurança</span>
+        <h2 id="t-seg">O certificado do seu escritório fica protegido</h2>
+        <p>Sabemos que essa é a primeira pergunta. Por isso o sistema foi desenhado para usar o certificado o mínimo possível e só para leitura.</p>
+      </div>
+      <div class="itens-seg">
+        <div class="item-seg"><div class="icone"><svg aria-hidden="true"><use href="#i-lock"/></svg></div><div><h3>Cifrado do começo ao fim</h3><p>O arquivo e a senha do certificado ficam cifrados, com uma chave exclusiva do seu escritório. A senha nunca aparece na tela nem em registros.</p></div></div>
+        <div class="item-seg"><div class="icone"><svg aria-hidden="true"><use href="#i-eye"/></svg></div><div><h3>Só consulta, nunca emissão</h3><p>O sistema apenas lê as notas no Ambiente Nacional. Ele não emite, não cancela e não manifesta nenhuma nota.</p></div></div>
+        <div class="item-seg"><div class="icone"><svg aria-hidden="true"><use href="#i-box"/></svg></div><div><h3>Ambiente exclusivo do escritório</h3><p>Cada escritório tem seu próprio servidor isolado, banco de dados e endereço. Nenhum outro cliente enxerga os seus dados.</p></div></div>
+        <div class="item-seg"><div class="icone"><svg aria-hidden="true"><use href="#i-key"/></svg></div><div><h3>Acesso com login e HTTPS</h3><p>Conexão sempre criptografada, senha individual para cada pessoa da equipe e bloqueio após tentativas erradas.</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="bloco alt" id="preco" aria-labelledby="t-preco">
+    <div class="container preco-grade">
+      <div>
+        <div class="titulo-secao" style="margin-bottom:24px">
+          <span class="sobre">Preço</span>
+          <h2 id="t-preco">Um plano, sem surpresa</h2>
+          <p>Você paga pelo volume de notas novas, não pelo número de empresas.</p>
+        </div>
+        <div class="conta">
+          <p>Um escritório com <span class="destaque-num">45 clientes</span> de movimento médio recebe por volta de <span class="destaque-num">3.000 XMLs</span> (notas e eventos) por mês.</p>
+          <p>Todo o histórico de cada empresa é baixado no início <span class="destaque-num">sem contar no limite</span>.</p>
+          <p>O sistema avisa quando chegar a 80% do limite. Se o seu escritório precisar de mais, é só falar com a gente.</p>
+        </div>
+      </div>
+      <div class="plano">
+        <div class="nome">Plano Escritório</div>
+        <div class="valor"><strong>R$&nbsp;149</strong><span>/mês</span></div>
+        <p class="obs">Teste grátis com 5 XMLs de uma empresa sua. Sem fidelidade: cancele quando quiser.</p>
+        <ul>
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg> Até 3.000 XMLs novos por mês</li>
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg> Empresas ilimitadas</li>
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg> Histórico completo de cada empresa, sem custo extra</li>
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg> Usuários ilimitados da equipe</li>
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg> DANFSe, exportação ZIP e relatórios</li>
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg> Backup diário e suporte por WhatsApp</li>
+        </ul>
+        <a class="botao primario" data-whats="Olá! Quero fazer o teste grátis do Contask NF." href="#contato">
+          <svg aria-hidden="true"><use href="#i-whats"/></svg> Começar o teste grátis
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="bloco" id="duvidas" aria-labelledby="t-faq">
+    <div class="container">
+      <div class="titulo-secao">
+        <span class="sobre">Dúvidas</span>
+        <h2 id="t-faq">Perguntas frequentes</h2>
+      </div>
+      <div class="faq">
+        <details>
+          <summary>Preciso instalar alguma coisa?</summary>
+          <p>Não. O Contask NF funciona no navegador, em um endereço exclusivo do seu escritório. Basta entrar com e-mail e senha.</p>
+        </details>
+        <details>
+          <summary>Meus clientes precisam me dar procuração?</summary>
+          <p>Sim. A consulta usa a procuração eletrônica que a empresa outorga ao escritório. O sistema mostra quais empresas ainda estão com a procuração pendente. Se preferir, também dá para usar o certificado da própria empresa.</p>
+        </details>
+        <details>
+          <summary>Que certificado eu preciso?</summary>
+          <p>O certificado digital A1 (arquivo .pfx) do escritório, e-CNPJ ou e-CPF do contador. O sistema avisa com antecedência quando ele estiver perto de vencer.</p>
+        </details>
+        <details>
+          <summary>Quais notas o sistema encontra?</summary>
+          <p>Todas as NFS-e e eventos que estão no Ambiente de Dados Nacional (ADN) da NFS-e para o CNPJ da empresa, tanto as prestadas quanto as tomadas.</p>
+        </details>
+        <details>
+          <summary>O que acontece se eu passar do limite de XMLs?</summary>
+          <p>O sistema avisa ao chegar em 80%. Ao atingir o limite, as buscas de notas novas param até o mês seguinte, e tudo que já foi baixado continua disponível. Se precisar de mais, ampliamos o seu plano.</p>
+        </details>
+        <details>
+          <summary>O sistema emite ou cancela notas?</summary>
+          <p>Não. Ele só consulta. Nada é emitido, cancelado ou manifestado em nome dos seus clientes.</p>
+        </details>
+        <details>
+          <summary>Como funciona o teste grátis?</summary>
+          <p>Você fala com a gente pelo WhatsApp e recebe o acesso. Cadastra o certificado do escritório e uma empresa, e o sistema baixa 5 XMLs dela, para você ver com uma nota real que funciona. Gostou, assina o plano e liberamos todas as empresas e o histórico completo. Se não quiser continuar, não paga nada.</p>
+        </details>
+        <details>
+          <summary>E se eu cancelar, perco as notas?</summary>
+          <p>Não. Antes de encerrar, você pode exportar todos os XMLs de todas as empresas num único ZIP.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section class="final alt bloco" id="contato" aria-labelledby="t-final" style="border-bottom:0">
+    <div class="container">
+      <h2 id="t-final">Teste com uma empresa do seu escritório</h2>
+      <p>Em poucos minutos você vê notas reais de um cliente seu, baixadas sem abrir o portal. O teste é grátis.</p>
+      <div class="acoes">
+        <a class="botao primario" data-whats="Olá! Quero fazer o teste grátis do Contask NF." href="#contato">
+          <svg aria-hidden="true"><use href="#i-whats"/></svg> Falar no WhatsApp
+        </a>
+        <a class="botao secundario" data-email href="#contato">Enviar e-mail</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="container">
+    <div>© <span id="ano">2026</span> Contask NF</div>
+    <nav aria-label="Rodapé">
+      <a href="#como-funciona">Como funciona</a>
+      <a href="#seguranca">Segurança</a>
+      <a href="#preco">Preço</a>
+      <a data-email href="#contato">Contato</a>
+    </nav>
+  </div>
+</footer>
+
+<script>
+  // Contato: troque aqui o número de WhatsApp (só dígitos, com 55 e DDD) e o e-mail.
+  const CONTATO = { whatsapp: "", email: "" };
+
+  document.getElementById("ano").textContent = new Date().getFullYear();
+  document.querySelectorAll("[data-whats]").forEach((a) => {
+    if (!CONTATO.whatsapp) return;
+    a.href = "https://wa.me/" + CONTATO.whatsapp + "?text=" + encodeURIComponent(a.dataset.whats);
+    a.target = "_blank";
+    a.rel = "noopener";
+  });
+  document.querySelectorAll("[data-email]").forEach((a) => {
+    if (CONTATO.email) a.href = "mailto:" + CONTATO.email + "?subject=" + encodeURIComponent("Teste do Contask NF");
+    else a.hidden = true;
+  });
+</script>
+</body>
+</html>
