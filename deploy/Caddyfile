@@ -1,0 +1,7 @@
+# Caddy: HTTPS automático (Let's Encrypt) e um endereço por escritório.
+# Cada cliente ganha um arquivo em sites/<cliente>.caddy, criado pelo novo_cliente.sh.
+{
+	email {$ACME_EMAIL}
+}
+
+import /etc/caddy/sites/*.caddy

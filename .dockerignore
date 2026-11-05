@@ -1,0 +1,22 @@
+# Nunca levar dados de clientes, certificados ou segredos para a imagem
+dados/
+backups/
+*.pfx
+*.p12
+*.pem
+*.key
+.env
+*.db
+*.db-wal
+*.db-shm
+
+.git/
+.venv/
+**/__pycache__/
+**/*.pyc
+.pytest_cache/
+backend/tests/
+frontend/node_modules/
+frontend/dist/
+deploy/
+*.bat

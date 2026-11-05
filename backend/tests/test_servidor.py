@@ -1,0 +1,218 @@
+"""Servidor na internet: login, domínio público, chave-mestra por arquivo e limite mensal de XMLs."""
+from datetime import datetime, timedelta, timezone
+
+import pytest
+from fastapi.testclient import TestClient
+
+from app.core import autenticacao as auth
+from app.core.db import nova_sessao
+from app.jobs.sincronizador import Contexto, executar_job
+from app.models import BuscaJob, SyncEstado
+from tests.adn_simulado import ADNSimulado, chave_fake, nfse_xml
+from tests.certs import criar_pfx, dv_cnpj
+
+DOMINIO = "escritorio.contasknf.com.br"
+SENHA = "Senha-Forte-123"
+
+
+@pytest.fixture()
+def app_login(tmp_path, monkeypatch):
+    monkeypatch.setenv("CONTASK_LOGIN", "true")
+    monkeypatch.setenv("CONTASK_DOMINIO", DOMINIO)
+    monkeypatch.setenv("CONTASK_COOKIE_SEGURO", "true")
+    auth.limitador.limpar(*list(auth.limitador._erros))
+    yield
+
+
+@pytest.fixture()
+def web(app_login, app_teste):
+    with TestClient(app_teste, base_url=f"https://{DOMINIO}") as c:
+        with nova_sessao() as db:
+            auth.criar_usuario(db, "Ana@Escritorio.com", "Ana", SENHA, trocar_senha=False)
+            db.commit()
+        yield c
+
+
+def entrar(c, email="ana@escritorio.com", senha=SENHA):
+    return c.post("/api/auth/entrar", json={"email": email, "senha": senha})
+
+
+def test_api_exige_login_e_libera_depois(web):
+    assert web.get("/api/empresas").status_code == 401
+    assert web.get("/api/ping").json() == {"ok": True}
+    assert web.get("/api/auth/eu").json() == {"login_ativo": True, "usuario": None}
+    r = entrar(web, email="  ANA@escritorio.com ")
+    assert r.status_code == 200 and r.json()["usuario"]["nome"] == "Ana"
+    cookie = r.headers["set-cookie"].lower()
+    assert "httponly" in cookie and "secure" in cookie and "samesite=strict" in cookie
+    assert SENHA not in r.text
+    assert web.get("/api/empresas").status_code == 200
+    assert web.get("/api/auth/eu").json()["usuario"]["email"] == "ana@escritorio.com"
+    assert web.get("/api/empresas").headers["cache-control"] == "no-store"
+    assert web.post("/api/auth/sair").status_code == 204
+    assert web.get("/api/empresas").status_code == 401
+
+
+def test_frontend_e_publico_mas_api_nao(web):
+    assert web.get("/dashboard").status_code in (200, 503)  # SPA (sem build nos testes)
+    assert web.get("/api/saude").status_code == 401
+
+
+def test_senha_errada_e_bloqueio(web):
+    for _ in range(5):
+        r = entrar(web, senha="errada")
+        assert r.status_code == 401 and r.json()["detail"] == "E-mail ou senha incorretos."
+    r = entrar(web)  # mesmo com a senha certa, fica bloqueado
+    assert r.status_code == 401 and "Muitas tentativas" in r.json()["detail"]
+    assert entrar(web, email="naoexiste@x.com", senha="x").status_code == 401
+
+
+def test_sessao_vencida_nao_vale(web):
+    entrar(web)
+    with nova_sessao() as db:
+        from app.models import SessaoUsuario
+        for s in db.query(SessaoUsuario):
+            s.expira_em = datetime.now(timezone.utc) - timedelta(minutes=1)
+        db.commit()
+    assert web.get("/api/empresas").status_code == 401
+
+
+def test_troca_de_senha_obrigatoria(web):
+    with nova_sessao() as db:
+        auth.criar_usuario(db, "novo@escritorio.com", "Novo", "Inicial-12345", trocar_senha=True)
+        db.commit()
+    assert entrar(web, "novo@escritorio.com", "Inicial-12345").json()["usuario"]["trocar_senha"] is True
+    r = web.get("/api/empresas")
+    assert r.status_code == 403 and "Troque a senha" in r.json()["detail"]
+    assert web.post("/api/auth/senha", json={"senha_atual": "x", "senha_nova": "Nova-Senha-999"}).status_code == 400
+    assert web.post("/api/auth/senha", json={"senha_atual": "Inicial-12345", "senha_nova": "fraca"}).status_code == 400
+    r = web.post("/api/auth/senha", json={"senha_atual": "Inicial-12345", "senha_nova": "Nova-Senha-999"})
+    assert r.status_code == 200 and r.json()["usuario"]["trocar_senha"] is False
+    assert web.get("/api/empresas").status_code == 200
+
+
+def test_dominio_e_origem(web):
+    entrar(web)
+    assert web.get("/api/empresas", headers={"host": "outro.com"}).status_code == 400
+    assert web.post("/api/auth/sair", headers={"origin": "https://malicioso.com"}).status_code == 403
+    assert web.get("/api/empresas", headers={"origin": f"https://{DOMINIO}"}).status_code == 200
+    assert "max-age" in web.get("/api/ping").headers["strict-transport-security"]
+
+
+def test_sem_dominio_fora_do_localhost_nao_sobe(tmp_path, monkeypatch, app_teste):
+    monkeypatch.setenv("CONTASK_HOST", "0.0.0.0")
+    monkeypatch.delenv("CONTASK_DOMINIO", raising=False)
+    from app.core import config as cfgmod
+    cfgmod.config.cache_clear()
+    assert cfgmod.config().login_ativo  # fora do localhost, o login é obrigatório
+    with pytest.raises(RuntimeError, match="CONTASK_DOMINIO"):
+        with TestClient(app_teste):
+            pass
+
+
+def test_local_continua_sem_login(cliente):
+    assert cliente.get("/api/auth/eu").json() == {"login_ativo": False, "usuario": None}
+    assert cliente.get("/api/empresas").status_code == 200
+
+
+def test_chave_mestra_em_arquivo(tmp_path, monkeypatch):
+    from app.core import config as cfgmod, cripto
+    arq = tmp_path / "segredos" / "chave.key"
+    monkeypatch.setenv("CONTASK_CHAVE_MESTRA_ARQUIVO", str(arq))
+    cfgmod.config.cache_clear()
+    cripto.definir_chave_para_testes(None)
+    try:
+        token = cripto.cifrar(b"pfx")
+        assert arq.is_file()
+        cripto.definir_chave_para_testes(None)  # relê do arquivo
+        assert cripto.decifrar(token) == b"pfx"
+    finally:
+        cripto.definir_chave_para_testes(None)
+        cfgmod.config.cache_clear()
+
+
+def test_ferramenta_de_usuarios(app_teste, capsys):
+    from app.tools import usuarios
+    with TestClient(app_teste):
+        usuarios.main(["criar", "joao@escritorio.com", "João"])
+        saida = capsys.readouterr().out
+        senha = saida.strip().rsplit(" ", 1)[-1]
+        with nova_sessao() as db:
+            u, _ = auth.entrar(db, "joao@escritorio.com", senha, "1.1.1.1")
+            assert u.trocar_senha
+        usuarios.main(["desativar", "joao@escritorio.com"])
+        with nova_sessao() as db, pytest.raises(auth.ErroLogin):
+            auth.entrar(db, "joao@escritorio.com", senha, "1.1.1.2")
+
+
+# --- limite mensal de XMLs -----------------------------------------------------
+
+CONTAB = dv_cnpj("112223330001")
+EMP = dv_cnpj("114447770001")
+
+
+def _preparar(cliente, n_notas: int) -> tuple[int, ADNSimulado]:
+    cliente.post("/api/contabilidade", data={"cnpj": CONTAB, "razao_social": "Contab", "senha": "S3nh@-Teste!"},
+                 files={"arquivo": ("c.pfx", criar_pfx("CONTAB", cnpj=CONTAB), "application/x-pkcs12")})
+    eid = cliente.post("/api/empresas", data={"cnpj": EMP, "razao_social": "Empresa",
+                                              "modo_certificado": "contabilidade"}).json()["empresa"]["id"]
+    adn = ADNSimulado()
+    for i in range(1, n_notas + 1):
+        ch = chave_fake(i, EMP)
+        adn.adicionar(EMP, "NFSE", ch, nfse_xml(ch, prest=EMP, toma="33000167000101"))
+    return eid, adn
+
+
+def _rodar(adn, empresa_id: int, tipo: str | None = None) -> BuscaJob:
+    with nova_sessao() as db:
+        if tipo:
+            db.add(BuscaJob(empresa_id=empresa_id, tipo=tipo, status="fila"))
+            db.commit()
+        jid = db.query(BuscaJob.id).filter(BuscaJob.empresa_id == empresa_id, BuscaJob.status == "fila").scalar()
+    executar_job(jid, nova_sessao, Contexto(fabrica=adn.fabrica, pausa=0, dormir=lambda s: None, publicar=lambda e: None))
+    with nova_sessao() as db:
+        return db.get(BuscaJob, jid)
+
+
+def test_carga_inicial_nao_conta_e_limite_bloqueia_incremental(cliente, monkeypatch):
+    from app.core import config as cfgmod
+    monkeypatch.setenv("CONTASK_LIMITE_XMLS_MES", "60")
+    cfgmod.config.cache_clear()
+    eid, adn = _preparar(cliente, 120)
+    j = _rodar(adn, eid)  # inicial: 120 documentos, não conta
+    assert j.status == "concluido" and j.docs_recebidos == 120
+    u = cliente.get("/api/uso").json()
+    assert u["usados"] == 0 and u["limite"] == 60 and u["situacao"] == "ok"
+
+    for i in range(121, 221):  # 100 notas novas
+        ch = chave_fake(i, EMP)
+        adn.adicionar(EMP, "NFSE", ch, nfse_xml(ch, prest=EMP, toma="33000167000101"))
+    j = _rodar(adn, eid, "incremental")
+    # Para na primeira página depois de atingir o limite (lotes de 50)
+    assert j.status == "erro" and "Limite mensal" in j.mensagem and j.docs_recebidos == 100
+    with nova_sessao() as db:
+        assert db.get(SyncEstado, eid).situacao == "limite_mes"
+    u = cliente.get("/api/uso").json()
+    assert u["usados"] >= 60 and u["situacao"] == "atingido"
+
+    j = _rodar(adn, eid, "incremental")  # nova tentativa no mesmo mês: nem chama o ADN
+    assert j.status == "erro" and j.docs_recebidos == 0
+    with nova_sessao() as db:
+        assert db.get(SyncEstado, eid).situacao == "limite_mes"
+
+
+def test_empresa_nunca_buscada_conta_como_historico(cliente, monkeypatch):
+    from app.core import config as cfgmod
+    monkeypatch.setenv("CONTASK_LIMITE_XMLS_MES", "10")
+    cfgmod.config.cache_clear()
+    eid, adn = _preparar(cliente, 30)
+    with nova_sessao() as db:  # a inicial falhou antes de terminar (ex.: sem procuração) e virou incremental
+        db.query(BuscaJob).filter(BuscaJob.empresa_id == eid).update({"status": "erro"})
+        db.commit()
+    j = _rodar(adn, eid, "incremental")
+    assert j.tipo == "inicial" and j.status == "concluido" and j.docs_recebidos == 30
+    assert cliente.get("/api/uso").json()["usados"] == 0
+
+
+def test_sem_limite(cliente):
+    assert cliente.get("/api/uso").json()["situacao"] == "sem_limite"

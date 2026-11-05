@@ -1,0 +1,5 @@
+# Scripts da VPS precisam de fim de linha Unix
+*.sh text eol=lf
+Caddyfile text eol=lf
+Dockerfile text eol=lf
+*.bat text eol=crlf

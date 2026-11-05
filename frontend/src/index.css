@@ -1,0 +1,133 @@
+@import "tailwindcss";
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Tokens da identidade visual (seção 10 do plano) */
+:root {
+  --fundo: #f6f7f7;
+  --superficie: #ffffff;
+  --superficie-2: #eef0f0;
+  --borda: #e3e6e6;
+  --borda-forte: #cdd3d3;
+  --texto: #15191a;
+  --texto-2: #5f6a6c;
+  --destaque: #0e7490;
+  --destaque-texto: #ffffff;
+  --destaque-suave: #e2f1f4;
+  --autorizada: #15803d;
+  --autorizada-suave: #e6f4ea;
+  --cancelada: #b91c1c;
+  --cancelada-suave: #fbe9e9;
+  --rejeitada: #b45309;
+  --rejeitada-suave: #fbf0e1;
+  --foco: #0e7490;
+}
+
+.dark {
+  --fundo: #0e1112;
+  --superficie: #171b1c;
+  --superficie-2: #1f2426;
+  --borda: #2a2f31;
+  --borda-forte: #3a4143;
+  --texto: #eceFef;
+  --texto-2: #9aa5a7;
+  --destaque: #38bdd8;
+  --destaque-texto: #0e1112;
+  --destaque-suave: #12313a;
+  --autorizada: #4ade80;
+  --autorizada-suave: #12301f;
+  --cancelada: #f87171;
+  --cancelada-suave: #3a1717;
+  --rejeitada: #fbbf24;
+  --rejeitada-suave: #3a2c0e;
+  --foco: #38bdd8;
+}
+
+@theme inline {
+  --color-fundo: var(--fundo);
+  --color-superficie: var(--superficie);
+  --color-superficie-2: var(--superficie-2);
+  --color-borda: var(--borda);
+  --color-borda-forte: var(--borda-forte);
+  --color-texto: var(--texto);
+  --color-texto-2: var(--texto-2);
+  --color-destaque: var(--destaque);
+  --color-destaque-texto: var(--destaque-texto);
+  --color-destaque-suave: var(--destaque-suave);
+  --color-autorizada: var(--autorizada);
+  --color-autorizada-suave: var(--autorizada-suave);
+  --color-cancelada: var(--cancelada);
+  --color-cancelada-suave: var(--cancelada-suave);
+  --color-rejeitada: var(--rejeitada);
+  --color-rejeitada-suave: var(--rejeitada-suave);
+  --color-foco: var(--foco);
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, "Cascadia Mono", monospace;
+  --radius-xl: 10px;
+}
+
+@layer base {
+  html {
+    background: var(--fundo);
+    color: var(--texto);
+  }
+  body {
+    @apply font-sans antialiased;
+    font-feature-settings: "tnum" 1;
+    min-width: 1024px;
+  }
+  :focus-visible {
+    outline: 2px solid var(--foco);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: var(--destaque-suave);
+  }
+}
+
+/* Durante a troca de tema, nada anima (evita "piscar" de cores) */
+.sem-transicao,
+.sem-transicao * {
+  transition: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0ms !important;
+    animation-duration: 0ms !important;
+  }
+}
+
+/* Barra indeterminada (o ADN não informa o total de documentos) */
+.barra-indeterminada {
+  position: relative;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--destaque-suave);
+}
+.barra-indeterminada::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 35%;
+  border-radius: 999px;
+  background: var(--destaque);
+  animation: indeterminada 1.4s ease-in-out infinite;
+}
+@keyframes indeterminada {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .barra-indeterminada::after { animation: none; width: 100%; opacity: 0.6; }
+}
+
+/* Telas sem mouse (toque): ações das linhas sempre visíveis */
+@media (hover: none) {
+  .acoes-linha { opacity: 1 !important; }
+}
