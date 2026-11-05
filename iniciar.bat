@@ -29,7 +29,10 @@ if not exist "frontend\dist\index.html" (
 )
 
 echo Iniciando o Contask NF...
-start "Contask NF - servidor (feche para encerrar)" /min ".venv\Scripts\python.exe" -m uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port %PORTA%
+rem O log vai para arquivo: clicar na janela do console (modo de selecao) congelava o servidor.
+if not exist dados mkdir dados
+for %%A in ("dados\servidor.log") do if %%~zA GTR 5000000 move /y "dados\servidor.log" "dados\servidor.log.anterior" >nul
+start "Contask NF - servidor (feche para encerrar)" /min cmd /c ".venv\Scripts\python.exe -m uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port %PORTA% --no-access-log >> dados\servidor.log 2>&1"
 
 call :saude 40
 if errorlevel 1 goto erro_servidor
@@ -56,6 +59,7 @@ exit /b 1
 
 :erro_servidor
 echo.
-echo O servidor nao respondeu. Veja a janela "Contask NF - servidor" para o erro.
+echo O servidor nao respondeu. Veja o erro no final do arquivo dados\servidor.log.
+if exist "dados\servidor.log" powershell -NoProfile -Command "Get-Content 'dados\servidor.log' -Tail 15"
 pause
 exit /b 1
