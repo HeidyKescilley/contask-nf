@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Eye, EyeOff, Loader2, LogIn, ShieldCheck } from "lucide-react";
 import { useState, type FormEvent, type ReactNode } from "react";
-import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Esqueleto } from "@/components/estados";
 import { Button } from "@/components/ui/button";
 import { Aviso, Campo, Input } from "@/components/ui/campos";
@@ -76,7 +76,8 @@ export function Entrar() {
   });
 
   if (sessao.isLoading) return <Moldura titulo="Entrar" descricao="Carregando..."><Esqueleto className="h-32 w-full" /></Moldura>;
-  if (sessao.data && (!sessao.data.login_ativo || sessao.data.usuario)) return <Navigate to={voltar} replace />;
+  if (sessao.data?.usuario?.trocar_senha) return <Navigate to="/trocar-senha" replace />;
+  if (sessao.data?.usuario) return <Navigate to={voltar} replace />;
 
   const enviar = (e: FormEvent) => {
     e.preventDefault();
@@ -96,6 +97,67 @@ export function Entrar() {
           {entrar.isPending ? <Loader2 className="animate-spin" /> : <LogIn />} Entrar
         </Button>
         <p className="text-center text-xs text-texto-2">Esqueceu a senha? Fale com o suporte do Contask NF.</p>
+        <p className="text-center text-sm text-texto-2">
+          Não tem conta? <Link to="/cadastrar" className="text-destaque hover:underline">Cadastre o escritório</Link>
+        </p>
+      </form>
+    </Moldura>
+  );
+}
+
+export function Cadastrar() {
+  const sessao = useSessao();
+  const qc = useQueryClient();
+  const navegar = useNavigate();
+  const [nome, setNome] = useState("");
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
+  const [confirma, setConfirma] = useState("");
+  const diferentes = confirma.length > 0 && confirma !== senha;
+  const cadastrar = useMutation({
+    mutationFn: () => api<{ usuario: Usuario }>("/api/auth/cadastrar", {
+      method: "POST", body: JSON.stringify({ nome, email, senha }),
+    }),
+    onSuccess: async () => {
+      qc.removeQueries({ predicate: (q) => q.queryKey[0] !== "sessao" });
+      await qc.invalidateQueries({ queryKey: ["sessao"] });
+      navegar("/dashboard", { replace: true });
+    },
+    onSettled: () => setSenha(""),
+  });
+
+  if (sessao.isLoading) return <Moldura titulo="Cadastrar" descricao="Carregando..."><Esqueleto className="h-40 w-full" /></Moldura>;
+  if (sessao.data?.usuario) return <Navigate to="/dashboard" replace />;
+
+  const enviar = (e: FormEvent) => {
+    e.preventDefault();
+    if (!diferentes) cadastrar.mutate();
+  };
+  return (
+    <Moldura titulo="Cadastrar" descricao="Crie o escritório e o primeiro acesso. Você vê todas as empresas dele.">
+      <form onSubmit={enviar} className="space-y-4">
+        {sessao.isError && <Aviso tom="erro">{(sessao.error as Error).message}</Aviso>}
+        {cadastrar.isError && <Aviso tom="erro">{(cadastrar.error as Error).message}</Aviso>}
+        <Campo rotulo="Nome">
+          {(p) => <Input {...p} value={nome} onChange={(e) => setNome(e.target.value)} autoComplete="name" autoFocus required />}
+        </Campo>
+        <Campo rotulo="E-mail">
+          {(p) => <Input {...p} type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+            autoComplete="username" required />}
+        </Campo>
+        <CampoSenha rotulo="Senha" valor={senha} mudar={setSenha} autoComplete="new-password"
+          ajuda="Pelo menos 10 caracteres, com maiúsculas, minúsculas e número." />
+        <Campo rotulo="Repita a senha" erro={diferentes ? "As senhas não são iguais." : undefined}>
+          {(p) => <Input {...p} type="password" value={confirma} onChange={(e) => setConfirma(e.target.value)}
+            autoComplete="new-password" required />}
+        </Campo>
+        <Button type="submit" variante="primario" className="w-full"
+          disabled={cadastrar.isPending || !nome.trim() || !email || !senha || !confirma || diferentes}>
+          {cadastrar.isPending ? <Loader2 className="animate-spin" /> : <ShieldCheck />} Criar escritório
+        </Button>
+        <p className="text-center text-sm text-texto-2">
+          Já tem conta? <Link to="/entrar" className="text-destaque hover:underline">Entrar</Link>
+        </p>
       </form>
     </Moldura>
   );
@@ -120,8 +182,7 @@ export function TrocarSenha() {
 
   if (sessao.isLoading) return <Moldura titulo="Trocar senha" descricao="Carregando..."><Esqueleto className="h-48 w-full" /></Moldura>;
   if (sessao.isError) return <Moldura titulo="Trocar senha" descricao="Não foi possível carregar."><Aviso tom="erro">{(sessao.error as Error).message}</Aviso></Moldura>;
-  if (!sessao.data?.login_ativo) return <Navigate to="/dashboard" replace />;
-  if (!sessao.data.usuario) return <Navigate to="/entrar" replace />;
+  if (!sessao.data?.usuario) return <Navigate to="/entrar" replace />;
 
   const obrigatoria = sessao.data.usuario.trocar_senha;
   const diferentes = confirma.length > 0 && confirma !== nova;

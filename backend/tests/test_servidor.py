@@ -1,4 +1,4 @@
-"""Servidor na internet: login, domínio público, chave-mestra por arquivo e limite mensal de XMLs."""
+"""Login, domínio público, chave-mestra e limite mensal de XMLs."""
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -17,9 +17,8 @@ SENHA = "Senha-Forte-123"
 
 @pytest.fixture()
 def app_login(tmp_path, monkeypatch):
-    monkeypatch.setenv("CONTASK_LOGIN", "true")
-    monkeypatch.setenv("CONTASK_DOMINIO", DOMINIO)
-    monkeypatch.setenv("CONTASK_COOKIE_SEGURO", "true")
+    monkeypatch.setenv("CONTASK_HOSTS", DOMINIO)
+    monkeypatch.setenv("CONTASK_COOKIE_SECURE", "true")
     auth.limitador.limpar(*list(auth.limitador._erros))
     yield
 
@@ -40,7 +39,7 @@ def entrar(c, email="ana@escritorio.com", senha=SENHA):
 def test_api_exige_login_e_libera_depois(web):
     assert web.get("/api/empresas").status_code == 401
     assert web.get("/api/ping").json() == {"ok": True}
-    assert web.get("/api/auth/eu").json() == {"login_ativo": True, "usuario": None}
+    assert web.get("/api/auth/eu").json()["usuario"] is None
     r = entrar(web, email="  ANA@escritorio.com ")
     assert r.status_code == 200 and r.json()["usuario"]["nome"] == "Ana"
     cookie = r.headers["set-cookie"].lower()
@@ -55,7 +54,8 @@ def test_api_exige_login_e_libera_depois(web):
 
 def test_frontend_e_publico_mas_api_nao(web):
     assert web.get("/dashboard").status_code in (200, 503)  # SPA (sem build nos testes)
-    assert web.get("/api/saude").status_code == 401
+    saude = web.get("/api/saude")
+    assert saude.status_code == 200 and "empresas" not in saude.json()
 
 
 def test_senha_errada_e_bloqueio(web):
@@ -101,34 +101,22 @@ def test_dominio_e_origem(web):
 
 def test_sem_dominio_fora_do_localhost_nao_sobe(tmp_path, monkeypatch, app_teste):
     monkeypatch.setenv("CONTASK_HOST", "0.0.0.0")
-    monkeypatch.delenv("CONTASK_DOMINIO", raising=False)
+    monkeypatch.setenv("CONTASK_HOSTS", "")
     from app.core import config as cfgmod
     cfgmod.config.cache_clear()
-    assert cfgmod.config().login_ativo  # fora do localhost, o login é obrigatório
-    with pytest.raises(RuntimeError, match="CONTASK_DOMINIO"):
+    with pytest.raises(RuntimeError, match="CONTASK_HOSTS"):
         with TestClient(app_teste):
             pass
 
 
-def test_local_continua_sem_login(cliente):
-    assert cliente.get("/api/auth/eu").json() == {"login_ativo": False, "usuario": None}
-    assert cliente.get("/api/empresas").status_code == 200
-
-
-def test_chave_mestra_em_arquivo(tmp_path, monkeypatch):
+def test_sem_chave_mestra_nao_sobe(app_teste, monkeypatch):
+    monkeypatch.setenv("CONTASK_CHAVE_MESTRA", "")
     from app.core import config as cfgmod, cripto
-    arq = tmp_path / "segredos" / "chave.key"
-    monkeypatch.setenv("CONTASK_CHAVE_MESTRA_ARQUIVO", str(arq))
     cfgmod.config.cache_clear()
     cripto.definir_chave_para_testes(None)
-    try:
-        token = cripto.cifrar(b"pfx")
-        assert arq.is_file()
-        cripto.definir_chave_para_testes(None)  # relê do arquivo
-        assert cripto.decifrar(token) == b"pfx"
-    finally:
-        cripto.definir_chave_para_testes(None)
-        cfgmod.config.cache_clear()
+    with pytest.raises(RuntimeError, match="CONTASK_CHAVE_MESTRA"):
+        with TestClient(app_teste):
+            pass
 
 
 def test_ferramenta_de_usuarios(app_teste, capsys):

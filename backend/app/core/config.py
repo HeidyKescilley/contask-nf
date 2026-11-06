@@ -17,18 +17,13 @@ class Config(BaseSettings):
     frontend_dist: Path = RAIZ / "frontend" / "dist"
     # Origens extras aceitas (ex.: servidor do Vite em desenvolvimento)
     origens_extras: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
-    keyring_servico: str = "ContaskNF"
 
-    # Servidor na internet (instância de um escritório)
-    # Domínio público (ex.: escritorio.contasknf.com.br): libera Host e Origin https://<dominio>.
-    dominio: str | None = None
-    # Chave-mestra fora do keyring do Windows: valor direto ou arquivo (criado na primeira abertura).
+    # Chave-mestra Fernet em base64. Sem ela a API não sobe.
     chave_mestra: SecretStr | None = None
-    chave_mestra_arquivo: Path | None = None
-    # Login obrigatório. Ligado sempre que o servidor escuta fora de 127.0.0.1.
-    login: bool = False
+    # Domínio único, separado por vírgula. Vazio = só localhost.
+    hosts: str = ""
     sessao_dias: int = 14
-    cookie_seguro: bool = False  # só HTTPS (ligar atrás do Caddy)
+    cookie_secure: bool = False  # CONTASK_COOKIE_SECURE: cookie Secure só no HTTPS
     # Limite mensal de XMLs novos baixados (0 = sem limite). A carga inicial do histórico não conta.
     limite_xmls_mes: int = 0
     # Teste grátis: só 1 empresa (além da contabilidade, que entra só pelo certificado) e no máximo
@@ -50,22 +45,21 @@ class Config(BaseSettings):
         return f"sqlite:///{(self.dados_dir / 'contask.db').as_posix()}"
 
     @property
+    def lista_hosts(self) -> list[str]:
+        return [h.strip().lower() for h in self.hosts.split(",") if h.strip()]
+
+    @property
     def hosts_permitidos(self) -> set[str]:
         hosts = {f"127.0.0.1:{self.porta}", f"localhost:{self.porta}", "127.0.0.1", "localhost"}
-        if self.dominio:
-            hosts.add(self.dominio.lower())
+        hosts.update(self.lista_hosts)
         return hosts
 
     @property
     def origens_permitidas(self) -> set[str]:
         base = {f"http://127.0.0.1:{self.porta}", f"http://localhost:{self.porta}"}
-        if self.dominio:
-            base.add(f"https://{self.dominio.lower()}")
+        for h in self.lista_hosts:
+            base.add(f"https://{h}")
         return base | set(self.origens_extras)
-
-    @property
-    def login_ativo(self) -> bool:
-        return self.login or self.host not in ("127.0.0.1", "localhost")
 
 
 @lru_cache

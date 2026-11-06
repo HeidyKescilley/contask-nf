@@ -114,7 +114,7 @@ def test_pfx_e_senha_nao_ficam_legiveis_em_disco_nem_em_log(cliente, tmp_path, c
 # --- Contabilidade e empresas ------------------------------------------------------
 
 def test_fluxo_completo(cliente, tmp_path):
-    assert cliente.get("/api/saude").json()["tem_contabilidade"] is False
+    assert cliente.get("/api/auth/eu").json()["tem_contabilidade"] is False
     # Empresa antes da contabilidade: recusado
     assert _empresa(cliente).status_code == 409
 

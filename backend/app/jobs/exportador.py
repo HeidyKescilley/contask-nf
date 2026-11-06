@@ -93,10 +93,13 @@ def selecionar_eventos(db: Session, empresa_id: int, chaves: set[str]) -> list[E
 
 
 def empresas_do_escopo(db: Session, empresa_id: int, f: Filtros) -> list[Empresa]:
-    if f.escopo == "todas":
-        return list(db.scalars(select(Empresa).where(Empresa.ativa).order_by(Empresa.razao_social)))
     e = db.get(Empresa, empresa_id)
-    return [e] if e else []
+    if e is None:
+        return []
+    if f.escopo == "todas":
+        return list(db.scalars(select(Empresa).where(Empresa.ativa, Empresa.escritorio_id == e.escritorio_id)
+                               .order_by(Empresa.razao_social)))
+    return [e]
 
 
 def _previa_empresa(db: Session, empresa_id: int, f: Filtros) -> dict:
@@ -477,8 +480,11 @@ class Exportador:
             if exp is None or exp.status not in ("fila", "gerando"):
                 return
             exp.status = "gerando"
+            emp = db.get(Empresa, exp.empresa_id)
+            evento = {"tipo": "exportacao", "id": exp.id, "status": exp.status, "empresa_id": exp.empresa_id,
+                      "escritorio_id": emp.escritorio_id if emp else None}
             db.commit()
-            barramento.publicar({"tipo": "exportacao", "id": exp.id, "status": exp.status})
+            barramento.publicar(evento)
             try:
                 gerar(db, exp)
             except Exception as e:  # noqa: BLE001
@@ -486,5 +492,7 @@ class Exportador:
                 db.rollback()
                 exp = db.get(Exportacao, exp_id)
                 exp.status, exp.erro = "erro", f"{type(e).__name__}: {e}"
+            emp = db.get(Empresa, exp.empresa_id)
             db.commit()
-            barramento.publicar({"tipo": "exportacao", "id": exp.id, "status": exp.status})
+            barramento.publicar({"tipo": "exportacao", "id": exp.id, "status": exp.status, "empresa_id": exp.empresa_id,
+                                 "escritorio_id": emp.escritorio_id if emp else None})

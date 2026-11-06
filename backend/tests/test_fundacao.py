@@ -12,7 +12,7 @@ def test_saude_e_wal(cliente):
     d = r.json()
     assert d["banco"]["journal_mode"] == "wal"
     assert d["chave_mestra"] is True
-    assert d["empresas"] == 0
+    assert "empresas" not in d and "tem_contabilidade" not in d
 
 
 @pytest.mark.parametrize("host", ["127.0.0.1:8765", "localhost:8765"])
@@ -78,13 +78,24 @@ def test_cripto_chave_errada(app_teste):
 def test_migracao_cria_tabelas_e_contabilidade_unica(cliente, tmp_path):
     con = sqlite3.connect(tmp_path / "dados" / "contask.db")
     tabelas = {r[0] for r in con.execute("select name from sqlite_master where type='table'")}
-    assert {"certificado", "empresa", "sync_estado", "documento_dfe", "nota", "evento_nota",
-            "busca_job", "busca_log", "exportacao", "alembic_version"} <= tabelas
-    ins = ("insert into empresa (cnpj, razao_social, is_contabilidade, modo_certificado, ativa, criado_em) "
-           "values (?, 'X', ?, 'contabilidade', 1, '2026-01-01')")
-    con.execute(ins, ("11111111000111", 1))
-    con.execute(ins, ("22222222000122", 0))
-    con.execute(ins, ("33333333000133", 0))
+    assert {"escritorio", "usuario", "sessao_usuario", "certificado", "empresa", "sync_estado",
+            "documento_dfe", "nota", "evento_nota", "busca_job", "busca_log", "exportacao",
+            "alembic_version"} <= tabelas
+    eid = con.execute("select id from escritorio").fetchone()[0]
+    con.execute("insert into escritorio (nome) values ('Outro')")
+    eid2 = con.execute("select id from escritorio where nome = 'Outro'").fetchone()[0]
+    ins = ("insert into empresa (cnpj, razao_social, is_contabilidade, modo_certificado, ativa, criado_em, escritorio_id) "
+           "values (?, 'X', ?, 'contabilidade', 1, '2026-01-01', ?)")
+    con.execute(ins, ("11111111000111", 1, eid))
+    con.execute(ins, ("22222222000122", 0, eid))
+    con.execute(ins, ("33333333000133", 0, eid))
+    con.commit()
     with pytest.raises(sqlite3.IntegrityError):
-        con.execute(ins, ("44444444000144", 1))
+        con.execute(ins, ("44444444000144", 1, eid))
+    con.rollback()
+    con.execute(ins, ("55555555000155", 1, eid2))
+    con.execute(ins, ("11111111000111", 0, eid2))
+    con.commit()
+    with pytest.raises(sqlite3.IntegrityError):
+        con.execute(ins, ("11111111000111", 0, eid))
     con.close()

@@ -13,8 +13,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.api.escopo import escritorio_atual, obter_empresa
 from app.core.db import sessao
-from app.models import Empresa, EventoNota, Nota
+from app.models import EventoNota, Nota
 
 router = APIRouter(prefix="/api", tags=["dashboard"])
 
@@ -35,9 +36,9 @@ def _dec(v) -> Decimal:
 
 
 @router.get("/empresas/{empresa_id}/dashboard")
-def dashboard(empresa_id: int, mes: str | None = Query(None, pattern=r"^\d{4}-\d{2}$"), db: Session = Depends(sessao)):
-    if db.get(Empresa, empresa_id) is None:
-        raise HTTPException(404, "Empresa não encontrada.")
+def dashboard(empresa_id: int, mes: str | None = Query(None, pattern=r"^\d{4}-\d{2}$"), db: Session = Depends(sessao),
+              esc: int = Depends(escritorio_atual)):
+    obter_empresa(db, empresa_id, esc)
     hoje = date.today()
     ano, m = (int(mes[:4]), int(mes[5:])) if mes else (hoje.year, hoje.month)
     if not 1 <= m <= 12:

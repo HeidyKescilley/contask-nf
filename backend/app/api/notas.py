@@ -13,6 +13,7 @@ from sqlalchemy import Integer, and_, cast, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.config import config
+from app.api.escopo import escritorio_atual, obter_empresa, obter_nota
 from app.core.db import sessao
 from app.fiscal.danfse import gerar_danfse
 from app.fiscal.parser import XmlInvalido
@@ -124,10 +125,9 @@ def listar_notas(
     campo_data: str = Query("emissao", pattern="^(emissao|competencia)$"), status: str | None = None,
     page: int = Query(1, ge=1), limite: int = Query(50, ge=1, le=200),
     ordem: str = Query("emissao_desc", pattern="^(emissao_desc|emissao|valor_desc|valor|numero_desc|numero)$"),
-    db: Session = Depends(sessao),
+    db: Session = Depends(sessao), esc: int = Depends(escritorio_atual),
 ):
-    if db.get(Empresa, empresa_id) is None:
-        raise HTTPException(404, "Empresa não encontrada.")
+    obter_empresa(db, empresa_id, esc)
     conds = filtros_notas(empresa_id, papel, q, inicio, fim, campo_data, status)
     onde = and_(*conds)
     total, soma_aut = db.execute(
@@ -151,16 +151,9 @@ def listar_notas(
     }
 
 
-def _nota(db: Session, nota_id: int) -> Nota:
-    n = db.get(Nota, nota_id)
-    if n is None:
-        raise HTTPException(404, "Nota não encontrada.")
-    return n
-
-
 @router.get("/notas/{nota_id}")
-def detalhe_nota(nota_id: int, db: Session = Depends(sessao)):
-    n = _nota(db, nota_id)
+def detalhe_nota(nota_id: int, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
+    n = obter_nota(db, nota_id, esc)
     eventos = db.scalars(select(EventoNota).where(EventoNota.empresa_id == n.empresa_id, EventoNota.chave == n.chave)
                          .order_by(EventoNota.data_evento, EventoNota.nsu)).all()
     return {
@@ -180,8 +173,8 @@ def _arquivo_xml(n: Nota) -> Path:
 
 
 @router.get("/notas/{nota_id}/xml")
-def baixar_xml(nota_id: int, db: Session = Depends(sessao)):
-    n = _nota(db, nota_id)
+def baixar_xml(nota_id: int, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
+    n = obter_nota(db, nota_id, esc)
     return FileResponse(_arquivo_xml(n), media_type="application/xml", filename=f"{n.chave}.xml")
 
 
@@ -192,9 +185,9 @@ def marca_dagua(n: Nota) -> str | None:
 
 
 @router.get("/notas/{nota_id}/pdf")
-def danfse(nota_id: int, download: int = 0, db: Session = Depends(sessao)):
+def danfse(nota_id: int, download: int = 0, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
     """DANFSe gerado localmente a partir do XML (NT 008/2026), guardado para os próximos acessos."""
-    n = _nota(db, nota_id)
+    n = obter_nota(db, nota_id, esc)
     xml_path = _arquivo_xml(n)
     marca = marca_dagua(n)
     sufixo = "" if marca is None else ("-substituida" if marca == "SUBSTITUÍDA" else "-cancelada")

@@ -18,6 +18,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.api.escopo import escritorio_atual
 from app.core.uso import LimiteTeste, exigir_vaga_empresa
 from app.core import brasilapi
 from app.core.db import sessao
@@ -71,7 +72,7 @@ def _ler_linhas(nome: str, conteudo: bytes) -> list[list]:
     raise HTTPException(422, "Formato não suportado. Use .xlsx ou .csv (baixe o modelo).")
 
 
-def interpretar(nome: str, conteudo: bytes, db: Session) -> dict:
+def interpretar(nome: str, conteudo: bytes, db: Session, escritorio_id: int) -> dict:
     linhas = [l for l in _ler_linhas(nome, conteudo) if any(str(c or "").strip() for c in l)]
     if not linhas:
         raise HTTPException(422, "A planilha está vazia.")
@@ -82,7 +83,7 @@ def interpretar(nome: str, conteudo: bytes, db: Session) -> dict:
         mapa, dados = {0: "cnpj", 1: "razao_social", 2: "apelido"}, linhas
     if len(dados) > MAX_LINHAS:
         raise HTTPException(422, f"A planilha tem {len(dados)} linhas; o limite é {MAX_LINHAS}.")
-    existentes = {c: i for c, i in db.execute(select(Empresa.cnpj, Empresa.id))}
+    existentes = {c: i for c, i in db.execute(select(Empresa.cnpj, Empresa.id).where(Empresa.escritorio_id == escritorio_id))}
     vistos: set[str] = set()
     saida = []
     for n, linha in enumerate(dados, start=2 if dados is not linhas else 1):
@@ -108,8 +109,8 @@ def interpretar(nome: str, conteudo: bytes, db: Session) -> dict:
     return {"linhas": saida, "resumo": resumo}
 
 
-def _exigir_contabilidade(db: Session) -> Empresa:
-    c = db.scalar(select(Empresa).where(Empresa.is_contabilidade))
+def _exigir_contabilidade(db: Session, escritorio_id: int) -> Empresa:
+    c = db.scalar(select(Empresa).where(Empresa.escritorio_id == escritorio_id, Empresa.is_contabilidade))
     if c is None or c.certificado_id is None:
         raise HTTPException(409, "Cadastre primeiro a contabilidade e o certificado dela: as empresas importadas usam a procuração.")
     return c
@@ -144,14 +145,15 @@ def modelo():
 
 
 @router.post("/empresas/previa")
-async def previa(arquivo: UploadFile | None = File(None), db: Session = Depends(sessao)):
+async def previa(arquivo: UploadFile | None = File(None), db: Session = Depends(sessao),
+                 esc: int = Depends(escritorio_atual)):
     if arquivo is None:
         raise HTTPException(422, "Selecione a planilha (.xlsx ou .csv).")
     conteudo = await arquivo.read()
     if len(conteudo) > MAX_BYTES:
         raise HTTPException(422, "Arquivo grande demais (máximo 5 MB).")
-    _exigir_contabilidade(db)
-    return interpretar(arquivo.filename or "", conteudo, db)
+    _exigir_contabilidade(db, esc)
+    return interpretar(arquivo.filename or "", conteudo, db, esc)
 
 
 class LinhaImportar(BaseModel):
@@ -165,14 +167,15 @@ class PedidoImportar(BaseModel):
 
 
 @router.post("/empresas")
-def importar(pedido: PedidoImportar, db: Session = Depends(sessao)):
-    _exigir_contabilidade(db)
+def importar(pedido: PedidoImportar, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
+    _exigir_contabilidade(db, esc)
     if len(pedido.linhas) > MAX_LINHAS:
         raise HTTPException(422, f"No máximo {MAX_LINHAS} empresas por importação.")
     novas = {_cnpj_celula(l.cnpj) for l in pedido.linhas}
-    novas = [c for c in novas if cnpj_valido(c) and not db.scalar(select(Empresa.id).where(Empresa.cnpj == c))]
+    novas = [c for c in novas if cnpj_valido(c) and not db.scalar(
+        select(Empresa.id).where(Empresa.escritorio_id == esc, Empresa.cnpj == c))]
     try:
-        exigir_vaga_empresa(db, len(novas))
+        exigir_vaga_empresa(db, esc, len(novas))
     except LimiteTeste as erro:
         raise HTTPException(403, str(erro)) from None
     resultado = []
@@ -184,13 +187,13 @@ def importar(pedido: PedidoImportar, db: Session = Depends(sessao)):
             r["situacao"], r["mensagem"] = "erro", "CNPJ inválido."
             resultado.append(r)
             continue
-        ja = db.scalar(select(Empresa).where(Empresa.cnpj == cnpj))
+        ja = db.scalar(select(Empresa).where(Empresa.escritorio_id == esc, Empresa.cnpj == cnpj))
         if ja is not None:
             r["situacao"], r["mensagem"], r["empresa_id"] = "existente", "Já cadastrada.", ja.id
             resultado.append(r)
             continue
         e = Empresa(cnpj=cnpj, razao_social=(l.razao_social or "").strip(), apelido=(l.apelido or "").strip() or None,
-                    modo_certificado="contabilidade", is_contabilidade=False, ativa=True)
+                    modo_certificado="contabilidade", is_contabilidade=False, ativa=True, escritorio_id=esc)
         if not e.razao_social:
             try:
                 d = brasilapi.consultar(cnpj)
