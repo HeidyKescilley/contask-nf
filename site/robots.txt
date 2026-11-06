@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://contask-nf.pages.dev/sitemap.xml
