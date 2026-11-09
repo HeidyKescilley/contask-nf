@@ -86,6 +86,8 @@ O teste foi feito com a CONTELB (ME/EPP do Simples) emitindo para um tomador do 
 - cancelamento pela lista de notas emitidas;
 - correção de uma nota rejeitada por E0120, reenviada com o mesmo número da DPS e autorizada como NFS-e nº 7.
 
+**Piloto em produção (09/11/2026):** a CONTELB emitiu uma NFS-e real de R$ 20,00 no leiaute v1.01 de produção, que foi autorizada na primeira tentativa (DPS série 1 nº 1, NFS-e nº 2). O número da NFS-e é dado pela Sefin e segue a sequência da empresa, que já incluía notas emitidas fora do Contask. A nota foi cancelada em seguida (evento 101101, motivo 1), e a Sefin de produção aceitou o cancelamento.
+
 **Grupo IBS/CBS:** ainda não é enviado. É opcional nos dois leiautes e foi aceito sem ele. Os códigos `cIndOp` e `cClassTrib` já ficam guardados no serviço para quando o grupo passar a ser exigido.
 
 ## Parâmetros municipais (somente leitura, também em produção)
