@@ -12,7 +12,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Painel } from "@/features/empresas/Passos";
 import { api } from "@/lib/api";
 import {
-  apenasDigitos, arredondar, escreverValor, lerValor, mascararCep, useAmbienteEmissor, useAtualizarEmissor,
+  apenasDigitos, arredondar, escreverValor, lerValor, mascararCep, useAtualizarEmissor,
   useEmpresasEmissoras, useServicos, type ConsultaTomador, type EmpresaEmissora, type NotaEmitida, type Servico, type Tomador,
 } from "@/lib/emissor";
 import { nomeExibicao } from "@/lib/empresas";
@@ -130,10 +130,10 @@ function Formulario({ emissoras, inicial, notaInicial }: { emissoras: EmpresaEmi
   const [revisar, setRevisar] = useState(false);
   const [novoServico, setNovoServico] = useState(false);
   const atualizar = useAtualizarEmissor();
-  const amb = useAmbienteEmissor();
   const navegar = useNavigate();
 
   const empresa = emissoras.find((e) => e.id === f.empresaId) ?? null;
+  const producao = empresa?.ambiente === 1;
   const servicos = useServicos(f.empresaId ?? 0);
   const cfg = empresa?.config;
   const mei = cfg?.op_simples === "2";
@@ -458,13 +458,15 @@ function Formulario({ emissoras, inicial, notaInicial }: { emissoras: EmpresaEmi
           <Button variante="primario" className="mt-4 w-full" disabled={problemas.length > 0 || emitir.isPending} onClick={() => setRevisar(true)}>
             {nota ? <><RotateCcw /> Revisar e reenviar</> : <><Send /> Revisar e emitir</>}
           </Button>
-          {amb.data && !amb.data.producao && <p className="mt-2 text-center text-xs text-texto-2">Homologação: sem valor fiscal.</p>}
+          {empresa && (producao
+            ? <p className="mt-2 text-center text-xs font-medium text-rejeitada">Produção: a nota terá valor fiscal.</p>
+            : <p className="mt-2 text-center text-xs text-texto-2">Homologação: sem valor fiscal.</p>)}
         </Painel>
       </aside>
 
       <Dialog open={revisar} onOpenChange={(v) => !emitir.isPending && setRevisar(v)}>
         <DialogContent titulo={nota ? "Reenviar a nota?" : "Emitir a nota?"}
-          descricao={amb.data?.producao ? "A nota terá valor fiscal. Confira antes de emitir." : "Ambiente de homologação: a nota não tem valor fiscal."}>
+          descricao={producao ? "Produção: a nota terá valor fiscal. Confira antes de emitir." : "Ambiente de homologação: a nota não tem valor fiscal."}>
           <dl className="space-y-1.5 text-sm">
             <Linha rotulo="Prestador" valor={empresa ? nomeExibicao(empresa) : "—"} />
             <Linha rotulo="Tomador" valor={f.semTomador ? "Sem tomador" : `${t.nome} (${formatarDoc(doc)})`} />

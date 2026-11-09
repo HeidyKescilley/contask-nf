@@ -5,7 +5,7 @@ Regras de segurança:
   gerado nota: o reenvio de uma nota pendente/rejeitada usa a mesma DPS (mesmo Id), e a Sefin recusa
   duplicidade (E0014), então não existe nota duplicada.
 - Depois de falha de rede, o resultado é desconhecido: consulta-se /dps/{id} antes de qualquer reenvio.
-- Ambiente: produção restrita, salvo CONTASK_EMISSOR_PRODUCAO=true.
+- Ambiente: produção restrita, salvo CONTASK_EMISSOR_PRODUCAO=true E a empresa com producao_liberada.
 """
 from __future__ import annotations
 
@@ -42,8 +42,16 @@ def _trava(empresa_id: int) -> threading.Lock:
         return _travas[empresa_id]
 
 
-def ambiente() -> int:
-    return PRODUCAO if config().emissor_producao else RESTRITA
+def producao_disponivel() -> bool:
+    """Chave geral do sistema (CONTASK_EMISSOR_PRODUCAO)."""
+    return bool(config().emissor_producao)
+
+
+def ambiente(cfg: EmissorEmpresa | None = None) -> int:
+    """Produção só com a chave geral ligada e a empresa liberada; o resto vai para a produção restrita."""
+    if producao_disponivel() and cfg is not None and cfg.producao_liberada:
+        return PRODUCAO
+    return RESTRITA
 
 
 # Injetável nos testes
@@ -86,7 +94,7 @@ class Entrada:
 # ---------------------------------------------------------------------------
 
 def _empresa_pronta(db: Session, esc: int, empresa_id: int) -> tuple[Empresa, EmissorEmpresa]:
-    from app.api.emissor import certificado_emissor, config_prestador
+    from app.api.emissor import certificado_emissor, config_prestador, emite_por_procuracao
     e = db.get(Empresa, empresa_id)
     if e is None or e.escritorio_id != esc:
         raise ErroEmissao("Empresa não encontrada.", 404)
@@ -96,10 +104,14 @@ def _empresa_pronta(db: Session, esc: int, empresa_id: int) -> tuple[Empresa, Em
         raise ErroEmissao("A empresa está inativa.")
     cert = certificado_emissor(db, e)
     if cert is None:
-        raise ErroEmissao("Cadastre o certificado A1 da própria empresa: a procuração não serve para emitir.")
+        raise ErroEmissao("Cadastre o certificado A1 da empresa ou o da contabilidade (procuração).")
     if situacao_validade(cert.validade) == "vencido":
         raise ErroEmissao(f"O certificado da empresa venceu em {cert.validade:%d/%m/%Y}.")
     cfg = config_prestador(db, e)
+    if emite_por_procuracao(db, e) and ambiente(cfg) == RESTRITA:
+        # Barrado antes de gastar número: a produção restrita não reconhece procurações
+        raise ErroEmissao("Na homologação a Sefin recusa a emissão por procuração (E0718). Libere a produção "
+                          "para esta empresa ou cadastre o certificado A1 dela.")
     if not cfg.cod_municipio:
         ibge = (e.dados_brasilapi or {}).get("codigo_municipio_ibge")
         if ibge:
@@ -245,7 +257,7 @@ def _recuperar(cli: ClienteSefin, db: Session, e: Empresa, nota: NotaEmitida, mo
 
 def emitir(db: Session, esc: int, usuario_id: int | None, ent: Entrada) -> NotaEmitida:
     e, cfg = _empresa_pronta(db, esc, ent.empresa_id)
-    amb = ambiente()
+    amb = ambiente(cfg)
     nota = NotaEmitida(escritorio_id=esc, empresa_id=e.id, usuario_id=usuario_id, ambiente=amb, serie=cfg.serie,
                        numero=0, id_dps="", situacao="enviando")
     _preencher(db, nota, e, cfg, ent)
@@ -288,7 +300,7 @@ def reenviar(db: Session, esc: int, nota_id: int, ent: Entrada | None) -> NotaEm
     if nota.situacao not in ("rejeitada", "pendente"):
         raise ErroEmissao("Só dá para reenviar uma nota rejeitada ou com resultado pendente.", 409)
     e, cfg = _empresa_pronta(db, esc, nota.empresa_id)
-    if nota.ambiente != ambiente():
+    if nota.ambiente != ambiente(cfg):
         raise ErroEmissao("Esta nota é de outro ambiente (homologação x produção).", 409)
     if nota.situacao == "pendente":
         from app.api.emissor import certificado_emissor
@@ -321,11 +333,12 @@ def cancelar(db: Session, esc: int, nota_id: int, motivo: str, justificativa: st
     nota = _nota(db, esc, nota_id)
     if nota.situacao != "autorizada" or not nota.chave:
         raise ErroEmissao("Só dá para cancelar uma nota autorizada.", 409)
-    from app.api.emissor import certificado_emissor
+    from app.api.emissor import certificado_proprio
     e = db.get(Empresa, nota.empresa_id)
-    cert = certificado_emissor(db, e)
+    cert = certificado_proprio(db, e)  # por procuração a Sefin recusa o evento (E0812/E0813)
     if cert is None:
-        raise ErroEmissao("Cadastre o certificado A1 da própria empresa para cancelar.")
+        raise ErroEmissao("A Sefin não aceita cancelamento por procuração. Cancele pelo Emissor Nacional Web "
+                          "(Procuração/Representação) ou cadastre o certificado A1 da empresa.", 409)
     try:
         raiz = montar_cancelamento(Cancelamento(ambiente=nota.ambiente, cnpj_autor=e.cnpj, chave=nota.chave,
                                                 motivo=motivo, justificativa=justificativa))

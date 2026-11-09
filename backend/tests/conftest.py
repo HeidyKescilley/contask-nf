@@ -9,6 +9,7 @@ def app_teste(tmp_path, monkeypatch):
     monkeypatch.setenv("CONTASK_DADOS_DIR", str(tmp_path / "dados"))
     monkeypatch.setenv("CONTASK_FRONTEND_DIST", str(tmp_path / "dist"))
     monkeypatch.setenv("CONTASK_FILA_ATIVA", "false")
+    monkeypatch.setenv("CONTASK_EMISSOR_PRODUCAO", "false")  # nunca herdar a produção do .env real
     from app.core import config as cfgmod, cripto, db
     cfgmod.config.cache_clear()
     db.reiniciar_para_testes()

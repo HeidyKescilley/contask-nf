@@ -269,10 +269,37 @@ def test_bloqueios(cliente, sefin):
     s = cliente.post(f"/api/emissor/empresas/{proc['id']}/servicos",
                      json={"descricao": "X", "ctribnac": "171901", "cnbs": "113022100"}).json()
     r = cliente.post("/api/emissor/notas", json=_emissao(proc, s))
-    assert r.status_code == 422 and "procuração não serve" in r.json()["detail"]
+    assert r.status_code == 422 and "E0718" in r.json()["detail"]  # homologação não aceita procuração
     cliente.put("/api/emissor/empresas/emissao", json={"empresa_ids": [proc["id"]], "emite": False})
     assert "não está marcada" in cliente.post("/api/emissor/notas", json=_emissao(proc, s)).json()["detail"]
     assert sefin.recebidas == []
+    assert cliente.get(f"/api/emissor/empresas/{proc['id']}").json()["config"]["proximo_numero"] == 1  # número não gasto
+
+
+def test_procuracao_emite_em_producao_e_nao_cancela(cliente, sefin, monkeypatch):
+    from app.core import config as cfgmod
+    assert _contabilidade(cliente).status_code == 200
+    proc = cliente.post("/api/empresas", data={"cnpj": CLIENTE, "razao_social": "Cliente", "modo_certificado": "contabilidade",
+                                               "emite_nfse": "true",
+                                               "dados_brasilapi": '{"opcao_pelo_simples": true, "codigo_municipio_ibge": 5300108}'}).json()["empresa"]
+    s = cliente.post(f"/api/emissor/empresas/{proc['id']}/servicos",
+                     json={"descricao": "X", "ctribnac": "171901", "cnbs": "113022100"}).json()
+    monkeypatch.setenv("CONTASK_EMISSOR_PRODUCAO", "true")
+    cfgmod.config.cache_clear()
+    try:
+        item = cliente.put(f"/api/emissor/empresas/{proc['id']}/producao", json={"liberada": True}).json()
+        assert item["pronta"] and item["certificado"]["procuracao"]
+        r = cliente.post("/api/emissor/notas", json=_emissao(proc, s, tomador={"documento": OUTRO, "nome": "Tomador Ltda"}))
+        assert r.status_code == 201, r.text
+        n = r.json()
+        assert n["situacao"] == "autorizada" and n["cancela_pela_api"] is False
+        inf = etree.fromstring(sefin.recebidas[-1])[0]
+        assert inf.find("n:tpAmb", NS).text == "1" and inf.find("n:prest/n:CNPJ", NS).text == CLIENTE
+        r = cliente.post(f"/api/emissor/notas/{n['id']}/cancelar", json={"motivo": "1", "justificativa": "Valor informado errado na nota"})
+        assert r.status_code == 409 and "Emissor Nacional Web" in r.json()["detail"] and sefin.eventos == 0
+    finally:
+        monkeypatch.setenv("CONTASK_EMISSOR_PRODUCAO", "false")
+        cfgmod.config.cache_clear()
 
 
 def test_producao_so_com_liberacao(cliente, sefin, monkeypatch):
@@ -281,9 +308,18 @@ def test_producao_so_com_liberacao(cliente, sefin, monkeypatch):
     monkeypatch.setenv("CONTASK_EMISSOR_PRODUCAO", "true")
     cfgmod.config.cache_clear()
     try:
-        assert cliente.get("/api/emissor/ambiente").json()["producao"] is True
+        assert cliente.get("/api/emissor/ambiente").json()["producao_disponivel"] is True
+        # Chave geral ligada, mas a empresa não liberada: continua na produção restrita
+        assert cliente.get(f"/api/emissor/empresas/{e['id']}").json()["ambiente"] == 2
+        cliente.post("/api/emissor/notas", json=_emissao(e, s))
+        assert etree.fromstring(sefin.recebidas[-1])[0].find("n:tpAmb", NS).text == "2"
+        r = cliente.put(f"/api/emissor/empresas/{e['id']}/producao", json={"liberada": True})
+        assert r.status_code == 200 and r.json()["ambiente"] == 1
         cliente.post("/api/emissor/notas", json=_emissao(e, s))
         assert etree.fromstring(sefin.recebidas[-1])[0].find("n:tpAmb", NS).text == "1"
     finally:
-        monkeypatch.delenv("CONTASK_EMISSOR_PRODUCAO")
+        monkeypatch.setenv("CONTASK_EMISSOR_PRODUCAO", "false")
         cfgmod.config.cache_clear()
+    # Chave geral desligada: nem a empresa liberada vai para a produção, e não dá para liberar outra
+    assert cliente.get(f"/api/emissor/empresas/{e['id']}").json()["ambiente"] == 2
+    assert cliente.put(f"/api/emissor/empresas/{e['id']}/producao", json={"liberada": True}).status_code == 409

@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, BadgeCheck, Building2, ChevronRight, Loader2, Search, ShieldCheck, ShieldX } from "lucide-react";
+import { AlertTriangle, BadgeCheck, Building2, ChevronRight, FlaskConical, Handshake, Landmark, Loader2, Search, ShieldCheck, ShieldX } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
@@ -24,20 +24,30 @@ const FILTROS = [
 type Filtro = (typeof FILTROS)[number]["id"];
 
 export function SeloCertEmissor({ e }: { e: EmpresaEmissora }) {
-  if (!e.certificado) return <Selo tom="erro" icone={ShieldX}>Sem certificado próprio</Selo>;
+  if (!e.certificado) return <Selo tom="erro" icone={ShieldX}>Sem certificado</Selo>;
   if (e.certificado.situacao === "vencido") return <Selo tom="erro" icone={ShieldX}>Vencido em {formatarData(e.certificado.validade)}</Selo>;
   const tom = e.certificado.situacao === "ok" ? "ok" : "alerta";
+  if (e.certificado.procuracao) return <Selo tom={tom} icone={Handshake}>Procuração (contabilidade)</Selo>;
   return <Selo tom={tom} icone={ShieldCheck}>Válido até {formatarData(e.certificado.validade)}</Selo>;
+}
+
+/** Ambiente em que a empresa emite: produção (valor fiscal) ou homologação. */
+export function SeloAmbienteEmissor({ e }: { e: EmpresaEmissora }) {
+  return e.ambiente === 1
+    ? <Selo tom="destaque" icone={Landmark}>Produção</Selo>
+    : <Selo tom="neutro" icone={FlaskConical}>Homologação</Selo>;
 }
 
 export function SeloSituacaoEmissor({ e }: { e: EmpresaEmissora }) {
   if (!e.emite_nfse) return <span className="text-texto-2">—</span>;
-  if (e.pronta) return <Selo tom="ok" icone={BadgeCheck}>Pronta para emitir</Selo>;
-  return (
-    <Dica texto={e.pendencias.join(" ")} lado="left">
-      <span><Selo tom="alerta" icone={AlertTriangle}>{e.pendencias.length} pendência{e.pendencias.length > 1 ? "s" : ""}</Selo></span>
-    </Dica>
-  );
+  const situacao = e.pronta
+    ? <Selo tom="ok" icone={BadgeCheck}>Pronta para emitir</Selo>
+    : (
+      <Dica texto={e.pendencias.join(" ")} lado="left">
+        <span><Selo tom="alerta" icone={AlertTriangle}>{e.pendencias.length} pendência{e.pendencias.length > 1 ? "s" : ""}</Selo></span>
+      </Dica>
+    );
+  return <span className="inline-flex flex-wrap items-center gap-1.5">{situacao}<SeloAmbienteEmissor e={e} /></span>;
 }
 
 export function EmpresasEmissoras() {

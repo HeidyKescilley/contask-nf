@@ -44,8 +44,8 @@ Resultado da Etapa 1, a prova técnica na **produção restrita**: uma NFS-e foi
    - `xDesc` deve ser exatamente "Cancelamento de NFS-e";
    - `cMotivo`: 1 = erro na emissão, 2 = serviço não prestado, 9 = outros;
    - `xMotivo` precisa ter de 15 a 255 caracteres.
-9. **Procuração não serve para emitir.** Assinando com o certificado da contabilidade em nome de uma empresa cliente, a Sefin devolve **E0718**: "A assinatura deve ser feita com o certificado digital do emitente da DPS".
-   - **Consequência:** toda empresa que emite pelo Contask precisa ter o **próprio certificado A1** cadastrado.
+9. **Procuração na produção restrita:** assinando com o certificado da contabilidade em nome de uma empresa cliente, a Sefin devolve **E0718**: "A assinatura deve ser feita com o certificado digital do emitente da DPS".
+   - **Atualização de 09/11/2026:** em produção, a emissão por procuração funciona. Veja "Procuração em produção", mais abaixo.
 
 ## Motor de emissão (Etapa 3, testado na produção restrita em 09/11/2026)
 
@@ -72,7 +72,21 @@ O teste foi feito com a CONTELB (ME/EPP do Simples) emitindo para um tomador do 
 - Uma nota rejeitada ou pendente é reenviada com o **mesmo** número. Não fica buraco na numeração, e a Sefin não aceita duplicidade (E0014).
 - **Se a conexão cair:** o sistema consulta `GET /dps/{id}` antes de qualquer reenvio. Se a nota existe, ela é baixada e marcada como autorizada.
 
-**Ambiente:** o emissor só vai para a produção com `CONTASK_EMISSOR_PRODUCAO=true`. Sem isso, usa a produção restrita, com `tpAmb=2`.
+**Ambiente:** a produção exige duas chaves: `CONTASK_EMISSOR_PRODUCAO=true` no sistema e a empresa liberada (`emissor_empresa.producao_liberada`, botão "Liberar produção" na página da empresa). Faltando qualquer uma, a empresa emite na produção restrita, com `tpAmb=2`.
+
+**Procuração (reteste em 09/11/2026, depois da representação de terceiros de 01/11/2026):** na produção restrita, a DPS de dois clientes com procuração ativa para a CONTELB (AVIVA e HO Sobradinho), assinada com o certificado da CONTELB, ainda volta com **E0718**. A Sefin só confere a assinatura depois das outras regras (E0015, E0120 e E0237 aparecem antes do E0718). Por isso não existe teste de procuração que garanta que nenhuma nota será gerada.
+
+**Procuração em produção (teste liberado em 09/11/2026):**
+- **Emissão funciona.** A CONTELB Serviços (20085677000187) emitiu como prestadora, com a DPS assinada e a conexão feita pelo certificado da CONTELB Contabilidade, que tem procuração. Resultado: NFS-e nº 3, R$ 1,00, autorizada. Conclusão: a produção restrita não reconhece as procurações, e a produção reconhece.
+- **Cancelamento pela API não funciona por procuração:**
+  - com o autor = prestador, a Sefin devolve **E0812**: o CNPJ do autor tem que ter a mesma base do certificado que assina;
+  - com o autor = procurador, a Sefin devolve **E0813**: o autor do evento 101101 tem que ser o próprio prestador;
+  - para cancelar, é preciso o Emissor Nacional Web (com representação) ou o certificado da própria empresa.
+- **Como ficou no sistema:**
+  - Empresa cadastrada por procuração emite com o certificado da contabilidade.
+  - Na homologação, a emissão é barrada antes de gastar o número da DPS, porque lá a Sefin recusa com E0718.
+  - O cancelamento pela API fica bloqueado para essas empresas, e a tela leva ao Emissor Nacional Web.
+- **Erro corrigido no sistema:** a rota de eventos pode devolver `erro` como lista, e o leitor de erros (`sefin._erros`) agora aceita esse formato.
 
 **Alíquota (`pAliq`):** só é informada para ME/EPP do Simples com ISS dentro do Simples e ISS retido.
 - Nesse caso, quem emite informa a alíquota efetiva.

@@ -15,8 +15,9 @@ from app.core import brasilapi
 from app.core.certificados import situacao_validade
 from app.core.db import sessao
 from app.emissor import tabelas
+from app.emissor.motor import ambiente, producao_disponivel
 from app.fiscal.documentos import cnpj_valido, cpf_valido, raiz_cnpj
-from app.models import Certificado, EmissorEmpresa, Empresa, NotaEmitida, ServicoEmissor, Tomador
+from app.models import Certificado, EmissorEmpresa, Empresa, NotaEmitida, ServicoEmissor, SyncEstado, Tomador
 
 router = APIRouter(prefix="/api/emissor", tags=["emissor"])
 
@@ -110,8 +111,8 @@ def config_prestador(db: Session, e: Empresa) -> EmissorEmpresa:
     return c
 
 
-def certificado_emissor(db: Session, e: Empresa) -> Certificado | None:
-    """Certificado que assina a DPS: tem que ser da própria empresa (procuração não vale, E0718)."""
+def certificado_proprio(db: Session, e: Empresa) -> Certificado | None:
+    """e-CNPJ da própria empresa (mesma raiz de CNPJ)."""
     if not (e.is_contabilidade or e.modo_certificado == "proprio") or not e.certificado_id:
         return None
     c = db.get(Certificado, e.certificado_id)
@@ -120,14 +121,36 @@ def certificado_emissor(db: Session, e: Empresa) -> Certificado | None:
     return c
 
 
+def certificado_procuracao(db: Session, e: Empresa) -> Certificado | None:
+    """Certificado da contabilidade, para empresa que entrou por procuração.
+
+    Desde 01/11/2026 a Sefin de produção aceita a DPS assinada pelo procurador. A produção restrita
+    ainda recusa (E0718), e o cancelamento por procuração é recusado nos dois ambientes (E0812/E0813).
+    """
+    if e.is_contabilidade or e.modo_certificado != "contabilidade":
+        return None
+    contab = db.scalar(select(Empresa).where(Empresa.escritorio_id == e.escritorio_id, Empresa.is_contabilidade))
+    return db.get(Certificado, contab.certificado_id) if contab and contab.certificado_id else None
+
+
+def certificado_emissor(db: Session, e: Empresa) -> Certificado | None:
+    """Certificado que assina a DPS: o da própria empresa ou, por procuração, o da contabilidade."""
+    return certificado_proprio(db, e) or certificado_procuracao(db, e)
+
+
+def emite_por_procuracao(db: Session, e: Empresa) -> bool:
+    return certificado_proprio(db, e) is None and certificado_procuracao(db, e) is not None
+
+
 def _item_empresa(db: Session, e: Empresa) -> dict:
     cfg = db.get(EmissorEmpresa, e.id)
     cert = certificado_emissor(db, e)
+    procuracao = emite_por_procuracao(db, e)
     n_serv = db.scalar(select(func.count()).select_from(ServicoEmissor)
                        .where(ServicoEmissor.empresa_id == e.id, ServicoEmissor.ativo)) or 0
     pendencias = []
     if cert is None:
-        pendencias.append("Cadastre o certificado A1 da própria empresa (a procuração não serve para emitir).")
+        pendencias.append("Cadastre o certificado A1 da empresa ou use a procuração (certificado da contabilidade).")
     elif situacao_validade(cert.validade) == "vencido":
         pendencias.append(f"O certificado venceu em {cert.validade:%d/%m/%Y}.")
     if n_serv == 0:
@@ -136,20 +159,34 @@ def _item_empresa(db: Session, e: Empresa) -> dict:
         pendencias.append("Informe o município da empresa (código IBGE) nos dados do prestador.")
     if not e.ativa:
         pendencias.append("A empresa está inativa.")
+    avisos = []
+    if procuracao:
+        if ambiente(cfg) == 2:
+            pendencias.append("Emissão por procuração só é aceita em produção: a homologação da Sefin recusa (E0718). "
+                              "Libere a produção ou cadastre o certificado da empresa.")
+        avisos.append("Emite com o certificado da contabilidade (procuração). O cancelamento por procuração não é "
+                      "aceito pela Sefin: cancele pelo Emissor Nacional Web ou cadastre o certificado da empresa.")
+        sync = db.get(SyncEstado, e.id)
+        if sync is not None and sync.situacao == "sem_procuracao":
+            avisos.append("A busca no ADN indica procuração pendente: confira se ela inclui os serviços da NFS-e.")
     return {
         "id": e.id, "cnpj": e.cnpj, "razao_social": e.razao_social, "nome_fantasia": e.nome_fantasia,
         "apelido": e.apelido, "uf": e.uf, "municipio": e.municipio, "ativa": e.ativa,
         "is_contabilidade": e.is_contabilidade, "emite_nfse": e.emite_nfse,
         "certificado": None if cert is None else {
             "titular_nome": cert.titular_nome, "titular_doc": cert.titular_doc, "validade": cert.validade,
-            "situacao": situacao_validade(cert.validade), "filial": cert.titular_doc != e.cnpj},
+            "situacao": situacao_validade(cert.validade), "procuracao": procuracao,
+            "filial": not procuracao and cert.titular_doc != e.cnpj},
         "servicos": n_serv,
         "config": None if cfg is None else {
             "inscricao_municipal": cfg.inscricao_municipal, "op_simples": cfg.op_simples,
             "reg_ap_trib_sn": cfg.reg_ap_trib_sn, "reg_esp_trib": cfg.reg_esp_trib,
             "serie": cfg.serie, "proximo_numero": cfg.proximo_numero, "cod_municipio": cfg.cod_municipio,
-            "percentual_tributos": float(cfg.percentual_tributos) if cfg.percentual_tributos is not None else None},
+            "percentual_tributos": float(cfg.percentual_tributos) if cfg.percentual_tributos is not None else None,
+            "producao_liberada": cfg.producao_liberada},
+        "ambiente": ambiente(cfg),
         "pendencias": pendencias,
+        "avisos": avisos,
         "pronta": e.emite_nfse and not pendencias,
     }
 
@@ -495,6 +532,7 @@ def _nota_out(db: Session, n: NotaEmitida) -> dict:
     return {
         "id": n.id, "empresa_id": n.empresa_id, "empresa_nome": e.apelido or e.nome_fantasia or e.razao_social,
         "empresa_cnpj": e.cnpj, "servico_id": n.servico_id, "ambiente": n.ambiente,
+        "cancela_pela_api": certificado_proprio(db, e) is not None,
         "homologacao": n.ambiente == 2, "serie": n.serie, "numero": n.numero, "id_dps": n.id_dps,
         "situacao": n.situacao, "competencia": n.competencia, "tomador": n.tomador, "descricao": n.descricao,
         "ctribnac": n.ctribnac, "ctribnac_formatado": tabelas.formatar_ctribnac(n.ctribnac),
@@ -517,10 +555,26 @@ def _erro_emissao(ex) -> HTTPException:
 
 @router.get("/ambiente")
 def ambiente_emissor():
-    from app.emissor.motor import ambiente
-    a = ambiente()
-    return {"ambiente": a, "producao": a == 1,
-            "descricao": "Produção" if a == 1 else "Homologação (produção restrita, sem valor fiscal)"}
+    """Chave geral. Com ela ligada, cada empresa ainda precisa ser liberada para a produção."""
+    disp = producao_disponivel()
+    return {"producao_disponivel": disp, "ambiente": 1 if disp else 2, "producao": disp,
+            "descricao": "Produção liberada por empresa" if disp else "Homologação (produção restrita, sem valor fiscal)"}
+
+
+class LiberacaoIn(BaseModel):
+    liberada: bool
+
+
+@router.put("/empresas/{empresa_id}/producao")
+def liberar_producao(empresa_id: int, dados: LiberacaoIn, db: Session = Depends(sessao),
+                     esc: int = Depends(escritorio_atual)):
+    e = _empresa(db, empresa_id, esc)
+    if dados.liberada and not producao_disponivel():
+        raise HTTPException(409, "A emissão em produção está desligada neste sistema (CONTASK_EMISSOR_PRODUCAO).")
+    c = config_prestador(db, e)
+    c.producao_liberada = dados.liberada
+    db.commit()
+    return _item_empresa(db, e)
 
 
 @router.post("/notas", status_code=201)

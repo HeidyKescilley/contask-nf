@@ -1,5 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
-import { ArrowLeft, FileText, KeyRound, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, FileText, FlaskConical, KeyRound, Landmark, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -9,14 +10,14 @@ import { Button } from "@/components/ui/button";
 import { Aviso, Campo, Input, Select } from "@/components/ui/campos";
 import { api } from "@/lib/api";
 import {
-  OP_SIMPLES, REG_AP_TRIB_SN, REG_ESP_TRIB, apenasDigitos, useAtualizarEmissor, useEmpresaEmissora, useServicos,
+  OP_SIMPLES, REG_AP_TRIB_SN, REG_ESP_TRIB, apenasDigitos, useAmbienteEmissor, useAtualizarEmissor, useEmpresaEmissora, useServicos,
   type ConfigPrestador, type EmpresaEmissora, type Servico,
 } from "@/lib/emissor";
 import { nomeExibicao } from "@/lib/empresas";
 import { formatarDoc } from "@/lib/formato";
 import { Painel } from "@/features/empresas/Passos";
 import { AbasEmissor } from "./Abas";
-import { SeloCertEmissor, SeloSituacaoEmissor } from "./EmpresasEmissoras";
+import { SeloAmbienteEmissor, SeloCertEmissor, SeloSituacaoEmissor } from "./EmpresasEmissoras";
 import { ServicoDialog } from "./ServicoDialog";
 
 export function EmpresaEmissor() {
@@ -82,14 +83,75 @@ function Detalhe({ e }: { e: EmpresaEmissora }) {
             </Aviso>
           </div>
         )}
+        {e.emite_nfse && e.avisos.length > 0 && (
+          <div className="mt-4 space-y-2">{e.avisos.map((a) => <Aviso key={a} tom="info">{a}</Aviso>)}</div>
+        )}
         {e.certificado?.filial && (
           <div className="mt-4"><Aviso tom="info">O certificado é de outro estabelecimento da mesma empresa ({formatarDoc(e.certificado.titular_doc)}). A emissão com certificado da matriz ainda não foi testada.</Aviso></div>
         )}
       </Painel>
 
+      {e.emite_nfse && e.config && <PainelAmbiente e={e} />}
       {e.config && <FormPrestador e={e} cfg={e.config} />}
       <ListaServicos empresaId={e.id} />
     </div>
+  );
+}
+
+/** Liberação da produção por empresa: sem ela, a empresa emite só na homologação. */
+function PainelAmbiente({ e }: { e: EmpresaEmissora }) {
+  const atualizar = useAtualizarEmissor();
+  const sistema = useAmbienteEmissor();
+  const [confirmar, setConfirmar] = useState(false);
+  const liberada = !!e.config?.producao_liberada;
+  const disponivel = !!sistema.data?.producao_disponivel;
+  const mudar = useMutation({
+    mutationFn: (liberar: boolean) => api<EmpresaEmissora>(`/api/emissor/empresas/${e.id}/producao`, { method: "PUT", body: JSON.stringify({ liberada: liberar }) }),
+    onSuccess: (_, liberar) => {
+      atualizar(); setConfirmar(false);
+      toast.success(liberar ? "Produção liberada: as próximas notas terão valor fiscal." : "A empresa voltou para a homologação.");
+    },
+    onError: (err) => toast.error((err as Error).message),
+  });
+
+  return (
+    <Painel titulo="Ambiente de emissão" descricao="Cada empresa começa na homologação, sem valor fiscal. A produção é liberada empresa por empresa.">
+      {sistema.isLoading && <Esqueleto className="h-10 w-full" />}
+      {sistema.isError && <EstadoErro mensagem={(sistema.error as Error).message} tentarDeNovo={() => sistema.refetch()} />}
+      {sistema.data && (
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-texto-2">Emite em:</span> <SeloAmbienteEmissor e={e} />
+            {liberada && !disponivel && <span className="text-texto-2">(liberada, mas a produção está desligada neste sistema)</span>}
+          </div>
+          {liberada ? (
+            <Button variante="secundario" disabled={mudar.isPending} onClick={() => mudar.mutate(false)}>
+              {mudar.isPending ? <Loader2 className="animate-spin" /> : <FlaskConical />} Voltar para a homologação
+            </Button>
+          ) : disponivel ? (
+            <Button variante="primario" onClick={() => setConfirmar(true)}><Landmark /> Liberar produção</Button>
+          ) : (
+            <span className="text-sm text-texto-2">A produção está desligada neste sistema.</span>
+          )}
+        </div>
+      )}
+
+      <Dialog open={confirmar} onOpenChange={(v) => !mudar.isPending && setConfirmar(v)}>
+        <DialogContent titulo="Liberar a produção?"
+          descricao={<>As próximas notas de <strong>{nomeExibicao(e)}</strong> irão para a Sefin de produção e terão valor fiscal.</>}>
+          <div className="space-y-4">
+            <Aviso tom="alerta">Libere só depois de conferir os dados do prestador e os serviços. A numeração da DPS continua de onde está (próximo nº {e.config?.proximo_numero}).</Aviso>
+            {mudar.isError && <Aviso tom="erro">{(mudar.error as Error).message}</Aviso>}
+            <div className="flex justify-end gap-2">
+              <Button type="button" variante="fantasma" onClick={() => setConfirmar(false)} disabled={mudar.isPending}>Voltar</Button>
+              <Button variante="primario" disabled={mudar.isPending} onClick={() => mudar.mutate(true)}>
+                {mudar.isPending && <Loader2 className="animate-spin" />} Liberar produção
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </Painel>
   );
 }
 

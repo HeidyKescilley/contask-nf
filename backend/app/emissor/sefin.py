@@ -46,10 +46,14 @@ def descompactar(b64: str) -> bytes:
 
 
 def _erros(d: dict) -> list[dict]:
-    brutos = d.get("erros") or d.get("Erros") or ([d["erro"]] if d.get("erro") else [])
+    brutos = d.get("erros") or d.get("Erros") or d.get("erro") or []
+    if isinstance(brutos, dict):
+        brutos = [brutos]  # a rota de eventos às vezes devolve "erro" como objeto, às vezes como lista
     saida = []
     for e in brutos:
-        e = {k.lower(): v for k, v in (e or {}).items()}
+        if not isinstance(e, dict):
+            continue
+        e = {k.lower(): v for k, v in e.items()}
         saida.append({"codigo": e.get("codigo"), "descricao": e.get("descricao"), "complemento": e.get("complemento")})
     return saida
 

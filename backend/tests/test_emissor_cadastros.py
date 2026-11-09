@@ -40,9 +40,11 @@ def test_marcar_em_lote_e_pendencias(cliente):
     assert r.json() == {"atualizadas": 2}
     itens = {e["id"]: e for e in cliente.get("/api/emissor/empresas").json()}
     assert itens[proc["id"]]["emite_nfse"] and itens[prop["id"]]["emite_nfse"]
-    # procuração não serve para emitir
-    assert itens[proc["id"]]["certificado"] is None
-    assert any("procuração não serve" in p for p in itens[proc["id"]]["pendencias"])
+    # por procuração: usa o certificado da contabilidade, mas a homologação recusa (E0718)
+    assert itens[proc["id"]]["certificado"]["procuracao"] is True
+    assert any("E0718" in p for p in itens[proc["id"]]["pendencias"])
+    assert any("cancelamento por procuração" in a for a in itens[proc["id"]]["avisos"])
+    assert itens[prop["id"]]["certificado"]["procuracao"] is False and itens[prop["id"]]["avisos"] == []
     assert itens[prop["id"]]["certificado"]["titular_doc"] == OUTRO
     assert itens[prop["id"]]["pendencias"] == ["Cadastre pelo menos um serviço.",
                                                "Informe o município da empresa (código IBGE) nos dados do prestador."]

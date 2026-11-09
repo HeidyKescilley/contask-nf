@@ -139,7 +139,14 @@ export function NotasEmitidas() {
                         {n.situacao === "autorizada" && (
                           <>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onSelect={() => setCancelando(n)} className="text-cancelada"><Ban /> Cancelar nota</DropdownMenuItem>
+                            {n.cancela_pela_api ? (
+                              <DropdownMenuItem onSelect={() => setCancelando(n)} className="text-cancelada"><Ban /> Cancelar nota</DropdownMenuItem>
+                            ) : (
+                              // Por procuração a Sefin recusa o cancelamento (E0812/E0813): só pelo Emissor Nacional Web
+                              <DropdownMenuItem asChild title="Emitida por procuração: a Sefin só aceita o cancelamento pelo Emissor Nacional Web (Procuração/Representação) ou com o certificado da empresa.">
+                                <a href="https://www.nfse.gov.br/EmissorNacional/" target="_blank" rel="noreferrer" className="text-cancelada"><Ban /> Cancelar no Emissor Nacional</a>
+                              </DropdownMenuItem>
+                            )}
                           </>
                         )}
                       </DropdownMenuContent>

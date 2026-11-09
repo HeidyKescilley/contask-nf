@@ -86,6 +86,8 @@ class EmissorEmpresa(Base):
     cod_municipio: Mapped[str | None] = mapped_column(String(7))  # IBGE do município emissor (cLocEmi)
     # Percentual aproximado de tributos (Lei 12.741). Para ME/EPP vai em pTotTribSN.
     percentual_tributos: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
+    # Só emite em produção com CONTASK_EMISSOR_PRODUCAO=true E esta liberação; senão, produção restrita
+    producao_liberada: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
     atualizado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora, onupdate=agora)
 
 

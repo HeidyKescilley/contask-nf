@@ -9,6 +9,7 @@ export interface ConfigPrestador {
   reg_esp_trib: string;
   serie: string;
   proximo_numero: number;
+  producao_liberada: boolean;
 }
 
 export interface EmpresaEmissora {
@@ -22,11 +23,14 @@ export interface EmpresaEmissora {
   ativa: boolean;
   is_contabilidade: boolean;
   emite_nfse: boolean;
-  certificado: { titular_nome: string; titular_doc: string; validade: string; situacao: SituacaoCert; filial: boolean } | null;
+  certificado: { titular_nome: string; titular_doc: string; validade: string; situacao: SituacaoCert; filial: boolean; procuracao: boolean } | null;
   servicos: number;
   config: ConfigPrestador | null;
   pendencias: string[];
   pronta: boolean;
+  avisos: string[];
+  /** 1 = produção (valor fiscal), 2 = produção restrita (homologação) */
+  ambiente: 1 | 2;
 }
 
 export interface Servico {
@@ -177,9 +181,12 @@ export interface NotaEmitida {
   enviado_em: string | null;
   autorizado_em: string | null;
   cancelado_em: string | null;
+  /** false quando a empresa emite por procuração: a Sefin recusa o cancelamento (E0812/E0813) */
+  cancela_pela_api: boolean;
 }
 
-export interface AmbienteEmissor { ambiente: 1 | 2; producao: boolean; descricao: string }
+/** Chave geral: com ela ligada, cada empresa ainda precisa ser liberada para a produção. */
+export interface AmbienteEmissor { producao_disponivel: boolean; ambiente: 1 | 2; producao: boolean; descricao: string }
 
 export function useAmbienteEmissor() {
   return useQuery({ queryKey: ["emissor", "ambiente"], queryFn: () => api<AmbienteEmissor>("/api/emissor/ambiente"), staleTime: Infinity });
