@@ -15,7 +15,8 @@ from app.core import brasilapi
 from app.core.certificados import situacao_validade
 from app.core.db import sessao
 from app.emissor import tabelas
-from app.emissor.motor import ambiente, producao_disponivel
+from app.emissor import textos
+from app.emissor.motor import ambiente, eh_simples, producao_disponivel
 from app.fiscal.documentos import cnpj_valido, cpf_valido, raiz_cnpj
 from app.models import Certificado, EmissorEmpresa, Empresa, NotaEmitida, ServicoEmissor, SyncEstado, Tomador
 
@@ -39,6 +40,10 @@ class ConfigIn(BaseModel):
     proximo_numero: int = Field(1, ge=1)
     cod_municipio: str | None = None
     percentual_tributos: Decimal | None = Field(None, ge=0, le=100)
+    regime_tributario: str | None = None
+
+
+REGIMES = {"simples", "presumido", "real"}
 
 
 class EmissaoLote(BaseModel):
@@ -183,7 +188,8 @@ def _item_empresa(db: Session, e: Empresa) -> dict:
             "reg_ap_trib_sn": cfg.reg_ap_trib_sn, "reg_esp_trib": cfg.reg_esp_trib,
             "serie": cfg.serie, "proximo_numero": cfg.proximo_numero, "cod_municipio": cfg.cod_municipio,
             "percentual_tributos": float(cfg.percentual_tributos) if cfg.percentual_tributos is not None else None,
-            "producao_liberada": cfg.producao_liberada},
+            "producao_liberada": cfg.producao_liberada, "regime_tributario": cfg.regime_tributario,
+            "simples": eh_simples(cfg)},
         "ambiente": ambiente(cfg),
         "pendencias": pendencias,
         "avisos": avisos,
@@ -316,6 +322,13 @@ def obter_empresa(empresa_id: int, db: Session = Depends(sessao), esc: int = Dep
 @router.put("/empresas/{empresa_id}/config")
 def salvar_config(empresa_id: int, dados: ConfigIn, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
     e = _empresa(db, empresa_id, esc)
+    regime = dados.regime_tributario or None
+    if regime is not None and regime not in REGIMES:
+        raise HTTPException(422, "Regime tributário inválido.")
+    if regime in ("presumido", "real"):
+        dados.op_simples, dados.reg_ap_trib_sn = "1", None  # fora do Simples
+    elif regime == "simples" and dados.op_simples not in ("2", "3"):
+        raise HTTPException(422, "Empresa do Simples Nacional: escolha ME/EPP ou MEI.")
     if dados.op_simples not in OP_SIMPLES:
         raise HTTPException(422, "Situação no Simples Nacional inválida.")
     ap = dados.reg_ap_trib_sn or None
@@ -338,6 +351,7 @@ def salvar_config(empresa_id: int, dados: ConfigIn, db: Session = Depends(sessao
     c = config_prestador(db, e)
     c.cod_municipio = mun or c.cod_municipio
     c.percentual_tributos = dados.percentual_tributos
+    c.regime_tributario = regime
     c.inscricao_municipal, c.op_simples, c.reg_ap_trib_sn = im, dados.op_simples, ap
     c.reg_esp_trib, c.serie, c.proximo_numero = dados.reg_esp_trib, str(int(serie)), dados.proximo_numero
     db.commit()
@@ -505,6 +519,9 @@ class EmissaoIn(BaseModel):
     ret_cp: Decimal = Field(Decimal("0"), ge=0)
     cod_municipio_prestacao: str | None = None
     info_complementar: str | None = Field(None, max_length=2000)
+    texto_simples: bool = True
+    texto_procon: bool = True
+    rascunho_id: int | None = None   # rascunho que vira esta nota (é apagado depois da emissão)
 
 
 class CancelamentoIn(BaseModel):
@@ -523,13 +540,23 @@ def _entrada(d: EmissaoIn):
         desconto=d.desconto, iss_retido=d.iss_retido, aliquota_iss=d.aliquota_iss, ret_pis=d.ret_pis,
         ret_cofins=d.ret_cofins, ret_csll=d.ret_csll, ret_irrf=d.ret_irrf, ret_cp=d.ret_cp,
         cod_municipio_prestacao=mun or None, info_complementar=d.info_complementar,
+        texto_simples=d.texto_simples, texto_procon=d.texto_procon,
     )
+
+
+def _utc(dt):
+    """O SQLite devolve sem fuso o que foi gravado em UTC."""
+    from datetime import timezone
+    return dt.replace(tzinfo=timezone.utc) if dt is not None and dt.tzinfo is None else dt
 
 
 def _nota_out(db: Session, n: NotaEmitida) -> dict:
     e = db.get(Empresa, n.empresa_id)
     f = lambda v: float(v) if v is not None else None  # noqa: E731
+    info_usuario, tem_simples, tem_procon = textos.separar(n.info_complementar)
     return {
+        "origem": "contask", "data": _utc(n.autorizado_em or n.criado_em), "recorrente_id": n.recorrente_id,
+        "info_usuario": info_usuario, "texto_simples": tem_simples, "texto_procon": tem_procon,
         "id": n.id, "empresa_id": n.empresa_id, "empresa_nome": e.apelido or e.nome_fantasia or e.razao_social,
         "empresa_cnpj": e.cnpj, "servico_id": n.servico_id, "ambiente": n.ambiente,
         "cancela_pela_api": certificado_proprio(db, e) is not None,
@@ -544,8 +571,8 @@ def _nota_out(db: Session, n: NotaEmitida) -> dict:
         "info_complementar": n.info_complementar, "chave": n.chave, "numero_nfse": n.numero_nfse,
         "valor_iss": f(n.valor_iss), "valor_liquido": f(n.valor_liquido), "erros": n.erros or [],
         "mensagem": n.mensagem, "motivo_cancelamento": n.motivo_cancelamento,
-        "criado_em": n.criado_em, "enviado_em": n.enviado_em, "autorizado_em": n.autorizado_em,
-        "cancelado_em": n.cancelado_em,
+        "criado_em": _utc(n.criado_em), "enviado_em": _utc(n.enviado_em), "autorizado_em": _utc(n.autorizado_em),
+        "cancelado_em": _utc(n.cancelado_em),
     }
 
 
@@ -585,6 +612,12 @@ def emitir_nota(dados: EmissaoIn, request: Request, db: Session = Depends(sessao
         n = motor.emitir(db, esc, u.id if u else None, _entrada(dados))
     except motor.ErroEmissao as ex:
         raise _erro_emissao(ex) from None
+    if dados.rascunho_id:
+        from app.models import NotaRascunho
+        r = db.get(NotaRascunho, dados.rascunho_id)
+        if r is not None and r.escritorio_id == esc and r.empresa_id == n.empresa_id:
+            db.delete(r)
+            db.commit()
     return _nota_out(db, n)
 
 

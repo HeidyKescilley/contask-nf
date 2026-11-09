@@ -107,6 +107,13 @@ O teste foi feito com a CONTELB (ME/EPP do Simples) emitindo para um tomador do 
 
 **Piloto em produção (09/11/2026):** a CONTELB emitiu uma NFS-e real de R$ 20,00 no leiaute v1.01 de produção, que foi autorizada na primeira tentativa (DPS série 1 nº 1, NFS-e nº 2). O número da NFS-e é dado pela Sefin e segue a sequência da empresa, que já incluía notas emitidas fora do Contask. A nota foi cancelada em seguida (evento 101101, motivo 1), e a Sefin de produção aceitou o cancelamento.
 
+**Diferenciais (09/11/2026):**
+- **Textos legais:** vão no `xInfComp`, depois do texto livre, separados por espaço. O padrão `TSString` da Sefin não aceita quebra de linha. O texto do Simples só vai para empresa do Simples (`emissor_empresa.regime_tributario`); o do PROCON-DF vem marcado por padrão. Código em `app/emissor/textos.py`.
+- **Rascunhos:** tabela `nota_rascunho`, com o mesmo corpo da emissão. O rascunho é apagado quando vira nota; se a emissão falhar na validação, ele continua.
+- **Recorrentes:** tabela `nota_recorrente` e `app/emissor/recorrencia.py`. Uma thread confere a cada 10 minutos, a partir das 7h de Brasília. A próxima data é gravada antes do envio, então nunca sai nota em dobro no mês. Erro antes de reservar o número tenta de novo no mesmo mês. Mês perdido (sistema desligado) não é emitido em atraso.
+- **Lista da empresa:** `GET /api/emissor/empresas/{id}/notas`, no ambiente em que a empresa emite. Em produção, junta as notas prestadas do ADN que não foram emitidas pelo Contask. Para duplicar uma nota do ADN, o XML é lido de volta para os campos do formulário; quando só existe a soma em `vRetCSLL`, ela é repartida pelas alíquotas padrão (0,65 / 3 / 1).
+- **Datas no SQLite:** as notas do Contask ficam em UTC sem fuso, e as do ADN no horário de Brasília do XML. A API devolve as duas com fuso.
+
 **Grupo IBS/CBS:** ainda não é enviado. É opcional nos dois leiautes e foi aceito sem ele. Os códigos `cIndOp` e `cClassTrib` já ficam guardados no serviço para quando o grupo passar a ser exigido.
 
 ## Parâmetros municipais (somente leitura, também em produção)

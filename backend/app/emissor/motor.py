@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session
 
 from app.core.certificados import carregar_pfx, situacao_validade
 from app.core.config import config
-from app.emissor import assinatura
+from app.emissor import assinatura, textos
 from app.emissor.dps import (
     BRASILIA, PRODUCAO, RESTRITA, Cancelamento, DadosDps, DpsInvalida, Prestador, Retencoes, TomadorDps,
     centavos, id_dps, montar, montar_cancelamento, serializar, validar_xsd,
@@ -52,6 +52,15 @@ def ambiente(cfg: EmissorEmpresa | None = None) -> int:
     if producao_disponivel() and cfg is not None and cfg.producao_liberada:
         return PRODUCAO
     return RESTRITA
+
+
+def eh_simples(cfg: EmissorEmpresa | None) -> bool:
+    """Regime escolhido no cadastro; sem ele, a situação no Simples da DPS (MEI ou ME/EPP)."""
+    if cfg is None:
+        return False
+    if cfg.regime_tributario:
+        return cfg.regime_tributario == "simples"
+    return cfg.op_simples in ("2", "3")
 
 
 # Injetável nos testes
@@ -86,6 +95,9 @@ class Entrada:
     ret_cp: Decimal = Decimal("0")
     cod_municipio_prestacao: str | None = None
     info_complementar: str | None = None
+    texto_simples: bool = True    # só vale para empresa do Simples
+    texto_procon: bool = True
+    recorrente_id: int | None = None
     extras: dict = field(default_factory=dict)
 
 
@@ -159,7 +171,10 @@ def _preencher(db: Session, nota: NotaEmitida, e: Empresa, cfg: EmissorEmpresa, 
     nota.aliquota_iss = Decimal(str(ent.aliquota_iss)) if ent.aliquota_iss is not None else None
     nota.ret_pis, nota.ret_cofins, nota.ret_csll = centavos(ent.ret_pis), centavos(ent.ret_cofins), centavos(ent.ret_csll)
     nota.ret_irrf, nota.ret_cp = centavos(ent.ret_irrf), centavos(ent.ret_cp)
-    nota.info_complementar = (ent.info_complementar or "").strip() or None
+    try:
+        nota.info_complementar = textos.compor(ent.info_complementar, ent.texto_simples and eh_simples(cfg), ent.texto_procon)
+    except ValueError as ex:
+        raise ErroEmissao(str(ex)) from None
 
 
 def _xml_assinado(db: Session, e: Empresa, cfg: EmissorEmpresa, nota: NotaEmitida) -> bytes:
@@ -259,7 +274,7 @@ def emitir(db: Session, esc: int, usuario_id: int | None, ent: Entrada) -> NotaE
     e, cfg = _empresa_pronta(db, esc, ent.empresa_id)
     amb = ambiente(cfg)
     nota = NotaEmitida(escritorio_id=esc, empresa_id=e.id, usuario_id=usuario_id, ambiente=amb, serie=cfg.serie,
-                       numero=0, id_dps="", situacao="enviando")
+                       numero=0, id_dps="", situacao="enviando", recorrente_id=ent.recorrente_id)
     _preencher(db, nota, e, cfg, ent)
     # Valida tudo (regras e XSD) antes de gastar um número
     try:

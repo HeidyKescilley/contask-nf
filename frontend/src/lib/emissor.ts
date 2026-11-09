@@ -10,7 +10,21 @@ export interface ConfigPrestador {
   serie: string;
   proximo_numero: number;
   producao_liberada: boolean;
+  regime_tributario: RegimeTributario | null;
+  /** true quando a empresa é do Simples (regime escolhido ou, sem ele, MEI/ME-EPP): acrescenta o texto legal */
+  simples: boolean;
 }
+
+export type RegimeTributario = "simples" | "presumido" | "real";
+
+export const REGIMES: Record<RegimeTributario, string> = {
+  simples: "Simples Nacional",
+  presumido: "Lucro Presumido",
+  real: "Lucro Real",
+};
+
+export const TEXTO_SIMPLES = 'I - "DOCUMENTO EMITIDO POR ME OU EPP OPTANTE PELO SIMPLES NACIONAL"; e II - "NÃO GERA DIREITO A CRÉDITO FISCAL DE IPI."';
+export const TEXTO_PROCON = "PROCON: TEL 151- SETOR COMERCIAL SUL, QUADRA 8, BLOCO B-60, SALA 240- BRASILIA - DF";
 
 export interface EmpresaEmissora {
   id: number;
@@ -183,6 +197,182 @@ export interface NotaEmitida {
   cancelado_em: string | null;
   /** false quando a empresa emite por procuração: a Sefin recusa o cancelamento (E0812/E0813) */
   cancela_pela_api: boolean;
+  origem: "contask";
+  data: string;
+  recorrente_id: number | null;
+  /** informações complementares sem os textos legais, que vêm marcados abaixo */
+  info_usuario: string;
+  texto_simples: boolean;
+  texto_procon: boolean;
+}
+
+/** Nota prestada que veio do ADN (emitida fora do Contask). */
+export interface NotaAdn {
+  origem: "adn";
+  id: number;
+  empresa_id: number;
+  data: string | null;
+  chave: string;
+  numero_nfse: string | null;
+  serie: string | null;
+  numero: number | null;
+  competencia: string | null;
+  tomador: { documento: string | null; nome: string | null } | null;
+  valor_servico: number | null;
+  valor_liquido: number | null;
+  situacao: "autorizada" | "cancelada" | "rejeitada";
+  homologacao: false;
+  descricao: null;
+  mensagem: string | null;
+  tem_xml: boolean;
+}
+
+export type ItemNota = NotaEmitida | NotaAdn;
+
+export interface ListaNotas {
+  ambiente: 1 | 2;
+  notas: ItemNota[];
+  totais: { quantidade: number; autorizadas: number; valor_autorizado: number };
+}
+
+export interface FiltrosNotas { inicio: string; fim: string; q: string; numero: string; situacao: string }
+
+export function useNotasEmpresa(empresaId: number | null, f: FiltrosNotas) {
+  const p = new URLSearchParams(Object.entries(f).filter(([, v]) => v) as [string, string][]);
+  return useQuery({
+    enabled: !!empresaId,
+    queryKey: ["emissor", "notas-empresa", empresaId, f],
+    queryFn: () => api<ListaNotas>(`/api/emissor/empresas/${empresaId}/notas?${p}`),
+    placeholderData: (ant) => ant,
+  });
+}
+
+/** Corpo da emissão (POST /api/emissor/notas). Rascunhos e recorrências guardam o mesmo formato. */
+export interface CorpoEmissao {
+  servico_id?: number | null;
+  descricao?: string;
+  competencia?: string;
+  valor?: string;
+  desconto?: string;
+  tomador?: Tomador | null;
+  salvar_tomador?: boolean;
+  iss_retido?: boolean;
+  aliquota_iss?: string | null;
+  ret_pis?: string; ret_cofins?: string; ret_csll?: string; ret_irrf?: string; ret_cp?: string;
+  info_complementar?: string | null;
+  texto_simples?: boolean;
+  texto_procon?: boolean;
+}
+
+export interface Rascunho {
+  id: number;
+  empresa_id: number;
+  dados: CorpoEmissao;
+  tomador_nome: string | null;
+  tomador_documento: string | null;
+  valor: string | null;
+  descricao: string;
+  criado_em: string;
+  atualizado_em: string;
+}
+
+export function useRascunhos(empresaId: number | null) {
+  return useQuery({
+    enabled: !!empresaId,
+    queryKey: ["emissor", "rascunhos", empresaId],
+    queryFn: () => api<Rascunho[]>(`/api/emissor/empresas/${empresaId}/rascunhos`),
+  });
+}
+
+export interface Recorrente {
+  id: number;
+  empresa_id: number;
+  nome: string;
+  dia: number;
+  competencia: "atual" | "anterior";
+  ativa: boolean;
+  dados: CorpoEmissao;
+  proxima_em: string | null;
+  ultima_em: string | null;
+  ultimo_erro: string | null;
+  tomador_nome: string | null;
+  tomador_documento: string | null;
+  valor: string | null;
+  previa: { data: string; competencia: string; descricao: string } | null;
+  ultima_nota: { id: number; numero_nfse: string | null; situacao: SituacaoEmitida; mensagem: string | null } | null;
+  criado_em: string;
+}
+
+export function useRecorrentes(empresaId: number | null) {
+  return useQuery({
+    enabled: !!empresaId,
+    queryKey: ["emissor", "recorrentes", empresaId],
+    queryFn: () => api<Recorrente[]>(`/api/emissor/empresas/${empresaId}/recorrentes`),
+  });
+}
+
+/** Modelo para duplicar uma nota do ADN (lida do XML). */
+export interface ModeloAdn {
+  empresa_id: number;
+  numero_nfse: string | null;
+  servico_id: number | null;
+  ctribnac: string | null;
+  cnbs: string | null;
+  ctribmun: string | null;
+  descricao: string;
+  tomador: Tomador | null;
+  valor_servico: number;
+  desconto: number;
+  iss_retido: boolean;
+  aliquota_iss: number | null;
+  ret_pis: number; ret_cofins: number; ret_csll: number; ret_irrf: number; ret_cp: number;
+  info_usuario: string;
+  texto_simples: boolean;
+  texto_procon: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Variáveis das notas recorrentes (mesma regra do backend: app/emissor/textos.py)
+// ---------------------------------------------------------------------------
+
+export const VARIAVEIS: { nome: string; descricao: string }[] = [
+  { nome: "mes_anterior", descricao: "Mês anterior (MM/AAAA)" },
+  { nome: "mes_atual", descricao: "Mês da emissão (MM/AAAA)" },
+  { nome: "primeiro_dia_mes_anterior", descricao: "1º dia do mês anterior" },
+  { nome: "ultimo_dia_mes_anterior", descricao: "Último dia do mês anterior" },
+  { nome: "primeiro_dia_mes_atual", descricao: "1º dia do mês da emissão" },
+  { nome: "ultimo_dia_mes_atual", descricao: "Último dia do mês da emissão" },
+];
+
+const p2 = (n: number) => String(n).padStart(2, "0");
+const ultimoDia = (a: number, m: number) => new Date(a, m, 0).getDate(); // m de 1 a 12
+
+export function valoresVariaveis(emissao: Date): Record<string, string> {
+  const a = emissao.getFullYear(), m = emissao.getMonth() + 1;
+  const [aa, ma] = m === 1 ? [a - 1, 12] : [a, m - 1];
+  return {
+    mes_atual: `${p2(m)}/${a}`, mes_anterior: `${p2(ma)}/${aa}`,
+    primeiro_dia_mes_atual: `01/${p2(m)}/${a}`, ultimo_dia_mes_atual: `${ultimoDia(a, m)}/${p2(m)}/${a}`,
+    primeiro_dia_mes_anterior: `01/${p2(ma)}/${aa}`, ultimo_dia_mes_anterior: `${ultimoDia(aa, ma)}/${p2(ma)}/${aa}`,
+  };
+}
+
+export function aplicarVariaveis(texto: string, emissao: Date) {
+  const v = valoresVariaveis(emissao);
+  return texto.replace(/\{([^{}]*)\}/g, (todo, nome: string) => v[nome.trim()] ?? todo);
+}
+
+export function variaveisDesconhecidas(texto: string) {
+  const nomes = new Set(VARIAVEIS.map((v) => v.nome));
+  return [...new Set([...texto.matchAll(/\{([^{}]*)\}/g)].map((m) => m[1].trim()).filter((n) => !nomes.has(n)))];
+}
+
+/** Próxima data (estritamente futura) do dia escolhido; meses curtos usam o último dia. */
+export function proximaData(dia: number, hoje = new Date()): Date {
+  const h = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+  const noMes = (a: number, m0: number) => new Date(a, m0, Math.min(dia, ultimoDia(a, m0 + 1)));
+  const d = noMes(h.getFullYear(), h.getMonth());
+  return d > h ? d : noMes(h.getMonth() === 11 ? h.getFullYear() + 1 : h.getFullYear(), (h.getMonth() + 1) % 12);
 }
 
 /** Chave geral: com ela ligada, cada empresa ainda precisa ser liberada para a produção. */

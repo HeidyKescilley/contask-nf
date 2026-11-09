@@ -88,6 +88,8 @@ class EmissorEmpresa(Base):
     percentual_tributos: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
     # Só emite em produção com CONTASK_EMISSOR_PRODUCAO=true E esta liberação; senão, produção restrita
     producao_liberada: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
+    # simples | presumido | real (o Simples acrescenta o texto legal nas informações complementares)
+    regime_tributario: Mapped[str | None] = mapped_column(String(10))
     atualizado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora, onupdate=agora)
 
 
@@ -138,6 +140,39 @@ class NotaEmitida(Base):
     enviado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     autorizado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     cancelado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    recorrente_id: Mapped[int | None] = mapped_column(ForeignKey("nota_recorrente.id", ondelete="SET NULL"))
+
+
+class NotaRascunho(Base):
+    """Nota preenchida e guardada para emitir depois (os campos do formulário de emissão, em JSON)."""
+    __tablename__ = "nota_rascunho"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    escritorio_id: Mapped[int] = mapped_column(ForeignKey("escritorio.id", ondelete="CASCADE"), index=True)
+    empresa_id: Mapped[int] = mapped_column(ForeignKey("empresa.id", ondelete="CASCADE"), index=True)
+    usuario_id: Mapped[int | None] = mapped_column(ForeignKey("usuario.id", ondelete="SET NULL"))
+    dados: Mapped[dict] = mapped_column(JSON)
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
+    atualizado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora, onupdate=agora)
+
+
+class NotaRecorrente(Base):
+    """Nota emitida automaticamente todo mês no dia escolhido, com variáveis de data na descrição."""
+    __tablename__ = "nota_recorrente"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    escritorio_id: Mapped[int] = mapped_column(ForeignKey("escritorio.id", ondelete="CASCADE"), index=True)
+    empresa_id: Mapped[int] = mapped_column(ForeignKey("empresa.id", ondelete="CASCADE"), index=True)
+    usuario_id: Mapped[int | None] = mapped_column(ForeignKey("usuario.id", ondelete="SET NULL"))
+    nome: Mapped[str] = mapped_column(String(120))
+    dados: Mapped[dict] = mapped_column(JSON)          # campos da emissão, sem a competência
+    dia: Mapped[int] = mapped_column(Integer)           # 1 a 31 (meses mais curtos: último dia)
+    competencia: Mapped[str] = mapped_column(String(8), default="atual")  # atual | anterior (em relação à emissão)
+    ativa: Mapped[bool] = mapped_column(Boolean, default=True)
+    proxima_em: Mapped[date | None] = mapped_column(Date, index=True)
+    ultima_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    ultima_nota_id: Mapped[int | None] = mapped_column(ForeignKey("nota_emitida.id", ondelete="SET NULL", use_alter=True))
+    ultimo_erro: Mapped[str | None] = mapped_column(Text)
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
+    atualizado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora, onupdate=agora)
 
 
 class ServicoEmissor(Base):

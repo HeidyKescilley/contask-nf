@@ -7,7 +7,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import auth, buscas, dashboard, emissor, empresas, exportacoes, importacao, notas, sistema
+from app.api import auth, buscas, dashboard, emissor, emissor_notas, empresas, exportacoes, importacao, notas, sistema
 from app.core import cripto
 from app.core.config import config
 from app.core.migracao import migrar
@@ -48,9 +48,18 @@ async def lifespan(_app: FastAPI):
         exp = Exportador(nova_sessao)
         definir_exportador(exp)
         exp.retomar_pendentes()
+    rec = None
+    if cfg.fila_ativa:
+        from app.core.db import nova_sessao
+        from app.emissor.recorrencia import Agendador
+
+        rec = Agendador(nova_sessao)
+        rec.iniciar()
     try:
         yield
     finally:
+        if rec is not None:
+            rec.parar()
         if exp is not None:
             exp.parar()
             from app.jobs import definir_exportador
@@ -74,6 +83,7 @@ def criar_app() -> FastAPI:
     app.include_router(exportacoes.router)
     app.include_router(importacao.router)
     app.include_router(emissor.router)
+    app.include_router(emissor_notas.router)
 
     @app.exception_handler(RequestValidationError)
     async def validacao(_req: Request, exc: RequestValidationError):

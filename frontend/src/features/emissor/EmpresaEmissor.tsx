@@ -10,8 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Aviso, Campo, Input, Select } from "@/components/ui/campos";
 import { api } from "@/lib/api";
 import {
-  OP_SIMPLES, REG_AP_TRIB_SN, REG_ESP_TRIB, apenasDigitos, useAmbienteEmissor, useAtualizarEmissor, useEmpresaEmissora, useServicos,
-  type ConfigPrestador, type EmpresaEmissora, type Servico,
+  REGIMES, REG_AP_TRIB_SN, REG_ESP_TRIB, apenasDigitos, useAmbienteEmissor, useAtualizarEmissor, useEmpresaEmissora, useServicos,
+  type ConfigPrestador, type EmpresaEmissora, type RegimeTributario, type Servico,
 } from "@/lib/emissor";
 import { nomeExibicao } from "@/lib/empresas";
 import { formatarDoc } from "@/lib/formato";
@@ -55,7 +55,7 @@ function Detalhe({ e }: { e: EmpresaEmissora }) {
           <Copiar texto={e.cnpj} exibir={formatarDoc(e.cnpj)} /><span>·</span><span>{e.razao_social}</span>
         </div>
       </div>
-      <AbasEmissor />
+      <AbasEmissor empresaId={e.id} />
 
       <Painel>
         <div className="flex flex-wrap items-center justify-between gap-4">
@@ -174,35 +174,58 @@ function PainelAmbiente({ e }: { e: EmpresaEmissora }) {
 
 function FormPrestador({ e, cfg }: { e: EmpresaEmissora; cfg: ConfigPrestador }) {
   const atualizar = useAtualizarEmissor();
-  const inicial = { ...cfg, inscricao_municipal: cfg.inscricao_municipal ?? "", reg_ap_trib_sn: cfg.reg_ap_trib_sn ?? "", proximo_numero: String(cfg.proximo_numero) };
+  const inicial = {
+    ...cfg, inscricao_municipal: cfg.inscricao_municipal ?? "", reg_ap_trib_sn: cfg.reg_ap_trib_sn ?? "", proximo_numero: String(cfg.proximo_numero),
+    // Sem regime gravado: Simples se a DPS já dizia MEI/ME-EPP; senão, a pessoa escolhe
+    regime_tributario: (cfg.regime_tributario ?? (cfg.op_simples === "1" ? "" : "simples")) as RegimeTributario | "",
+  };
   const [d, setD] = useState(inicial);
   const mudou = JSON.stringify(d) !== JSON.stringify(inicial);
   const salvar = useMutation({
     mutationFn: () => api<EmpresaEmissora>(`/api/emissor/empresas/${e.id}/config`, {
       method: "PUT",
-      body: JSON.stringify({ ...d, reg_ap_trib_sn: d.op_simples === "3" ? d.reg_ap_trib_sn || null : null, proximo_numero: Number(d.proximo_numero) || 0 }),
+      body: JSON.stringify({ ...d, op_simples: d.regime_tributario === "simples" ? d.op_simples : "1",
+        reg_ap_trib_sn: d.regime_tributario === "simples" && d.op_simples === "3" ? d.reg_ap_trib_sn || null : null,
+        regime_tributario: d.regime_tributario || null, proximo_numero: Number(d.proximo_numero) || 0 }),
     }),
     onSuccess: () => { atualizar(); toast.success("Dados do prestador salvos."); },
   });
 
   return (
     <Painel titulo="Dados do prestador" descricao="Vão em toda nota desta empresa. O regime veio da consulta do CNPJ: confira antes de emitir.">
-      <form className="grid grid-cols-2 gap-4" onSubmit={(ev) => { ev.preventDefault(); salvar.mutate(); }}>
-        <Campo rotulo="Situação no Simples Nacional" obrigatorio>
+      <form className="grid grid-cols-1 gap-4 sm:grid-cols-2" onSubmit={(ev) => { ev.preventDefault(); salvar.mutate(); }}>
+        <Campo rotulo="Regime tributário" obrigatorio
+          ajuda={d.regime_tributario === "simples" ? "As notas levam o texto do Simples Nacional nas informações complementares." : undefined}>
           {(p) => (
-            <Select {...p} value={d.op_simples} onChange={(ev) => setD({ ...d, op_simples: ev.target.value as ConfigPrestador["op_simples"], reg_ap_trib_sn: ev.target.value === "3" ? d.reg_ap_trib_sn || "1" : "" })}>
-              {Object.entries(OP_SIMPLES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            <Select {...p} value={d.regime_tributario} onChange={(ev) => {
+              const r = ev.target.value as RegimeTributario | "";
+              setD({ ...d, regime_tributario: r, op_simples: r === "simples" ? (d.op_simples === "1" ? "3" : d.op_simples) : "1",
+                reg_ap_trib_sn: r === "simples" ? d.reg_ap_trib_sn || "1" : "" });
+            }}>
+              {!d.regime_tributario && <option value="">Escolha o regime…</option>}
+              {Object.entries(REGIMES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </Select>
           )}
         </Campo>
-        <Campo rotulo="Regime de apuração (Simples)" obrigatorio={d.op_simples === "3"} ajuda={d.op_simples !== "3" ? "Só para ME/EPP optante." : undefined}>
-          {(p) => (
-            <Select {...p} value={d.reg_ap_trib_sn} disabled={d.op_simples !== "3"} onChange={(ev) => setD({ ...d, reg_ap_trib_sn: ev.target.value as typeof d.reg_ap_trib_sn })}>
-              {d.op_simples !== "3" && <option value="">—</option>}
-              {Object.entries(REG_AP_TRIB_SN).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </Select>
-          )}
-        </Campo>
+        {d.regime_tributario === "simples" ? (
+          <Campo rotulo="Enquadramento no Simples" obrigatorio>
+            {(p) => (
+              <Select {...p} value={d.op_simples} onChange={(ev) => setD({ ...d, op_simples: ev.target.value as ConfigPrestador["op_simples"], reg_ap_trib_sn: ev.target.value === "3" ? d.reg_ap_trib_sn || "1" : "" })}>
+                <option value="3">ME/EPP</option>
+                <option value="2">MEI</option>
+              </Select>
+            )}
+          </Campo>
+        ) : <div className="hidden sm:block" />}
+        {d.regime_tributario === "simples" && d.op_simples === "3" && (
+          <Campo rotulo="Regime de apuração (Simples)" obrigatorio>
+            {(p) => (
+              <Select {...p} value={d.reg_ap_trib_sn} onChange={(ev) => setD({ ...d, reg_ap_trib_sn: ev.target.value as typeof d.reg_ap_trib_sn })}>
+                {Object.entries(REG_AP_TRIB_SN).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </Select>
+            )}
+          </Campo>
+        )}
         <Campo rotulo="Regime especial de tributação">
           {(p) => (
             <Select {...p} value={d.reg_esp_trib} onChange={(ev) => setD({ ...d, reg_esp_trib: ev.target.value })}>
@@ -219,10 +242,10 @@ function FormPrestador({ e, cfg }: { e: EmpresaEmissora; cfg: ConfigPrestador })
         <Campo rotulo="Próximo número da DPS" ajuda="Só mude se souber o último número usado nesta série.">
           {(p) => <Input {...p} value={d.proximo_numero} inputMode="numeric" onChange={(ev) => setD({ ...d, proximo_numero: apenasDigitos(ev.target.value) })} />}
         </Campo>
-        {salvar.isError && <div className="col-span-2"><Aviso tom="erro">{(salvar.error as Error).message}</Aviso></div>}
-        <div className="col-span-2 flex justify-end gap-2">
+        {salvar.isError && <div className="sm:col-span-2"><Aviso tom="erro">{(salvar.error as Error).message}</Aviso></div>}
+        <div className="flex justify-end gap-2 sm:col-span-2">
           {mudou && <Button type="button" variante="fantasma" onClick={() => setD(inicial)}>Desfazer</Button>}
-          <Button type="submit" variante="primario" disabled={!mudou || salvar.isPending}>
+          <Button type="submit" variante="primario" disabled={!mudou || !d.regime_tributario || salvar.isPending}>
             {salvar.isPending && <Loader2 className="animate-spin" />} Salvar
           </Button>
         </div>

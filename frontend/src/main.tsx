@@ -17,6 +17,7 @@ import { EmpresasEmissoras } from "@/features/emissor/EmpresasEmissoras";
 import { Tomadores } from "@/features/emissor/Tomadores";
 import { EmitirNota } from "@/features/emissor/EmitirNota";
 import { NotasEmitidas } from "@/features/emissor/NotasEmitidas";
+import { EditarRecorrente, Recorrentes } from "@/features/emissor/Recorrentes";
 import { Notificacoes } from "@/layout/Notificacoes";
 import { Cadastrar, Entrar, TrocarSenha } from "@/features/acesso/Acesso";
 import { Protegido } from "@/lib/sessao";
@@ -44,6 +45,9 @@ const rotas = createBrowserRouter([
       { path: "exportacoes", element: <Exportacoes /> },
       { path: "emissor", element: <NotasEmitidas /> },
       { path: "emissor/emitir", element: <EmitirNota /> },
+      { path: "emissor/recorrentes", element: <Recorrentes /> },
+      { path: "emissor/recorrentes/nova", element: <EditarRecorrente /> },
+      { path: "emissor/recorrentes/:id", element: <EditarRecorrente /> },
       { path: "emissor/empresas", element: <EmpresasEmissoras /> },
       { path: "emissor/empresas/:id", element: <EmpresaEmissor /> },
       { path: "emissor/tomadores", element: <Tomadores /> },
