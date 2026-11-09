@@ -5,9 +5,8 @@
 Inclui: banco, XMLs e eventos das empresas, certificados (cifrados), foto da migração.
 Não inclui: PDFs (são gerados de novo a partir do XML) e exportações (podem ser geradas de novo).
 
-ATENÇÃO: os certificados no backup estão cifrados com a chave-mestra guardada no Gerenciador de
-Credenciais do Windows. Sem essa chave (ex.: Windows reinstalado), as notas continuam legíveis,
-mas os certificados precisam ser enviados de novo pela tela.
+ATENÇÃO: os certificados no backup estão cifrados com CONTASK_CHAVE_MESTRA. Sem a mesma
+variável, as notas e os XMLs continuam legíveis, mas o .pfx precisa ser enviado de novo.
 """
 from __future__ import annotations
 
@@ -48,9 +47,9 @@ def fazer_backup(destino: Path | None = None) -> Path:
                 z.write(p, f"dados/{rel.as_posix()}")
             z.writestr("LEIA-ME.txt", (
                 "Backup do Contask NF.\n\nPara restaurar: feche o sistema, extraia a pasta 'dados' deste ZIP na pasta do "
-                "Contask NF (substituindo a atual) e abra o iniciar.bat.\n\nOs certificados estão cifrados com a chave-mestra do "
-                "Gerenciador de Credenciais do Windows (serviço 'ContaskNF'). Em outro computador ou após reinstalar o Windows, "
-                "envie os certificados de novo pela tela: as notas continuam disponíveis.\n"))
+                "Contask NF (substituindo a atual) e abra o iniciar.bat.\n\nOs certificados estão cifrados com "
+                "CONTASK_CHAVE_MESTRA. Sem a mesma variável no ambiente, envie os certificados de novo pela tela: "
+                "as notas e os XMLs continuam disponíveis.\n"))
     return arq
 
 

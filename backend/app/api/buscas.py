@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.api.escopo import escritorio_atual, obter_empresa, obter_job
 from app.core.db import sessao
 from app.jobs import acordar_fila, gerenciador
 from app.jobs.barramento import barramento
@@ -49,13 +50,23 @@ def _job_out(db: Session, j: BuscaJob) -> dict:
     }
 
 
+def _do_escritorio(escritorio_id: int):
+    return select(BuscaJob).join(Empresa, Empresa.id == BuscaJob.empresa_id).where(Empresa.escritorio_id == escritorio_id)
+
+
+def _publicar_job(db: Session, j: BuscaJob) -> None:
+    e = db.get(Empresa, j.empresa_id)
+    barramento.publicar({"tipo": "job", "id": j.id, "empresa_id": j.empresa_id, "status": j.status,
+                         "escritorio_id": e.escritorio_id if e else None})
+
+
 @router.get("/buscas")
-def estado_buscas(db: Session = Depends(sessao)):
-    pend = list(db.scalars(select(BuscaJob).where(BuscaJob.status.in_(["fila", "rodando", "pausado"]))
+def estado_buscas(db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
+    pend = list(db.scalars(_do_escritorio(esc).where(BuscaJob.status.in_(["fila", "rodando", "pausado"]))
                            .order_by(BuscaJob.criado_em)))
     limite = datetime.now(timezone.utc) - timedelta(hours=24)
-    recentes = list(db.scalars(select(BuscaJob).where(BuscaJob.status.in_(["concluido", "erro", "cancelado"]),
-                                                      BuscaJob.finalizado_em >= limite)
+    recentes = list(db.scalars(_do_escritorio(esc).where(BuscaJob.status.in_(["concluido", "erro", "cancelado"]),
+                                                        BuscaJob.finalizado_em >= limite)
                                .order_by(BuscaJob.finalizado_em.desc()).limit(30)))
     g = gerenciador()
     return {
@@ -68,12 +79,10 @@ def estado_buscas(db: Session = Depends(sessao)):
 
 
 @router.post("/empresas/{empresa_id}/buscas", status_code=201)
-def nova_busca(empresa_id: int, dados: NovaBusca, db: Session = Depends(sessao)):
+def nova_busca(empresa_id: int, dados: NovaBusca, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
     if dados.tipo not in ("incremental", "refazer"):
         raise HTTPException(422, "Tipo de busca inválido.")
-    e = db.get(Empresa, empresa_id)
-    if e is None:
-        raise HTTPException(404, "Empresa não encontrada.")
+    e = obter_empresa(db, empresa_id, esc)
     if not e.ativa:
         raise HTTPException(409, "Empresa inativa. Reative-a para buscar notas.")
     try:
@@ -82,20 +91,13 @@ def nova_busca(empresa_id: int, dados: NovaBusca, db: Session = Depends(sessao))
         raise HTTPException(409, str(ex)) from None
     db.commit()
     acordar_fila()
-    barramento.publicar({"tipo": "job", "id": job.id, "empresa_id": empresa_id, "status": job.status})
+    _publicar_job(db, job)
     return _job_out(db, job)
 
 
-def _job(db: Session, job_id: int) -> BuscaJob:
-    j = db.get(BuscaJob, job_id)
-    if j is None:
-        raise HTTPException(404, "Busca não encontrada.")
-    return j
-
-
 @router.post("/buscas/{job_id}/pausar")
-def pausar(job_id: int, db: Session = Depends(sessao)):
-    j = _job(db, job_id)
+def pausar(job_id: int, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
+    j = obter_job(db, job_id, esc)
     if j.status not in ("fila", "rodando"):
         raise HTTPException(409, "Só é possível pausar uma busca na fila ou em andamento.")
     estava = j.status
@@ -103,13 +105,13 @@ def pausar(job_id: int, db: Session = Depends(sessao)):
     if estava == "fila":
         db.add(BuscaLog(job_id=j.id, momento=datetime.now(timezone.utc), nivel="info", mensagem="Busca pausada."))
     db.commit()
-    barramento.publicar({"tipo": "job", "id": j.id, "empresa_id": j.empresa_id, "status": j.status})
+    _publicar_job(db, j)
     return _job_out(db, j)
 
 
 @router.post("/buscas/{job_id}/retomar")
-def retomar(job_id: int, db: Session = Depends(sessao)):
-    j = _job(db, job_id)
+def retomar(job_id: int, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
+    j = obter_job(db, job_id, esc)
     if j.status not in ("pausado", "erro"):
         raise HTTPException(409, "Só é possível retomar uma busca pausada ou com erro.")
     if j.status == "erro":
@@ -125,24 +127,24 @@ def retomar(job_id: int, db: Session = Depends(sessao)):
     db.add(BuscaLog(job_id=j.id, momento=datetime.now(timezone.utc), nivel="info", mensagem="Busca retomada."))
     db.commit()
     acordar_fila()
-    barramento.publicar({"tipo": "job", "id": j.id, "empresa_id": j.empresa_id, "status": j.status})
+    _publicar_job(db, j)
     return _job_out(db, j)
 
 
 @router.post("/buscas/{job_id}/cancelar")
-def cancelar(job_id: int, db: Session = Depends(sessao)):
-    j = _job(db, job_id)
+def cancelar(job_id: int, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
+    j = obter_job(db, job_id, esc)
     if j.status not in ("fila", "pausado", "rodando"):
         raise HTTPException(409, "Esta busca já terminou.")
     j.status, j.finalizado_em = "cancelado", datetime.now(timezone.utc)
     db.commit()
-    barramento.publicar({"tipo": "job", "id": j.id, "empresa_id": j.empresa_id, "status": j.status})
+    _publicar_job(db, j)
     return _job_out(db, j)
 
 
 @router.get("/buscas/{job_id}/log")
-def log_busca(job_id: int, limite: int = 300, db: Session = Depends(sessao)):
-    _job(db, job_id)
+def log_busca(job_id: int, limite: int = 300, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
+    obter_job(db, job_id, esc)
     itens = list(db.scalars(select(BuscaLog).where(BuscaLog.job_id == job_id)
                             .order_by(BuscaLog.id.desc()).limit(min(limite, 2000))))
     return [{"momento": l.momento, "nivel": l.nivel, "mensagem": l.mensagem} for l in reversed(itens)]
@@ -152,6 +154,7 @@ def log_busca(job_id: int, limite: int = 300, db: Session = Depends(sessao)):
 async def stream(request: Request):
     item = barramento.assinar()
     _, fila = item
+    escritorio_id = request.state.usuario.escritorio_id
 
     async def gerar():
         try:
@@ -161,6 +164,8 @@ async def stream(request: Request):
                     break
                 try:
                     ev = await asyncio.wait_for(fila.get(), timeout=15)
+                    if ev.get("escritorio_id") != escritorio_id:
+                        continue
                     yield f"data: {json.dumps(ev, default=str, ensure_ascii=False)}\n\n"
                 except asyncio.TimeoutError:
                     yield ": ping\n\n"

@@ -149,14 +149,15 @@ def validar_para_uso(info: InfoCertificado) -> None:
         raise CertificadoInvalido(f"Certificado só passa a valer em {info.inicio_validade:%d/%m/%Y}.")
 
 
-def salvar_certificado(db: Session, pfx: bytes, senha: str, info: InfoCertificado) -> Certificado:
-    """Grava (ou atualiza, se o mesmo certificado já existe) com .pfx e senha cifrados."""
+def salvar_certificado(db: Session, pfx: bytes, senha: str, info: InfoCertificado, *, escritorio_id: int) -> Certificado:
+    """Grava (ou atualiza, se o mesmo certificado já existe neste escritório) com .pfx e senha cifrados."""
     pasta = config().dados_dir / "certificados"
     pasta.mkdir(parents=True, exist_ok=True)
 
-    cert = db.scalar(select(Certificado).where(Certificado.thumbprint == info.thumbprint))
+    cert = db.scalar(select(Certificado).where(Certificado.escritorio_id == escritorio_id,
+                                               Certificado.thumbprint == info.thumbprint))
     if cert is None:
-        cert = Certificado(thumbprint=info.thumbprint, pfx_cifrado_path="", senha_cifrada="")
+        cert = Certificado(escritorio_id=escritorio_id, thumbprint=info.thumbprint, pfx_cifrado_path="", senha_cifrada="")
         db.add(cert)
     cert.titular_doc, cert.titular_nome, cert.tipo, cert.validade = (
         info.titular_doc, info.titular_nome, info.tipo, info.validade)

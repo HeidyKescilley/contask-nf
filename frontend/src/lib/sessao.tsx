@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, type ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import { Esqueleto } from "@/components/estados";
+import { EstadoErro, Esqueleto } from "@/components/estados";
 import { api } from "./api";
 
 export interface Usuario {
@@ -12,8 +12,10 @@ export interface Usuario {
 }
 
 export interface Sessao {
-  login_ativo: boolean;
   usuario: Usuario | null;
+  escritorio: { id: number; nome: string } | null;
+  tem_contabilidade: boolean;
+  empresas: number;
 }
 
 export interface Uso {
@@ -49,7 +51,7 @@ function useOuvirSessao() {
 /** Envolve as telas do sistema: sem sessão vai para /entrar; com troca pendente, para /trocar-senha. */
 export function Protegido({ children }: { children: ReactNode }) {
   useOuvirSessao();
-  const { data, isLoading, isError } = useSessao();
+  const { data, isLoading, isError, refetch } = useSessao();
   const local = useLocation();
   if (isLoading)
     return (
@@ -57,9 +59,13 @@ export function Protegido({ children }: { children: ReactNode }) {
         <Esqueleto className="h-48 w-full" />
       </div>
     );
-  // Se nem /api/auth/eu respondeu, deixa as telas mostrarem o erro de conexão normalmente
-  if (isError || !data?.login_ativo) return <>{children}</>;
-  if (!data.usuario) return <Navigate to="/entrar" replace state={{ voltar: local.pathname + local.search }} />;
+  if (isError)
+    return (
+      <div className="mx-auto max-w-sm px-6 py-24">
+        <EstadoErro mensagem="Não foi possível confirmar a sessão." tentarDeNovo={() => refetch()} />
+      </div>
+    );
+  if (!data?.usuario) return <Navigate to="/entrar" replace state={{ voltar: local.pathname + local.search }} />;
   if (data.usuario.trocar_senha) return <Navigate to="/trocar-senha" replace />;
   return <>{children}</>;
 }

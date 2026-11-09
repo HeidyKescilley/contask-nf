@@ -47,8 +47,6 @@ export interface Saude {
   versao: string;
   banco: { ok: boolean; journal_mode: string };
   chave_mestra: boolean;
-  empresas: number;
-  tem_contabilidade: boolean;
 }
 
 export type SituacaoCert = "ok" | "vence_30" | "vence_15" | "vence_7" | "vencido";

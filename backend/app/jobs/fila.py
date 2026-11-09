@@ -1,7 +1,8 @@
 """Fila de buscas persistida no banco (busca_job) + workers em threads.
 
-- No máximo `max_total` buscas ao mesmo tempo e 1 por certificado (um certificado da contabilidade
-  atende muitas empresas e o limite do ADN é desconhecido).
+- No máximo `max_total` buscas ao mesmo tempo por escritório e 1 por certificado (um certificado da
+  contabilidade atende muitas empresas e o limite do ADN é desconhecido). O processo varre todos
+  os escritórios.
 - Ao abrir: jobs que estavam "rodando" (sistema fechado no meio) voltam para a fila e continuam do NSU salvo;
   e cada empresa ativa ganha uma busca incremental.
 - A cada `intervalo_h` horas com o sistema aberto: nova busca incremental das empresas ativas.
@@ -58,17 +59,17 @@ class Gerenciador:
                  dormir: Callable[[float], None] | None = None, buscar_ao_abrir: bool = True):
         self._sf = sessao_factory
         self._fabrica = fabrica
-        self._max = max_total
+        self._max = max_total  # teto por escritório, não do processo inteiro
         self._pausa = pausa
         self._intervalo = timedelta(hours=intervalo_h)
         self._tick = tick
         self._dormir = dormir
         self._buscar_ao_abrir = buscar_ao_abrir
         self._lock = threading.Lock()
-        self._rodando: dict[int, str] = {}  # job_id -> chave do certificado
+        self._rodando: dict[int, tuple[int, str]] = {}  # job_id -> (escritorio_id, chave do certificado)
         self._parar = threading.Event()
         self._acordar = threading.Event()
-        self._pool = ThreadPoolExecutor(max_workers=max_total, thread_name_prefix="busca")
+        self._pool = ThreadPoolExecutor(max_workers=32, thread_name_prefix="busca")
         self._thread: threading.Thread | None = None
         self._proxima_periodica = datetime.now(timezone.utc) + self._intervalo
 
@@ -98,7 +99,7 @@ class Gerenciador:
     @property
     def em_execucao(self) -> dict[int, str]:
         with self._lock:
-            return dict(self._rodando)
+            return {jid: chave for jid, (_eid, chave) in self._rodando.items()}
 
     # --- agendamento ----------------------------------------------------------------
 
@@ -131,26 +132,27 @@ class Gerenciador:
 
     def _despachar(self) -> None:
         with self._lock:
-            livres = self._max - len(self._rodando)
-            if livres <= 0:
-                return
-            ocupados = set(self._rodando.values())
+            por_escritorio: dict[int, int] = {}
+            ocupados: set[str] = set()
+            for eid, chave in self._rodando.values():
+                por_escritorio[eid] = por_escritorio.get(eid, 0) + 1
+                ocupados.add(chave)
             with self._sf() as db:
                 prioridade = case((BuscaJob.tipo == "incremental", 1), else_=0)
                 for job in db.scalars(select(BuscaJob).where(BuscaJob.status == "fila")
                                       .order_by(prioridade, BuscaJob.criado_em, BuscaJob.id)):
-                    if livres <= 0:
-                        break
                     if job.id in self._rodando:
                         continue
                     e = db.get(Empresa, job.empresa_id)
-                    cert = certificado_da_empresa(db, e) if e else None
+                    if e is None or por_escritorio.get(e.escritorio_id, 0) >= self._max:
+                        continue
+                    cert = certificado_da_empresa(db, e)
                     chave = f"cert:{cert.id}" if cert else f"empresa:{job.empresa_id}"
                     if chave in ocupados:
                         continue
                     ocupados.add(chave)
-                    self._rodando[job.id] = chave
-                    livres -= 1
+                    por_escritorio[e.escritorio_id] = por_escritorio.get(e.escritorio_id, 0) + 1
+                    self._rodando[job.id] = (e.escritorio_id, chave)
                     self._pool.submit(self._executar, job.id)
 
     def _executar(self, job_id: int) -> None:

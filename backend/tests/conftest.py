@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 @pytest.fixture()
 def app_teste(tmp_path, monkeypatch):
-    """App com pasta de dados temporária e chave-mestra de teste (não toca no keyring real)."""
+    """App com pasta de dados temporária e chave-mestra de teste (não lê o .env real)."""
     monkeypatch.setenv("CONTASK_DADOS_DIR", str(tmp_path / "dados"))
     monkeypatch.setenv("CONTASK_FRONTEND_DIST", str(tmp_path / "dist"))
     monkeypatch.setenv("CONTASK_FILA_ATIVA", "false")
@@ -20,7 +20,14 @@ def app_teste(tmp_path, monkeypatch):
     cfgmod.config.cache_clear()
 
 
+SENHA_TESTE = "Senha-Forte-123"
+
+
 @pytest.fixture()
 def cliente(app_teste):
     with TestClient(app_teste, base_url="http://127.0.0.1:8765") as c:
+        r = c.post("/api/auth/cadastrar", json={
+            "nome": "Escritório Teste", "email": "teste@contask.local", "senha": SENHA_TESTE,
+        })
+        assert r.status_code == 201, r.text
         yield c

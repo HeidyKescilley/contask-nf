@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
+from app.api.escopo import escritorio_atual
 from app.core import brasilapi
 from app.core.certificados import (
     CertificadoInvalido, InfoCertificado, dias_restantes, ler_pfx, remover_arquivo, salvar_certificado,
@@ -31,13 +32,13 @@ router = APIRouter(prefix="/api", tags=["empresas"])
 # Auxiliares
 # ---------------------------------------------------------------------------
 
-def _contabilidade(db: Session) -> Empresa | None:
-    return db.scalar(select(Empresa).where(Empresa.is_contabilidade))
+def _contabilidade(db: Session, escritorio_id: int) -> Empresa | None:
+    return db.scalar(select(Empresa).where(Empresa.escritorio_id == escritorio_id, Empresa.is_contabilidade))
 
 
 def certificado_efetivo(db: Session, e: Empresa) -> Certificado | None:
     if e.modo_certificado == "contabilidade" and not e.is_contabilidade:
-        c = _contabilidade(db)
+        c = _contabilidade(db, e.escritorio_id)
         return db.get(Certificado, c.certificado_id) if c and c.certificado_id else None
     return db.get(Certificado, e.certificado_id) if e.certificado_id else None
 
@@ -85,9 +86,9 @@ def _serializar(db: Session, e: Empresa) -> EmpresaOut:
     )
 
 
-def _obter(db: Session, empresa_id: int) -> Empresa:
+def _obter(db: Session, empresa_id: int, escritorio_id: int) -> Empresa:
     e = db.get(Empresa, empresa_id)
-    if e is None:
+    if e is None or e.escritorio_id != escritorio_id:
         raise HTTPException(404, "Empresa não encontrada.")
     return e
 
@@ -164,9 +165,9 @@ def _texto(v: str | None) -> str | None:
 # ---------------------------------------------------------------------------
 
 @router.get("/cnpj/{cnpj}")
-def consultar_cnpj(cnpj: str, db: Session = Depends(sessao)):
+def consultar_cnpj(cnpj: str, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
     c = _cnpj_ou_erro(cnpj)
-    ja = db.scalar(select(Empresa).where(Empresa.cnpj == c))
+    ja = db.scalar(select(Empresa).where(Empresa.escritorio_id == esc, Empresa.cnpj == c))
     try:
         dados = brasilapi.consultar(c)
     except brasilapi.BrasilApiErro as ex:
@@ -193,8 +194,8 @@ async def validar_certificado(arquivo: UploadFile | None = File(None), senha: st
 # ---------------------------------------------------------------------------
 
 @router.get("/contabilidade", response_model=EmpresaOut | None)
-def obter_contabilidade(db: Session = Depends(sessao)):
-    c = _contabilidade(db)
+def obter_contabilidade(db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
+    c = _contabilidade(db, esc)
     return _serializar(db, c) if c else None
 
 
@@ -204,11 +205,12 @@ async def salvar_contabilidade(
     apelido: str | None = Form(None), uf: str | None = Form(None), municipio: str | None = Form(None),
     situacao_cadastral: str | None = Form(None), dados_brasilapi: str | None = Form(None),
     arquivo: UploadFile | None = File(None), senha: str | None = Form(None), db: Session = Depends(sessao),
+    esc: int = Depends(escritorio_atual),
 ):
     c = _cnpj_ou_erro(cnpj)
     if not razao_social.strip():
         raise HTTPException(422, "Informe a razão social.")
-    atual = _contabilidade(db)
+    atual = _contabilidade(db, esc)
     if atual and atual.cnpj != c:
         raise HTTPException(409, f"A contabilidade já é {atual.razao_social} ({formatar_cnpj(atual.cnpj)}).")
     pfx, senha_ok, info = await _ler_certificado(arquivo, senha)
@@ -216,14 +218,16 @@ async def salvar_contabilidade(
         raise HTTPException(422, f"O certificado é de {info.titular_nome} ({formatar_cnpj(info.titular_doc)}), "
                                  f"não da contabilidade informada ({formatar_cnpj(c)}).")
 
-    e = atual or db.scalar(select(Empresa).where(Empresa.cnpj == c)) or Empresa(cnpj=c)
+    e = atual or db.scalar(select(Empresa).where(Empresa.escritorio_id == esc, Empresa.cnpj == c))
+    if e is None:
+        e = Empresa(cnpj=c, escritorio_id=esc)
     antigo_cert = e.certificado_id
     e.razao_social, e.nome_fantasia, e.apelido = razao_social.strip(), _texto(nome_fantasia), _texto(apelido)
     e.uf, e.municipio, e.situacao_cadastral = _texto(uf), _texto(municipio), _texto(situacao_cadastral)
     e.dados_brasilapi = _dados_brasilapi(dados_brasilapi) or e.dados_brasilapi
     e.is_contabilidade, e.modo_certificado, e.ativa = True, "proprio", True
     with db.no_autoflush:
-        cert = salvar_certificado(db, pfx, senha_ok, info)
+        cert = salvar_certificado(db, pfx, senha_ok, info, escritorio_id=esc)
     e.certificado_id = cert.id
     db.add(e)
     db.flush()
@@ -244,8 +248,8 @@ async def salvar_contabilidade(
 
 @router.get("/empresas", response_model=list[EmpresaOut])
 def listar_empresas(q: str | None = None, filtro: str | None = Query(None, pattern="^(procuracao_pendente|certificado|pendencias|inativas)$"),
-                    db: Session = Depends(sessao)):
-    stmt = select(Empresa).order_by(Empresa.is_contabilidade.desc(), Empresa.razao_social)
+                    db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
+    stmt = select(Empresa).where(Empresa.escritorio_id == esc).order_by(Empresa.is_contabilidade.desc(), Empresa.razao_social)
     if q and q.strip():
         termo = f"%{q.strip()}%"
         doc = limpar_cnpj(q)
@@ -272,24 +276,24 @@ async def criar_empresa(
     apelido: str | None = Form(None), uf: str | None = Form(None), municipio: str | None = Form(None),
     situacao_cadastral: str | None = Form(None), dados_brasilapi: str | None = Form(None),
     modo_certificado: str = Form("contabilidade"), arquivo: UploadFile | None = File(None),
-    senha: str | None = Form(None), db: Session = Depends(sessao),
+    senha: str | None = Form(None), db: Session = Depends(sessao), esc: int = Depends(escritorio_atual),
 ):
     c = _cnpj_ou_erro(cnpj)
     if not razao_social.strip():
         raise HTTPException(422, "Informe a razão social.")
-    if db.scalar(select(Empresa).where(Empresa.cnpj == c)):
+    if db.scalar(select(Empresa).where(Empresa.escritorio_id == esc, Empresa.cnpj == c)):
         raise HTTPException(409, f"O CNPJ {formatar_cnpj(c)} já está cadastrado.")
     try:
-        exigir_vaga_empresa(db)
+        exigir_vaga_empresa(db, esc)
     except LimiteTeste as erro:
         raise HTTPException(403, str(erro)) from None
     avisos: list[str] = []
     e = Empresa(cnpj=c, razao_social=razao_social.strip(), nome_fantasia=_texto(nome_fantasia),
                 apelido=_texto(apelido), uf=_texto(uf), municipio=_texto(municipio),
                 situacao_cadastral=_texto(situacao_cadastral), dados_brasilapi=_dados_brasilapi(dados_brasilapi),
-                is_contabilidade=False, ativa=True)
+                is_contabilidade=False, ativa=True, escritorio_id=esc)
     if modo_certificado == "contabilidade":
-        contab = _contabilidade(db)
+        contab = _contabilidade(db, esc)
         if contab is None or contab.certificado_id is None:
             raise HTTPException(409, "Cadastre primeiro a contabilidade e o certificado dela.")
         cc = db.get(Certificado, contab.certificado_id)
@@ -299,7 +303,7 @@ async def criar_empresa(
     elif modo_certificado == "proprio":
         pfx, senha_ok, info = await _ler_certificado(arquivo, senha)
         e.modo_certificado = "proprio"
-        e.certificado_id = salvar_certificado(db, pfx, senha_ok, info).id
+        e.certificado_id = salvar_certificado(db, pfx, senha_ok, info, escritorio_id=esc).id
         if aviso := _aviso_raiz(info, c):
             avisos.append(aviso)
     else:
@@ -315,13 +319,13 @@ async def criar_empresa(
 
 
 @router.get("/empresas/{empresa_id}", response_model=EmpresaOut)
-def obter_empresa(empresa_id: int, db: Session = Depends(sessao)):
-    return _serializar(db, _obter(db, empresa_id))
+def obter_empresa(empresa_id: int, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
+    return _serializar(db, _obter(db, empresa_id, esc))
 
 
 @router.patch("/empresas/{empresa_id}", response_model=EmpresaOut)
-def editar_empresa(empresa_id: int, dados: EmpresaPatch, db: Session = Depends(sessao)):
-    e = _obter(db, empresa_id)
+def editar_empresa(empresa_id: int, dados: EmpresaPatch, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
+    e = _obter(db, empresa_id, esc)
     campos = dados.model_dump(exclude_unset=True)
     if "razao_social" in campos and not (campos["razao_social"] or "").strip():
         raise HTTPException(422, "Informe a razão social.")
@@ -338,21 +342,21 @@ def editar_empresa(empresa_id: int, dados: EmpresaPatch, db: Session = Depends(s
 @router.put("/empresas/{empresa_id}/certificado", response_model=EmpresaCriada)
 async def trocar_certificado(
     empresa_id: int, modo_certificado: str = Form(...), arquivo: UploadFile | None = File(None),
-    senha: str | None = Form(None), db: Session = Depends(sessao),
+    senha: str | None = Form(None), db: Session = Depends(sessao), esc: int = Depends(escritorio_atual),
 ):
-    e = _obter(db, empresa_id)
+    e = _obter(db, empresa_id, esc)
     if e.is_contabilidade:
         raise HTTPException(409, "Para trocar o certificado da contabilidade, use o assistente da contabilidade.")
     avisos: list[str] = []
     antigo = e.certificado_id
     if modo_certificado == "contabilidade":
-        if _contabilidade(db) is None:
+        if _contabilidade(db, esc) is None:
             raise HTTPException(409, "Cadastre primeiro a contabilidade e o certificado dela.")
         e.modo_certificado, e.certificado_id = "contabilidade", None
     elif modo_certificado == "proprio":
         pfx, senha_ok, info = await _ler_certificado(arquivo, senha)
         e.modo_certificado = "proprio"
-        e.certificado_id = salvar_certificado(db, pfx, senha_ok, info).id
+        e.certificado_id = salvar_certificado(db, pfx, senha_ok, info, escritorio_id=esc).id
         if aviso := _aviso_raiz(info, e.cnpj):
             avisos.append(aviso)
     else:
@@ -371,8 +375,9 @@ async def trocar_certificado(
 
 
 @router.delete("/empresas/{empresa_id}", status_code=204)
-def excluir_empresa(empresa_id: int, confirmacao: str = Query(...), db: Session = Depends(sessao)):
-    e = _obter(db, empresa_id)
+def excluir_empresa(empresa_id: int, confirmacao: str = Query(...), db: Session = Depends(sessao),
+                    esc: int = Depends(escritorio_atual)):
+    e = _obter(db, empresa_id, esc)
     if limpar_cnpj(confirmacao) != e.cnpj:
         raise HTTPException(422, "Para excluir, digite o CNPJ da empresa exatamente.")
     if e.is_contabilidade:

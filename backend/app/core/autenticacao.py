@@ -18,7 +18,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import config
-from app.models import SessaoUsuario, Usuario
+from app.models import Escritorio, SessaoUsuario, Usuario
 
 COOKIE = "contask_sessao"
 SENHA_MINIMA = 10
@@ -183,6 +183,21 @@ def encerrar_sessoes(db: Session, usuario_id: int, exceto_token: str | None = No
     db.execute(q)
 
 
+def _escritorio_do_cadastro(db: Session, nome: str) -> Escritorio:
+    """Sem usuário e com um escritório já no banco: o primeiro cadastro assume esse escritório.
+    Banco vazio, ou que já tem usuário, cria outro."""
+    n_usuarios = int(db.scalar(select(func.count()).select_from(Usuario)) or 0)
+    if n_usuarios == 0:
+        escritorios = list(db.scalars(select(Escritorio).order_by(Escritorio.id)))
+        if len(escritorios) == 1:
+            escritorios[0].nome = nome
+            return escritorios[0]
+    esc = Escritorio(nome=nome)
+    db.add(esc)
+    db.flush()
+    return esc
+
+
 def criar_usuario(db: Session, email: str, nome: str, senha: str, *, trocar_senha: bool = True) -> Usuario:
     email = normalizar_email(email)
     if "@" not in email or len(email) > 200:
@@ -190,8 +205,10 @@ def criar_usuario(db: Session, email: str, nome: str, senha: str, *, trocar_senh
     if db.scalar(select(Usuario.id).where(func.lower(Usuario.email) == email)):
         raise ErroLogin("Já existe um usuário com esse e-mail.")
     validar_nova_senha(senha)
-    u = Usuario(email=email, nome=(nome or "").strip() or email, senha_hash=gerar_hash(senha), ativo=True,
-                trocar_senha=trocar_senha, criado_em=agora())
+    nome_limpo = (nome or "").strip() or email
+    esc = _escritorio_do_cadastro(db, nome_limpo)
+    u = Usuario(email=email, nome=nome_limpo, senha_hash=gerar_hash(senha), ativo=True,
+                trocar_senha=trocar_senha, criado_em=agora(), escritorio_id=esc.id)
     db.add(u)
     db.flush()
     return u

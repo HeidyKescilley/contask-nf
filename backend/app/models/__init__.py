@@ -19,14 +19,25 @@ class Base(DeclarativeBase):
     pass
 
 
+class Escritorio(Base):
+    """Cliente que paga. Um usuário vê todas as empresas deste escritório."""
+    __tablename__ = "escritorio"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    nome: Mapped[str] = mapped_column(String(200))
+
+
 class Certificado(Base):
     __tablename__ = "certificado"
+    __table_args__ = (
+        UniqueConstraint("escritorio_id", "thumbprint", name="uq_certificado_escritorio_thumbprint"),
+    )
     id: Mapped[int] = mapped_column(primary_key=True)
+    escritorio_id: Mapped[int] = mapped_column(ForeignKey("escritorio.id", ondelete="CASCADE"), index=True)
     titular_doc: Mapped[str] = mapped_column(String(14), index=True)
     titular_nome: Mapped[str] = mapped_column(String(200))
     tipo: Mapped[str] = mapped_column(String(8))  # e-CNPJ | e-CPF
     validade: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    thumbprint: Mapped[str] = mapped_column(String(64), unique=True)
+    thumbprint: Mapped[str] = mapped_column(String(64))
     pfx_cifrado_path: Mapped[str] = mapped_column(String(500))
     senha_cifrada: Mapped[str] = mapped_column(Text)
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
@@ -35,12 +46,14 @@ class Certificado(Base):
 class Empresa(Base):
     __tablename__ = "empresa"
     __table_args__ = (
-        # Só uma empresa pode ser a contabilidade
-        Index("ux_empresa_contabilidade", "is_contabilidade", unique=True,
+        UniqueConstraint("escritorio_id", "cnpj", name="uq_empresa_escritorio_cnpj"),
+        # Uma contabilidade por escritório
+        Index("ux_empresa_contabilidade", "escritorio_id", unique=True,
               sqlite_where=text("is_contabilidade = 1")),
     )
     id: Mapped[int] = mapped_column(primary_key=True)
-    cnpj: Mapped[str] = mapped_column(String(14), unique=True)
+    escritorio_id: Mapped[int] = mapped_column(ForeignKey("escritorio.id", ondelete="CASCADE"), index=True)
+    cnpj: Mapped[str] = mapped_column(String(14))
     razao_social: Mapped[str] = mapped_column(String(200))
     nome_fantasia: Mapped[str | None] = mapped_column(String(200))
     apelido: Mapped[str | None] = mapped_column(String(100))
@@ -174,9 +187,10 @@ class Exportacao(Base):
 
 
 class Usuario(Base):
-    """Pessoa do escritório que entra no sistema (servidor na internet)."""
+    """Pessoa do escritório. Nesta etapa não há papéis: vê todas as empresas do escritório."""
     __tablename__ = "usuario"
     id: Mapped[int] = mapped_column(primary_key=True)
+    escritorio_id: Mapped[int] = mapped_column(ForeignKey("escritorio.id", ondelete="CASCADE"), index=True)
     email: Mapped[str] = mapped_column(String(200), unique=True)
     nome: Mapped[str] = mapped_column(String(200))
     senha_hash: Mapped[str] = mapped_column(String(300))
