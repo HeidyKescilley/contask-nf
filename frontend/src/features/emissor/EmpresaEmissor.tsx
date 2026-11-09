@@ -24,7 +24,7 @@ export function EmpresaEmissor() {
   const q = useEmpresaEmissora(id);
   return (
     <>
-      <Link to="/emissor" className="mb-3 inline-flex items-center gap-1.5 text-sm text-texto-2 hover:text-texto">
+      <Link to="/emissor/empresas" className="mb-3 inline-flex items-center gap-1.5 text-sm text-texto-2 hover:text-texto">
         <ArrowLeft className="size-4" aria-hidden /> Empresas emissoras
       </Link>
       {q.isLoading && <Esqueleto className="h-96 w-full" />}
@@ -131,7 +131,7 @@ function FormPrestador({ e, cfg }: { e: EmpresaEmissora; cfg: ConfigPrestador })
             </Select>
           )}
         </Campo>
-        <Campo rotulo="Inscrição municipal" ajuda="Obrigatória se a empresa tiver cadastro no município emissor.">
+        <Campo rotulo="Inscrição municipal" ajuda="Só preencha se o município tiver a inscrição no cadastro nacional (CNC). Informar sem ter gera recusa (E0120).">
           {(p) => <Input {...p} value={d.inscricao_municipal} maxLength={15} onChange={(ev) => setD({ ...d, inscricao_municipal: ev.target.value })} />}
         </Campo>
         <Campo rotulo="Série da DPS" ajuda="De 1 a 49999. Use outra série se a empresa já emite por outro sistema.">

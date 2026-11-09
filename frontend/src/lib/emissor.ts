@@ -130,3 +130,84 @@ export function mascararCep(v: string | null | undefined) {
   const d = apenasDigitos(v).slice(0, 8);
   return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d;
 }
+
+export type SituacaoEmitida = "enviando" | "autorizada" | "rejeitada" | "pendente" | "cancelada";
+
+export interface ErroSefin { codigo: string | null; descricao: string | null; complemento: string | null }
+
+export interface NotaEmitida {
+  id: number;
+  empresa_id: number;
+  empresa_nome: string;
+  empresa_cnpj: string;
+  servico_id: number | null;
+  ambiente: 1 | 2;
+  homologacao: boolean;
+  serie: string;
+  numero: number;
+  id_dps: string;
+  situacao: SituacaoEmitida;
+  competencia: string;
+  tomador: Tomador | null;
+  descricao: string;
+  ctribnac: string;
+  ctribnac_formatado: string;
+  cnbs: string;
+  cnbs_formatado: string;
+  ctribmun: string | null;
+  cod_municipio_prestacao: string;
+  valor_servico: number;
+  desconto: number;
+  iss_retido: boolean;
+  aliquota_iss: number | null;
+  ret_pis: number;
+  ret_cofins: number;
+  ret_csll: number;
+  ret_irrf: number;
+  ret_cp: number;
+  info_complementar: string | null;
+  chave: string | null;
+  numero_nfse: string | null;
+  valor_iss: number | null;
+  valor_liquido: number | null;
+  erros: ErroSefin[];
+  mensagem: string | null;
+  motivo_cancelamento: string | null;
+  criado_em: string;
+  enviado_em: string | null;
+  autorizado_em: string | null;
+  cancelado_em: string | null;
+}
+
+export interface AmbienteEmissor { ambiente: 1 | 2; producao: boolean; descricao: string }
+
+export function useAmbienteEmissor() {
+  return useQuery({ queryKey: ["emissor", "ambiente"], queryFn: () => api<AmbienteEmissor>("/api/emissor/ambiente"), staleTime: Infinity });
+}
+
+export function useNotasEmitidas(filtros: { empresa_id?: number | null; situacao?: string | null }) {
+  const p = new URLSearchParams();
+  if (filtros.empresa_id) p.set("empresa_id", String(filtros.empresa_id));
+  if (filtros.situacao) p.set("situacao", filtros.situacao);
+  return useQuery({
+    queryKey: ["emissor", "notas", filtros],
+    queryFn: () => api<NotaEmitida[]>(`/api/emissor/notas?${p}`),
+    placeholderData: (ant) => ant,
+  });
+}
+
+/** "1.234,56" ou "1234.56" -> 1234.56 (NaN se vazio/ inválido). */
+export function lerValor(v: string): number {
+  const s = (v ?? "").trim();
+  if (!s) return NaN;
+  const milhar = /^\d{1,3}(\.\d{3})+$/.test(s); // "1.500" = mil e quinhentos
+  const normal = s.includes(",") || milhar ? s.replace(/\./g, "").replace(",", ".") : s;
+  return /^\d+(\.\d{0,2})?$/.test(normal) ? Number(normal) : NaN;
+}
+
+export function escreverValor(n: number | null | undefined): string {
+  if (n === null || n === undefined || isNaN(n)) return "";
+  return n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+export const arredondar = (n: number) => Math.round(n * 100) / 100;

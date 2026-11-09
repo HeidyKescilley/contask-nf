@@ -79,6 +79,13 @@ O teste foi feito com a CONTELB (ME/EPP do Simples) emitindo para um tomador do 
 - Nos demais casos com convênio ativo, a Sefin usa a parametrização do município, e informar a alíquota gera rejeição (E0617, E0625, E0635).
 - MEI e empresa com regime especial nunca informam (E0600, E0604).
 
+**Inscrição municipal do prestador:** só pode ser informada se o município tiver as informações complementares da empresa no CNC. Sem isso, a Sefin devolve E0120. Isso aconteceu com a CONTELB no DF.
+
+**Tela de emissão (Etapa 4, testada na produção restrita em 09/11/2026):**
+- emissão completa pela tela: tomador buscado na BrasilAPI, ISS retido com alíquota do Simples e IRRF de 1,5%, NFS-e nº 6;
+- cancelamento pela lista de notas emitidas;
+- correção de uma nota rejeitada por E0120, reenviada com o mesmo número da DPS e autorizada como NFS-e nº 7.
+
 **Grupo IBS/CBS:** ainda não é enviado. É opcional nos dois leiautes e foi aceito sem ele. Os códigos `cIndOp` e `cClassTrib` já ficam guardados no serviço para quando o grupo passar a ser exigido.
 
 ## Parâmetros municipais (somente leitura, também em produção)
