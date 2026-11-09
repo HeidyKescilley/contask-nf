@@ -21,6 +21,7 @@ Para encerrar, feche a janela minimizada **"Contask NF - servidor"**.
 | Serviços Tomados / Prestados | Lista com filtros (chave, número, valor `1.234,56`, nome, período, status), DANFSe, XML e histórico de eventos |
 | Exportações | ZIP com os XMLs (e, se quiser, os eventos) e relatório em XLSX ou PDF, com prévia ao vivo e histórico. Opção **Todas as empresas**: um único ZIP com uma pasta `<CNPJ> <razão social>` por empresa e `resumo_empresas` na raiz |
 | Empresas | Cadastro, certificados, procurações, filtro "Procuração pendente", "Buscar agora" e "Refazer do zero". **Importar planilha** (XLSX/CSV com CNPJ, Razão social e Apelido): todas entram por procuração e com busca agendada |
+| Emissor NFS-e | Em construção. Empresas emissoras (checkbox em lote), dados do prestador (regime, série e numeração), serviços por empresa (descrição, item da LC 116, NBS e código municipal, com busca nas tabelas oficiais) e tomadores salvos (CNPJ preenchido pela BrasilAPI). Para emitir, a empresa precisa do próprio certificado A1. Detalhes técnicos em [docs/emissor/NOTAS_TECNICAS.md](docs/emissor/NOTAS_TECNICAS.md) |
 | Central de Buscas | Botão "Buscas" no topo: andamento, contadores, log, pausar e retomar |
 
 ## Como funciona (o essencial)

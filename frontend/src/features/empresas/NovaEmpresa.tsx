@@ -81,13 +81,15 @@ export function NovaEmpresa() {
   const [dados, setDados] = useState<DadosEmpresa>(DADOS_VAZIOS);
   const [modo, setModo] = useState<Modo>("contabilidade");
   const [cert, setCert] = useState<CertificadoEscolhido | null>(null);
+  const [emite, setEmite] = useState(false);
   const navegar = useNavigate();
   const atualizar = useAtualizarEmpresas();
   const { abrir: abrirCentral } = useCentral();
 
   const salvar = useMutation({
     mutationFn: () => apiForm<EmpresaCriada>("/api/empresas", {
-      ...dados, modo_certificado: modo, ...(modo === "proprio" && cert ? { arquivo: cert.arquivo, senha: cert.senha } : {}),
+      ...dados, modo_certificado: modo, emite_nfse: emite ? "true" : "false",
+      ...(modo === "proprio" && cert ? { arquivo: cert.arquivo, senha: cert.senha } : {}),
     }),
     onSuccess: (r) => {
       atualizar();
@@ -140,6 +142,18 @@ export function NovaEmpresa() {
                 : `Próprio: ${cert?.info.titular_nome}`}
             </LinhaResumo>
           </dl>
+          <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-borda p-3.5">
+            <input type="checkbox" className="mt-0.5 size-4 cursor-pointer accent-destaque" checked={emite} onChange={(ev) => setEmite(ev.target.checked)} />
+            <span>
+              <span className="block text-sm font-medium">Emite NFS-e pelo Contask</span>
+              <span className="block text-sm text-texto-2">
+                A empresa aparece no emissor de notas. Para emitir, ela precisa do próprio certificado A1: a procuração serve só para baixar notas.
+              </span>
+            </span>
+          </label>
+          {emite && modo !== "proprio" && (
+            <div className="mt-3"><Aviso tom="alerta">Você escolheu o certificado da contabilidade. A empresa fica marcada, mas só emite depois que o certificado dela for enviado.</Aviso></div>
+          )}
           {salvar.isError && <div className="mt-4"><Aviso tom="erro">{(salvar.error as Error).message}</Aviso></div>}
           <div className="mt-5 flex justify-between">
             <Button variante="fantasma" onClick={() => setPasso(1)} disabled={salvar.isPending}>Voltar</Button>

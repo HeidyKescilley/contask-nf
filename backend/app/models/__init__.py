@@ -65,7 +65,64 @@ class Empresa(Base):
     modo_certificado: Mapped[str] = mapped_column(String(15), default="contabilidade")  # proprio|contabilidade
     certificado_id: Mapped[int | None] = mapped_column(ForeignKey("certificado.id", ondelete="SET NULL"))
     ativa: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Emite NFS-e pelo emissor do Contask (exige certificado próprio: procuração não assina DPS, E0718)
+    emite_nfse: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
+
+
+class EmissorEmpresa(Base):
+    """Dados de prestador para o emissor (grupo prest/regTrib da DPS e numeração)."""
+    __tablename__ = "emissor_empresa"
+    empresa_id: Mapped[int] = mapped_column(ForeignKey("empresa.id", ondelete="CASCADE"), primary_key=True)
+    inscricao_municipal: Mapped[str | None] = mapped_column(String(15))
+    # opSimpNac: 1 não optante | 2 MEI | 3 ME/EPP
+    op_simples: Mapped[str] = mapped_column(String(1), default="1")
+    # regApTribSN (só ME/EPP): 1 tudo pelo SN | 2 federais pelo SN, ISS fora | 3 tudo fora do SN
+    reg_ap_trib_sn: Mapped[str | None] = mapped_column(String(1))
+    # regEspTrib: 0 nenhum | 1 ato cooperado | 2 estimativa | 3 microempresa municipal | 4 notário | 5 autônomo | 6 sociedade de profissionais
+    reg_esp_trib: Mapped[str] = mapped_column(String(1), default="0")
+    serie: Mapped[str] = mapped_column(String(5), default="1")  # 00001–49999: aplicativo próprio
+    proximo_numero: Mapped[int] = mapped_column(Integer, default=1)
+    atualizado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora, onupdate=agora)
+
+
+class ServicoEmissor(Base):
+    """Serviço cadastrado de uma empresa: descrição e códigos. Valor e tributos vêm na emissão."""
+    __tablename__ = "servico_emissor"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    empresa_id: Mapped[int] = mapped_column(ForeignKey("empresa.id", ondelete="CASCADE"), index=True)
+    descricao: Mapped[str] = mapped_column(Text)              # xDescServ (até 2000)
+    ctribnac: Mapped[str] = mapped_column(String(6))           # código de tributação nacional (LC 116)
+    cnbs: Mapped[str] = mapped_column(String(9))               # NBS 2.0
+    ctribmun: Mapped[str | None] = mapped_column(String(3))    # código complementar municipal
+    cindop: Mapped[str | None] = mapped_column(String(6))      # IBS/CBS: indicador da operação
+    cclasstrib: Mapped[str | None] = mapped_column(String(6))  # IBS/CBS: classificação tributária
+    ativo: Mapped[bool] = mapped_column(Boolean, default=True)
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
+    atualizado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora, onupdate=agora)
+
+
+class Tomador(Base):
+    """Tomador salvo do escritório, reaproveitado nas próximas notas."""
+    __tablename__ = "tomador"
+    __table_args__ = (UniqueConstraint("escritorio_id", "documento", name="uq_tomador_escritorio_documento"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    escritorio_id: Mapped[int] = mapped_column(ForeignKey("escritorio.id", ondelete="CASCADE"), index=True)
+    documento: Mapped[str] = mapped_column(String(14))  # CNPJ (14) ou CPF (11)
+    nome: Mapped[str] = mapped_column(String(300))
+    inscricao_municipal: Mapped[str | None] = mapped_column(String(15))
+    cep: Mapped[str | None] = mapped_column(String(8))
+    cod_municipio: Mapped[str | None] = mapped_column(String(7))  # IBGE
+    municipio: Mapped[str | None] = mapped_column(String(100))
+    uf: Mapped[str | None] = mapped_column(String(2))
+    logradouro: Mapped[str | None] = mapped_column(String(255))
+    numero: Mapped[str | None] = mapped_column(String(60))
+    complemento: Mapped[str | None] = mapped_column(String(156))
+    bairro: Mapped[str | None] = mapped_column(String(60))
+    telefone: Mapped[str | None] = mapped_column(String(20))
+    email: Mapped[str | None] = mapped_column(String(80))
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
+    atualizado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora, onupdate=agora)
 
 
 class SyncEstado(Base):

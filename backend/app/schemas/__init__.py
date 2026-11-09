@@ -35,6 +35,7 @@ class EmpresaOut(BaseModel):
     situacao_cadastral: str | None
     is_contabilidade: bool
     ativa: bool
+    emite_nfse: bool = False
     modo_certificado: str
     acesso: str  # proprio|mesma_raiz|procuracao|sem_certificado
     certificado: CertificadoOut | None
@@ -56,3 +57,4 @@ class EmpresaPatch(BaseModel):
     uf: str | None = None
     municipio: str | None = None
     ativa: bool | None = None
+    emite_nfse: bool | None = None

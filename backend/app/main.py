@@ -7,7 +7,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import auth, buscas, dashboard, empresas, exportacoes, importacao, notas, sistema
+from app.api import auth, buscas, dashboard, emissor, empresas, exportacoes, importacao, notas, sistema
 from app.core import cripto
 from app.core.config import config
 from app.core.migracao import migrar
@@ -73,6 +73,7 @@ def criar_app() -> FastAPI:
     app.include_router(dashboard.router)
     app.include_router(exportacoes.router)
     app.include_router(importacao.router)
+    app.include_router(emissor.router)
 
     @app.exception_handler(RequestValidationError)
     async def validacao(_req: Request, exc: RequestValidationError):

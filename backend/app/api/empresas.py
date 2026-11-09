@@ -78,7 +78,7 @@ def _serializar(db: Session, e: Empresa) -> EmpresaOut:
     return EmpresaOut(
         id=e.id, cnpj=e.cnpj, razao_social=e.razao_social, nome_fantasia=e.nome_fantasia, apelido=e.apelido,
         uf=e.uf, municipio=e.municipio, situacao_cadastral=e.situacao_cadastral,
-        is_contabilidade=e.is_contabilidade, ativa=e.ativa, modo_certificado=e.modo_certificado,
+        is_contabilidade=e.is_contabilidade, ativa=e.ativa, emite_nfse=e.emite_nfse, modo_certificado=e.modo_certificado,
         acesso=_acesso(e, cert), certificado=_cert_out(cert),
         busca=BuscaResumo(situacao=sync.situacao, ultima_busca_em=sync.ultima_busca_em, ultimo_erro=sync.ultimo_erro,
                           tipo_consulta=sync.tipo_consulta, ultimo_nsu=sync.ultimo_nsu or 0, job_pendente=pendente > 0),
@@ -276,7 +276,8 @@ async def criar_empresa(
     apelido: str | None = Form(None), uf: str | None = Form(None), municipio: str | None = Form(None),
     situacao_cadastral: str | None = Form(None), dados_brasilapi: str | None = Form(None),
     modo_certificado: str = Form("contabilidade"), arquivo: UploadFile | None = File(None),
-    senha: str | None = Form(None), db: Session = Depends(sessao), esc: int = Depends(escritorio_atual),
+    senha: str | None = Form(None), emite_nfse: bool = Form(False), db: Session = Depends(sessao),
+    esc: int = Depends(escritorio_atual),
 ):
     c = _cnpj_ou_erro(cnpj)
     if not razao_social.strip():
@@ -291,7 +292,7 @@ async def criar_empresa(
     e = Empresa(cnpj=c, razao_social=razao_social.strip(), nome_fantasia=_texto(nome_fantasia),
                 apelido=_texto(apelido), uf=_texto(uf), municipio=_texto(municipio),
                 situacao_cadastral=_texto(situacao_cadastral), dados_brasilapi=_dados_brasilapi(dados_brasilapi),
-                is_contabilidade=False, ativa=True, escritorio_id=esc)
+                is_contabilidade=False, ativa=True, emite_nfse=emite_nfse, escritorio_id=esc)
     if modo_certificado == "contabilidade":
         contab = _contabilidade(db, esc)
         if contab is None or contab.certificado_id is None:
@@ -310,8 +311,13 @@ async def criar_empresa(
         raise HTTPException(422, "Modo de certificado inválido.")
     if aviso := _aviso_situacao(e.situacao_cadastral):
         avisos.append(aviso)
+    if emite_nfse and modo_certificado != "proprio":
+        avisos.append("Para emitir NFS-e, envie o certificado A1 da própria empresa: a procuração não serve para emitir.")
     db.add(e)
     db.flush()
+    if emite_nfse:
+        from app.api.emissor import config_prestador
+        config_prestador(db, e)
     _agendar_busca_inicial(db, e)
     db.commit()
     acordar_fila()
@@ -335,6 +341,9 @@ def editar_empresa(empresa_id: int, dados: EmpresaPatch, db: Session = Depends(s
         if isinstance(v, str):
             v = v.strip() if k == "razao_social" else _texto(v)
         setattr(e, k, v)
+    if campos.get("emite_nfse"):
+        from app.api.emissor import config_prestador
+        config_prestador(db, e)
     db.commit()
     return _serializar(db, e)
 

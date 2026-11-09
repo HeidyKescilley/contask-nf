@@ -76,6 +76,7 @@ export interface Empresa {
   situacao_cadastral: string | null;
   is_contabilidade: boolean;
   ativa: boolean;
+  emite_nfse: boolean;
   modo_certificado: "proprio" | "contabilidade";
   acesso: "proprio" | "mesma_raiz" | "procuracao" | "sem_certificado";
   certificado: Certificado | null;

@@ -1,5 +1,5 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Loader2, Trash2 } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, Loader2, ReceiptText, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -62,6 +62,7 @@ function Detalhe({ e }: { e: Empresa }) {
       </Painel>
 
       <FormDados e={e} aoSalvar={atualizar} />
+      <PainelEmissor e={e} aoSalvar={atualizar} />
       {e.is_contabilidade ? <CertContabilidade e={e} /> : <TrocaCertificado e={e} aoSalvar={atualizar} />}
       {!e.is_contabilidade && <ZonaPerigo e={e} aoSalvar={atualizar} />}
     </div>
@@ -167,6 +168,34 @@ function TrocaCertificado({ e, aoSalvar }: { e: Empresa; aoSalvar: () => void })
           </div>
         </div>
       )}
+    </Painel>
+  );
+}
+
+function PainelEmissor({ e, aoSalvar }: { e: Empresa; aoSalvar: () => void }) {
+  const qc = useQueryClient();
+  const alternar = useMutation({
+    mutationFn: () => api<Empresa>(`/api/empresas/${e.id}`, { method: "PATCH", body: JSON.stringify({ emite_nfse: !e.emite_nfse }) }),
+    onSuccess: (r) => {
+      aoSalvar();
+      qc.invalidateQueries({ queryKey: ["emissor"] });
+      toast.success(r.emite_nfse ? "A empresa agora emite NFS-e pelo Contask." : "A empresa não emite mais pelo Contask.");
+    },
+    onError: (err) => toast.error((err as Error).message),
+  });
+  return (
+    <Painel titulo="Emissor de NFS-e">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <label className="flex cursor-pointer items-start gap-3">
+          <input type="checkbox" className="mt-0.5 size-4 cursor-pointer accent-destaque" checked={e.emite_nfse}
+            disabled={alternar.isPending} onChange={() => alternar.mutate()} />
+          <span>
+            <span className="block text-sm font-medium">Emite NFS-e pelo Contask</span>
+            <span className="block text-sm text-texto-2">Para emitir, a empresa precisa do próprio certificado A1 (a procuração serve só para baixar notas).</span>
+          </span>
+        </label>
+        {e.emite_nfse && <Button asChild><Link to={`/emissor/empresas/${e.id}`}><ReceiptText /> Serviços e dados do prestador</Link></Button>}
+      </div>
     </Painel>
   );
 }
