@@ -81,7 +81,10 @@ O teste foi feito com a CONTELB (ME/EPP do Simples) emitindo para um tomador do 
 - **Cancelamento pela API não funciona por procuração:**
   - com o autor = prestador, a Sefin devolve **E0812**: o CNPJ do autor tem que ter a mesma base do certificado que assina;
   - com o autor = procurador, a Sefin devolve **E0813**: o autor do evento 101101 tem que ser o próprio prestador;
-  - para cancelar, é preciso o Emissor Nacional Web (com representação) ou o certificado da própria empresa.
+  - com o autor = CPF do responsável que está no e-CNPJ da contabilidade, a Sefin devolve **E0815**: ela não usa esse CPF;
+  - sem assinatura, valendo só o certificado da conexão, a Sefin devolve **E0717**: a assinatura é obrigatória;
+  - a API da Sefin (`swagger/docs/v1`) não tem parâmetro de representação, e a API do ADN só tem leitura (`GET /DFe/{NSU}` e `GET /NFSe/{chave}/Eventos`);
+  - o Emissor Nacional Web cancela por procuração, porque registra o evento dentro do próprio portal. Pela API, por enquanto, é preciso o certificado da própria empresa.
 - **Como ficou no sistema:**
   - Empresa cadastrada por procuração emite com o certificado da contabilidade.
   - Na homologação, a emissão é barrada antes de gastar o número da DPS, porque lá a Sefin recusa com E0718.
