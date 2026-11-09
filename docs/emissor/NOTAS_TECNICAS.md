@@ -84,6 +84,8 @@ O teste foi feito com a CONTELB (ME/EPP do Simples) emitindo para um tomador do 
   - com o autor = CPF do responsável que está no e-CNPJ da contabilidade, a Sefin devolve **E0815**: ela não usa esse CPF;
   - sem assinatura, valendo só o certificado da conexão, a Sefin devolve **E0717**: a assinatura é obrigatória;
   - a API da Sefin (`swagger/docs/v1`) não tem parâmetro de representação, e a API do ADN só tem leitura (`GET /DFe/{NSU}` e `GET /NFSe/{chave}/Eventos`);
+  - **funciona (09/11/2026):** a nota emitida por procuração foi cancelada pelo motor do sistema depois que a CONTELB Serviços cadastrou o próprio certificado (autor = prestador, assinatura = e-CNPJ dela). Emitir por procuração e cancelar com o certificado próprio é uma combinação válida;
+  - a consulta `GET /nfse/{chave}/eventos/101101/1` e o ADN demoram para mostrar o evento recém-registrado: logo depois do 201, a consulta respondeu 404;
   - o Emissor Nacional Web cancela por procuração, porque registra o evento dentro do próprio portal. Pela API, por enquanto, é preciso o certificado da própria empresa.
 - **Como ficou no sistema:**
   - Empresa cadastrada por procuração emite com o certificado da contabilidade.
