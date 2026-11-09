@@ -317,6 +317,9 @@ def test_producao_so_com_liberacao(cliente, sefin, monkeypatch):
         assert r.status_code == 200 and r.json()["ambiente"] == 1
         cliente.post("/api/emissor/notas", json=_emissao(e, s))
         assert etree.fromstring(sefin.recebidas[-1])[0].find("n:tpAmb", NS).text == "1"
+        # Lista por ambiente: a nota de homologação não se mistura com a de produção
+        por_amb = {a: cliente.get(f"/api/emissor/notas?empresa_id={e['id']}&ambiente={a}").json() for a in (1, 2)}
+        assert [n["ambiente"] for n in por_amb[1]] == [1] and [n["ambiente"] for n in por_amb[2]] == [2]
     finally:
         monkeypatch.setenv("CONTASK_EMISSOR_PRODUCAO", "false")
         cfgmod.config.cache_clear()

@@ -192,11 +192,13 @@ export function useAmbienteEmissor() {
   return useQuery({ queryKey: ["emissor", "ambiente"], queryFn: () => api<AmbienteEmissor>("/api/emissor/ambiente"), staleTime: Infinity });
 }
 
-export function useNotasEmitidas(filtros: { empresa_id?: number | null; situacao?: string | null }) {
+export function useNotasEmitidas(filtros: { empresa_id?: number | null; situacao?: string | null; ambiente?: 1 | 2 | null }, ativa = true) {
   const p = new URLSearchParams();
   if (filtros.empresa_id) p.set("empresa_id", String(filtros.empresa_id));
   if (filtros.situacao) p.set("situacao", filtros.situacao);
+  if (filtros.ambiente) p.set("ambiente", String(filtros.ambiente));
   return useQuery({
+    enabled: ativa,
     queryKey: ["emissor", "notas", filtros],
     queryFn: () => api<NotaEmitida[]>(`/api/emissor/notas?${p}`),
     placeholderData: (ant) => ant,

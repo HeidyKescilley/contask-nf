@@ -17,7 +17,8 @@ import { nomeExibicao } from "@/lib/empresas";
 import { formatarDoc } from "@/lib/formato";
 import { Painel } from "@/features/empresas/Passos";
 import { AbasEmissor } from "./Abas";
-import { SeloAmbienteEmissor, SeloCertEmissor, SeloSituacaoEmissor } from "./EmpresasEmissoras";
+import { cn } from "@/lib/utils";
+import { SeloCertEmissor, SeloSituacaoEmissor } from "./EmpresasEmissoras";
 import { ServicoDialog } from "./ServicoDialog";
 
 export function EmpresaEmissor() {
@@ -98,7 +99,26 @@ function Detalhe({ e }: { e: EmpresaEmissora }) {
   );
 }
 
-/** Liberação da produção por empresa: sem ela, a empresa emite só na homologação. */
+function OpcaoAmbiente({ marcada, icone: Icone, titulo, descricao, desabilitada, aoEscolher }: {
+  marcada: boolean; icone: typeof Landmark; titulo: string; descricao: string; desabilitada: boolean; aoEscolher: () => void;
+}) {
+  return (
+    <button type="button" role="radio" aria-checked={marcada} disabled={desabilitada} onClick={aoEscolher}
+      className={cn("flex items-start gap-3 rounded-xl border p-3.5 text-left transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60",
+        marcada ? "border-destaque bg-destaque-suave" : "border-borda bg-superficie hover:border-borda-forte")}>
+      <span className={cn("mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border",
+        marcada ? "border-destaque" : "border-borda-forte")} aria-hidden>
+        {marcada && <span className="size-2 rounded-full bg-destaque" />}
+      </span>
+      <span>
+        <span className="flex items-center gap-1.5 text-sm font-medium"><Icone className="size-4" aria-hidden /> {titulo}</span>
+        <span className="mt-0.5 block text-sm text-texto-2">{descricao}</span>
+      </span>
+    </button>
+  );
+}
+
+/** Ambiente de emissão por empresa: produção só com a chave geral ligada e a escolha aqui. */
 function PainelAmbiente({ e }: { e: EmpresaEmissora }) {
   const atualizar = useAtualizarEmissor();
   const sistema = useAmbienteEmissor();
@@ -115,37 +135,34 @@ function PainelAmbiente({ e }: { e: EmpresaEmissora }) {
   });
 
   return (
-    <Painel titulo="Ambiente de emissão" descricao="Cada empresa começa na homologação, sem valor fiscal. A produção é liberada empresa por empresa.">
+    <Painel titulo="Ambiente de emissão" descricao="Escolha onde as notas desta empresa são emitidas. Toda empresa começa na homologação.">
       {sistema.isLoading && <Esqueleto className="h-10 w-full" />}
       {sistema.isError && <EstadoErro mensagem={(sistema.error as Error).message} tentarDeNovo={() => sistema.refetch()} />}
       {sistema.data && (
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-texto-2">Emite em:</span> <SeloAmbienteEmissor e={e} />
-            {liberada && !disponivel && <span className="text-texto-2">(liberada, mas a produção está desligada neste sistema)</span>}
-          </div>
-          {liberada ? (
-            <Button variante="secundario" disabled={mudar.isPending} onClick={() => mudar.mutate(false)}>
-              {mudar.isPending ? <Loader2 className="animate-spin" /> : <FlaskConical />} Voltar para a homologação
-            </Button>
-          ) : disponivel ? (
-            <Button variante="primario" onClick={() => setConfirmar(true)}><Landmark /> Liberar produção</Button>
-          ) : (
-            <span className="text-sm text-texto-2">A produção está desligada neste sistema.</span>
-          )}
+        <div role="radiogroup" aria-label="Ambiente de emissão" className="grid gap-3 sm:grid-cols-2">
+          <OpcaoAmbiente marcada={!liberada} icone={FlaskConical} titulo="Homologação"
+            descricao="Produção restrita da Sefin. As notas não têm valor fiscal: serve para testar."
+            desabilitada={mudar.isPending} aoEscolher={() => liberada && mudar.mutate(false)} />
+          <OpcaoAmbiente marcada={liberada} icone={Landmark} titulo="Produção"
+            descricao={disponivel ? "Sefin de produção. As notas têm valor fiscal." : "Desligada neste sistema (CONTASK_EMISSOR_PRODUCAO)."}
+            desabilitada={mudar.isPending || (!disponivel && !liberada)} aoEscolher={() => !liberada && setConfirmar(true)} />
         </div>
       )}
+      {sistema.data && liberada && !disponivel && (
+        <div className="mt-3"><Aviso tom="alerta">A produção está desligada neste sistema: enquanto isso, a empresa emite na homologação.</Aviso></div>
+      )}
+      {mudar.isPending && <p className="mt-2 flex items-center gap-1.5 text-sm text-texto-2"><Loader2 className="size-4 animate-spin" /> Salvando…</p>}
 
       <Dialog open={confirmar} onOpenChange={(v) => !mudar.isPending && setConfirmar(v)}>
-        <DialogContent titulo="Liberar a produção?"
+        <DialogContent titulo="Emitir em produção?"
           descricao={<>As próximas notas de <strong>{nomeExibicao(e)}</strong> irão para a Sefin de produção e terão valor fiscal.</>}>
           <div className="space-y-4">
-            <Aviso tom="alerta">Libere só depois de conferir os dados do prestador e os serviços. A numeração da DPS continua de onde está (próximo nº {e.config?.proximo_numero}).</Aviso>
+            <Aviso tom="alerta">Mude só depois de conferir os dados do prestador e os serviços. A numeração da DPS continua de onde está (próximo nº {e.config?.proximo_numero}).</Aviso>
             {mudar.isError && <Aviso tom="erro">{(mudar.error as Error).message}</Aviso>}
             <div className="flex justify-end gap-2">
               <Button type="button" variante="fantasma" onClick={() => setConfirmar(false)} disabled={mudar.isPending}>Voltar</Button>
               <Button variante="primario" disabled={mudar.isPending} onClick={() => mudar.mutate(true)}>
-                {mudar.isPending && <Loader2 className="animate-spin" />} Liberar produção
+                {mudar.isPending && <Loader2 className="animate-spin" />} Mudar para produção
               </Button>
             </div>
           </div>

@@ -110,8 +110,8 @@ def _empresa_pronta(db: Session, esc: int, empresa_id: int) -> tuple[Empresa, Em
     cfg = config_prestador(db, e)
     if emite_por_procuracao(db, e) and ambiente(cfg) == RESTRITA:
         # Barrado antes de gastar número: a produção restrita não reconhece procurações
-        raise ErroEmissao("Na homologação a Sefin recusa a emissão por procuração (E0718). Libere a produção "
-                          "para esta empresa ou cadastre o certificado A1 dela.")
+        raise ErroEmissao("Na homologação a Sefin recusa a emissão por procuração (E0718). Escolha Produção no ambiente "
+                          "de emissão desta empresa ou cadastre o certificado A1 dela.")
     if not cfg.cod_municipio:
         ibge = (e.dados_brasilapi or {}).get("codigo_municipio_ibge")
         if ibge:

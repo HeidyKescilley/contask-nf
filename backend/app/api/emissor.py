@@ -163,7 +163,7 @@ def _item_empresa(db: Session, e: Empresa) -> dict:
     if procuracao:
         if ambiente(cfg) == 2:
             pendencias.append("Emissão por procuração só é aceita em produção: a homologação da Sefin recusa (E0718). "
-                              "Libere a produção ou cadastre o certificado da empresa.")
+                              "Escolha Produção no ambiente de emissão ou cadastre o certificado da empresa.")
         avisos.append("Emite com o certificado da contabilidade (procuração). O cancelamento por procuração não é "
                       "aceito pela Sefin: cancele pelo Emissor Nacional Web ou cadastre o certificado da empresa.")
         sync = db.get(SyncEstado, e.id)
@@ -589,11 +589,14 @@ def emitir_nota(dados: EmissaoIn, request: Request, db: Session = Depends(sessao
 
 
 @router.get("/notas")
-def listar_notas(empresa_id: int | None = None, situacao: str | None = None, limite: int = Query(100, ge=1, le=500),
+def listar_notas(empresa_id: int | None = None, situacao: str | None = None, ambiente: int | None = Query(None, ge=1, le=2),
+                 limite: int = Query(100, ge=1, le=500),
                  db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
     stmt = select(NotaEmitida).where(NotaEmitida.escritorio_id == esc)
     if empresa_id:
         stmt = stmt.where(NotaEmitida.empresa_id == empresa_id)
+    if ambiente:
+        stmt = stmt.where(NotaEmitida.ambiente == ambiente)
     if situacao:
         stmt = stmt.where(NotaEmitida.situacao == situacao)
     return [_nota_out(db, n) for n in db.scalars(stmt.order_by(NotaEmitida.id.desc()).limit(limite))]
