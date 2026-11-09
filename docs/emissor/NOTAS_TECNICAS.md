@@ -47,6 +47,40 @@ Resultado da Etapa 1, a prova técnica na **produção restrita**: uma NFS-e foi
 9. **Procuração não serve para emitir.** Assinando com o certificado da contabilidade em nome de uma empresa cliente, a Sefin devolve **E0718**: "A assinatura deve ser feita com o certificado digital do emitente da DPS".
    - **Consequência:** toda empresa que emite pelo Contask precisa ter o **próprio certificado A1** cadastrado.
 
+## Motor de emissão (Etapa 3, testado na produção restrita em 09/11/2026)
+
+O código fica em `backend/app/emissor/`:
+- `dps.py`: montagem com os dois leiautes e as regras;
+- `assinatura.py`;
+- `sefin.py`: o cliente da Sefin;
+- `motor.py`: numeração, envio, recuperação e cancelamento.
+
+O teste foi feito com a CONTELB (ME/EPP do Simples) emitindo para um tomador do DF:
+
+| Caso | Resultado |
+|---|---|
+| Sem retenção | Autorizada |
+| PIS, COFINS, CSLL e IRRF retidos (`piscofins` com CST `00` + `tpRetPisCofins=3`, `vRetCSLL` = soma das três, `vRetIRRF`) | Autorizada, valor líquido de R$ 938,50 sobre R$ 1.000 |
+| Tomador com endereço e desconto incondicionado | Autorizada |
+| ISS retido sem endereço do tomador | **E0237**: com ISS retido, o endereço nacional do tomador é obrigatório (a validação local já cobra isso) |
+| A mesma DPS reenviada com endereço e **mesmo número** | Autorizada, com ISS de 2% (R$ 4,00) |
+| DANFSe local da nota emitida | Gerada |
+| Cancelamento (evento 101101) | Aceito |
+
+**Numeração:**
+- O número da DPS é reservado e gravado antes do envio.
+- Uma nota rejeitada ou pendente é reenviada com o **mesmo** número. Não fica buraco na numeração, e a Sefin não aceita duplicidade (E0014).
+- **Se a conexão cair:** o sistema consulta `GET /dps/{id}` antes de qualquer reenvio. Se a nota existe, ela é baixada e marcada como autorizada.
+
+**Ambiente:** o emissor só vai para a produção com `CONTASK_EMISSOR_PRODUCAO=true`. Sem isso, usa a produção restrita, com `tpAmb=2`.
+
+**Alíquota (`pAliq`):** só é informada para ME/EPP do Simples com ISS dentro do Simples e ISS retido.
+- Nesse caso, quem emite informa a alíquota efetiva.
+- Nos demais casos com convênio ativo, a Sefin usa a parametrização do município, e informar a alíquota gera rejeição (E0617, E0625, E0635).
+- MEI e empresa com regime especial nunca informam (E0600, E0604).
+
+**Grupo IBS/CBS:** ainda não é enviado. É opcional nos dois leiautes e foi aceito sem ele. Os códigos `cIndOp` e `cClassTrib` já ficam guardados no serviço para quando o grupo passar a ser exigido.
+
 ## Parâmetros municipais (somente leitura, também em produção)
 
 - `GET /parametrizacao/{ibge}/convenio`: o DF (5300108) tem `aderenteEmissorNacional=1`.

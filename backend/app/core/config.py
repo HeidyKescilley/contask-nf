@@ -31,6 +31,9 @@ class Config(BaseSettings):
     teste: bool = False
     teste_max_xmls: int = 5
     teste_max_empresas: int = 1
+    # Emissor de NFS-e: falso = produção restrita (homologação, sem valor fiscal). Ligar só com
+    # liberação expressa de quem é dono do projeto (CONTASK_EMISSOR_PRODUCAO=true).
+    emissor_producao: bool = False
 
     # Motor de busca
     adn_url: str = "https://adn.nfse.gov.br"

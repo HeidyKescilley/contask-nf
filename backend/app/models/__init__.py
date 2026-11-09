@@ -83,7 +83,59 @@ class EmissorEmpresa(Base):
     reg_esp_trib: Mapped[str] = mapped_column(String(1), default="0")
     serie: Mapped[str] = mapped_column(String(5), default="1")  # 00001–49999: aplicativo próprio
     proximo_numero: Mapped[int] = mapped_column(Integer, default=1)
+    cod_municipio: Mapped[str | None] = mapped_column(String(7))  # IBGE do município emissor (cLocEmi)
+    # Percentual aproximado de tributos (Lei 12.741). Para ME/EPP vai em pTotTribSN.
+    percentual_tributos: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
     atualizado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora, onupdate=agora)
+
+
+class NotaEmitida(Base):
+    """NFS-e emitida pelo Contask (DPS enviada à Sefin Nacional) e o que aconteceu com ela."""
+    __tablename__ = "nota_emitida"
+    __table_args__ = (UniqueConstraint("ambiente", "id_dps", name="uq_nota_emitida_ambiente_id_dps"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    escritorio_id: Mapped[int] = mapped_column(ForeignKey("escritorio.id", ondelete="CASCADE"), index=True)
+    empresa_id: Mapped[int] = mapped_column(ForeignKey("empresa.id", ondelete="CASCADE"), index=True)
+    servico_id: Mapped[int | None] = mapped_column(ForeignKey("servico_emissor.id", ondelete="SET NULL"))
+    usuario_id: Mapped[int | None] = mapped_column(ForeignKey("usuario.id", ondelete="SET NULL"))
+    ambiente: Mapped[int] = mapped_column(Integer)  # 1 produção | 2 produção restrita
+    serie: Mapped[str] = mapped_column(String(5))
+    numero: Mapped[int] = mapped_column(Integer)
+    id_dps: Mapped[str] = mapped_column(String(45))
+    # enviando | autorizada | rejeitada | pendente (resultado desconhecido) | cancelada
+    situacao: Mapped[str] = mapped_column(String(12), index=True)
+    competencia: Mapped[date] = mapped_column(Date)
+    tomador: Mapped[dict | None] = mapped_column(JSON)  # cópia dos dados do tomador usados na nota
+    descricao: Mapped[str] = mapped_column(Text)
+    ctribnac: Mapped[str] = mapped_column(String(6))
+    cnbs: Mapped[str] = mapped_column(String(9))
+    ctribmun: Mapped[str | None] = mapped_column(String(3))
+    cod_municipio_prestacao: Mapped[str] = mapped_column(String(7))
+    valor_servico: Mapped[Decimal] = mapped_column(Numeric(15, 2))
+    desconto: Mapped[Decimal] = mapped_column(Numeric(15, 2), default=Decimal("0"))
+    iss_retido: Mapped[bool] = mapped_column(Boolean, default=False)
+    aliquota_iss: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
+    ret_pis: Mapped[Decimal] = mapped_column(Numeric(15, 2), default=Decimal("0"))
+    ret_cofins: Mapped[Decimal] = mapped_column(Numeric(15, 2), default=Decimal("0"))
+    ret_csll: Mapped[Decimal] = mapped_column(Numeric(15, 2), default=Decimal("0"))
+    ret_irrf: Mapped[Decimal] = mapped_column(Numeric(15, 2), default=Decimal("0"))
+    ret_cp: Mapped[Decimal] = mapped_column(Numeric(15, 2), default=Decimal("0"))
+    info_complementar: Mapped[str | None] = mapped_column(Text)
+    # Resultado (lido da NFS-e autorizada)
+    chave: Mapped[str | None] = mapped_column(String(50), index=True)
+    numero_nfse: Mapped[str | None] = mapped_column(String(20))
+    valor_iss: Mapped[Decimal | None] = mapped_column(Numeric(15, 2))
+    valor_liquido: Mapped[Decimal | None] = mapped_column(Numeric(15, 2))
+    erros: Mapped[list | None] = mapped_column(JSON)  # [{codigo, descricao, complemento}]
+    mensagem: Mapped[str | None] = mapped_column(Text)
+    xml_dps_path: Mapped[str | None] = mapped_column(String(500))
+    xml_nfse_path: Mapped[str | None] = mapped_column(String(500))
+    xml_cancelamento_path: Mapped[str | None] = mapped_column(String(500))
+    motivo_cancelamento: Mapped[str | None] = mapped_column(Text)
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
+    enviado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    autorizado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cancelado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class ServicoEmissor(Base):

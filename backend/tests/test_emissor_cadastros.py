@@ -44,7 +44,8 @@ def test_marcar_em_lote_e_pendencias(cliente):
     assert itens[proc["id"]]["certificado"] is None
     assert any("procuração não serve" in p for p in itens[proc["id"]]["pendencias"])
     assert itens[prop["id"]]["certificado"]["titular_doc"] == OUTRO
-    assert itens[prop["id"]]["pendencias"] == ["Cadastre pelo menos um serviço."]
+    assert itens[prop["id"]]["pendencias"] == ["Cadastre pelo menos um serviço.",
+                                               "Informe o município da empresa (código IBGE) nos dados do prestador."]
     assert not itens[prop["id"]]["pronta"]
     assert itens[prop["id"]]["config"]["serie"] == "1" and itens[prop["id"]]["config"]["proximo_numero"] == 1
 

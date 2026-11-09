@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import re
+from datetime import date
+from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
@@ -14,7 +16,7 @@ from app.core.certificados import situacao_validade
 from app.core.db import sessao
 from app.emissor import tabelas
 from app.fiscal.documentos import cnpj_valido, cpf_valido, raiz_cnpj
-from app.models import Certificado, EmissorEmpresa, Empresa, ServicoEmissor, Tomador
+from app.models import Certificado, EmissorEmpresa, Empresa, NotaEmitida, ServicoEmissor, Tomador
 
 router = APIRouter(prefix="/api/emissor", tags=["emissor"])
 
@@ -34,6 +36,8 @@ class ConfigIn(BaseModel):
     reg_esp_trib: str = "0"
     serie: str = "1"
     proximo_numero: int = Field(1, ge=1)
+    cod_municipio: str | None = None
+    percentual_tributos: Decimal | None = Field(None, ge=0, le=100)
 
 
 class EmissaoLote(BaseModel):
@@ -98,7 +102,9 @@ def config_prestador(db: Session, e: Empresa) -> EmissorEmpresa:
             op, ap = "3", "1"
         else:
             op, ap = "1", None
-        c = EmissorEmpresa(empresa_id=e.id, op_simples=op, reg_ap_trib_sn=ap, reg_esp_trib="0", serie="1", proximo_numero=1)
+        ibge = d.get("codigo_municipio_ibge")
+        c = EmissorEmpresa(empresa_id=e.id, op_simples=op, reg_ap_trib_sn=ap, reg_esp_trib="0", serie="1", proximo_numero=1,
+                           cod_municipio=str(ibge) if ibge else None)
         db.add(c)
         db.flush()
     return c
@@ -126,6 +132,8 @@ def _item_empresa(db: Session, e: Empresa) -> dict:
         pendencias.append(f"O certificado venceu em {cert.validade:%d/%m/%Y}.")
     if n_serv == 0:
         pendencias.append("Cadastre pelo menos um serviço.")
+    if cfg is not None and not cfg.cod_municipio:
+        pendencias.append("Informe o município da empresa (código IBGE) nos dados do prestador.")
     if not e.ativa:
         pendencias.append("A empresa está inativa.")
     return {
@@ -139,7 +147,8 @@ def _item_empresa(db: Session, e: Empresa) -> dict:
         "config": None if cfg is None else {
             "inscricao_municipal": cfg.inscricao_municipal, "op_simples": cfg.op_simples,
             "reg_ap_trib_sn": cfg.reg_ap_trib_sn, "reg_esp_trib": cfg.reg_esp_trib,
-            "serie": cfg.serie, "proximo_numero": cfg.proximo_numero},
+            "serie": cfg.serie, "proximo_numero": cfg.proximo_numero, "cod_municipio": cfg.cod_municipio,
+            "percentual_tributos": float(cfg.percentual_tributos) if cfg.percentual_tributos is not None else None},
         "pendencias": pendencias,
         "pronta": e.emite_nfse and not pendencias,
     }
@@ -286,7 +295,12 @@ def salvar_config(empresa_id: int, dados: ConfigIn, db: Session = Depends(sessao
     im = _txt(dados.inscricao_municipal)
     if im and len(im) > 15:
         raise HTTPException(422, "A inscrição municipal pode ter no máximo 15 caracteres.")
+    mun = _dig(dados.cod_municipio)
+    if mun and len(mun) != 7:
+        raise HTTPException(422, "O código IBGE do município deve ter 7 dígitos.")
     c = config_prestador(db, e)
+    c.cod_municipio = mun or c.cod_municipio
+    c.percentual_tributos = dados.percentual_tributos
     c.inscricao_municipal, c.op_simples, c.reg_ap_trib_sn = im, dados.op_simples, ap
     c.reg_esp_trib, c.serie, c.proximo_numero = dados.reg_esp_trib, str(int(serie)), dados.proximo_numero
     db.commit()
@@ -430,3 +444,163 @@ def editar_tomador(tomador_id: int, dados: TomadorIn, db: Session = Depends(sess
 def excluir_tomador(tomador_id: int, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
     db.delete(_tomador(db, tomador_id, esc))
     db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Emissão
+# ---------------------------------------------------------------------------
+
+class EmissaoIn(BaseModel):
+    empresa_id: int
+    servico_id: int
+    descricao: str | None = None
+    competencia: date
+    valor: Decimal = Field(gt=0)
+    tomador: TomadorIn | None = None
+    salvar_tomador: bool = True
+    desconto: Decimal = Field(Decimal("0"), ge=0)
+    iss_retido: bool = False
+    aliquota_iss: Decimal | None = Field(None, gt=0, le=5)
+    ret_pis: Decimal = Field(Decimal("0"), ge=0)
+    ret_cofins: Decimal = Field(Decimal("0"), ge=0)
+    ret_csll: Decimal = Field(Decimal("0"), ge=0)
+    ret_irrf: Decimal = Field(Decimal("0"), ge=0)
+    ret_cp: Decimal = Field(Decimal("0"), ge=0)
+    cod_municipio_prestacao: str | None = None
+    info_complementar: str | None = Field(None, max_length=2000)
+
+
+class CancelamentoIn(BaseModel):
+    motivo: str
+    justificativa: str
+
+
+def _entrada(d: EmissaoIn):
+    from app.emissor.motor import Entrada
+    mun = _dig(d.cod_municipio_prestacao)
+    if mun and len(mun) != 7:
+        raise HTTPException(422, "O código IBGE do local da prestação deve ter 7 dígitos.")
+    return Entrada(
+        empresa_id=d.empresa_id, servico_id=d.servico_id, descricao=d.descricao, competencia=d.competencia,
+        valor=d.valor, tomador=_validar_tomador(d.tomador) if d.tomador else None, salvar_tomador=d.salvar_tomador,
+        desconto=d.desconto, iss_retido=d.iss_retido, aliquota_iss=d.aliquota_iss, ret_pis=d.ret_pis,
+        ret_cofins=d.ret_cofins, ret_csll=d.ret_csll, ret_irrf=d.ret_irrf, ret_cp=d.ret_cp,
+        cod_municipio_prestacao=mun or None, info_complementar=d.info_complementar,
+    )
+
+
+def _nota_out(db: Session, n: NotaEmitida) -> dict:
+    e = db.get(Empresa, n.empresa_id)
+    f = lambda v: float(v) if v is not None else None  # noqa: E731
+    return {
+        "id": n.id, "empresa_id": n.empresa_id, "empresa_nome": e.apelido or e.nome_fantasia or e.razao_social,
+        "empresa_cnpj": e.cnpj, "servico_id": n.servico_id, "ambiente": n.ambiente,
+        "homologacao": n.ambiente == 2, "serie": n.serie, "numero": n.numero, "id_dps": n.id_dps,
+        "situacao": n.situacao, "competencia": n.competencia, "tomador": n.tomador, "descricao": n.descricao,
+        "ctribnac": n.ctribnac, "ctribnac_formatado": tabelas.formatar_ctribnac(n.ctribnac),
+        "cnbs": n.cnbs, "cnbs_formatado": tabelas.formatar_nbs(n.cnbs), "ctribmun": n.ctribmun,
+        "cod_municipio_prestacao": n.cod_municipio_prestacao,
+        "valor_servico": f(n.valor_servico), "desconto": f(n.desconto), "iss_retido": n.iss_retido,
+        "aliquota_iss": f(n.aliquota_iss), "ret_pis": f(n.ret_pis), "ret_cofins": f(n.ret_cofins),
+        "ret_csll": f(n.ret_csll), "ret_irrf": f(n.ret_irrf), "ret_cp": f(n.ret_cp),
+        "info_complementar": n.info_complementar, "chave": n.chave, "numero_nfse": n.numero_nfse,
+        "valor_iss": f(n.valor_iss), "valor_liquido": f(n.valor_liquido), "erros": n.erros or [],
+        "mensagem": n.mensagem, "motivo_cancelamento": n.motivo_cancelamento,
+        "criado_em": n.criado_em, "enviado_em": n.enviado_em, "autorizado_em": n.autorizado_em,
+        "cancelado_em": n.cancelado_em,
+    }
+
+
+def _erro_emissao(ex) -> HTTPException:
+    return HTTPException(ex.status, str(ex))
+
+
+@router.get("/ambiente")
+def ambiente_emissor():
+    from app.emissor.motor import ambiente
+    a = ambiente()
+    return {"ambiente": a, "producao": a == 1,
+            "descricao": "Produção" if a == 1 else "Homologação (produção restrita, sem valor fiscal)"}
+
+
+@router.post("/notas", status_code=201)
+def emitir_nota(dados: EmissaoIn, request: Request, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
+    from app.emissor import motor
+    u = getattr(request.state, "usuario", None)
+    try:
+        n = motor.emitir(db, esc, u.id if u else None, _entrada(dados))
+    except motor.ErroEmissao as ex:
+        raise _erro_emissao(ex) from None
+    return _nota_out(db, n)
+
+
+@router.get("/notas")
+def listar_notas(empresa_id: int | None = None, situacao: str | None = None, limite: int = Query(100, ge=1, le=500),
+                 db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
+    stmt = select(NotaEmitida).where(NotaEmitida.escritorio_id == esc)
+    if empresa_id:
+        stmt = stmt.where(NotaEmitida.empresa_id == empresa_id)
+    if situacao:
+        stmt = stmt.where(NotaEmitida.situacao == situacao)
+    return [_nota_out(db, n) for n in db.scalars(stmt.order_by(NotaEmitida.id.desc()).limit(limite))]
+
+
+def _nota(db: Session, nota_id: int, esc: int) -> NotaEmitida:
+    n = db.get(NotaEmitida, nota_id)
+    if n is None or n.escritorio_id != esc:
+        raise HTTPException(404, "Nota não encontrada.")
+    return n
+
+
+@router.get("/notas/{nota_id}")
+def obter_nota(nota_id: int, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
+    return _nota_out(db, _nota(db, nota_id, esc))
+
+
+@router.post("/notas/{nota_id}/reenviar")
+def reenviar_nota(nota_id: int, dados: EmissaoIn | None = None, db: Session = Depends(sessao),
+                  esc: int = Depends(escritorio_atual)):
+    from app.emissor import motor
+    try:
+        n = motor.reenviar(db, esc, nota_id, _entrada(dados) if dados else None)
+    except motor.ErroEmissao as ex:
+        raise _erro_emissao(ex) from None
+    return _nota_out(db, n)
+
+
+@router.post("/notas/{nota_id}/cancelar")
+def cancelar_nota(nota_id: int, dados: CancelamentoIn, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
+    from app.emissor import motor
+    try:
+        n = motor.cancelar(db, esc, nota_id, dados.motivo, dados.justificativa)
+    except motor.ErroEmissao as ex:
+        raise _erro_emissao(ex) from None
+    return _nota_out(db, n)
+
+
+@router.get("/notas/{nota_id}/xml")
+def xml_nota(nota_id: int, tipo: str = Query("nfse", pattern="^(nfse|dps|cancelamento)$"),
+             db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
+    from app.core.config import config
+    n = _nota(db, nota_id, esc)
+    rel = {"nfse": n.xml_nfse_path, "dps": n.xml_dps_path, "cancelamento": n.xml_cancelamento_path}[tipo]
+    if not rel or not (config().dados_dir / rel).is_file():
+        raise HTTPException(404, "Arquivo não disponível para esta nota.")
+    nome = (config().dados_dir / rel).name
+    return Response((config().dados_dir / rel).read_bytes(), media_type="application/xml",
+                    headers={"Content-Disposition": f'attachment; filename="{nome}"'})
+
+
+@router.get("/notas/{nota_id}/danfse")
+def danfse_nota(nota_id: int, download: int = 0, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
+    from app.core.config import config
+    from app.fiscal.danfse import gerar_danfse
+    n = _nota(db, nota_id, esc)
+    if not n.xml_nfse_path or not (config().dados_dir / n.xml_nfse_path).is_file():
+        raise HTTPException(404, "A nota ainda não foi autorizada.")
+    marca = "CANCELADA" if n.situacao == "cancelada" else None
+    pdf = gerar_danfse((config().dados_dir / n.xml_nfse_path).read_bytes(), marca_dagua=marca)
+    disp = "attachment" if download else "inline"
+    return Response(pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": f'{disp}; filename="DANFSe_{n.numero_nfse or n.id}_{n.chave}.pdf"',
+                             "Cache-Control": "no-cache"})
