@@ -10,6 +10,7 @@
 - Emissor de NFS-e: emitir e cancelar só na produção restrita (`tpAmb=2`, sefin.producaorestrita.nfse.gov.br), até a liberação expressa da produção por quem é dono do projeto.
   - Liberação em 09/11/2026: piloto em produção (`CONTASK_EMISSOR_PRODUCAO=true`) só com a CONTELB e o certificado dela. Cada nota real é emitida com os dados confirmados pela pessoa antes do envio. Outras empresas continuam sem liberação.
   - Liberação em 09/11/2026: um teste de emissão por procuração em produção, com a CONTELB Serviços Contábeis como prestadora e o certificado da CONTELB Contabilidade, cancelado em seguida se for autorizado.
+  - Liberação em 11/11/2026: produção ligada no servidor online (`EMISSOR_PRODUCAO=true` em `/opt/contask/contask.conf`). Cada escritório escolhe Produção empresa por empresa, no Ambiente de emissão. Claude não emite nem cancela nota real por conta própria: só com os dados confirmados pela pessoa.
 - Interface em pt-BR; datas dd/mm/aaaa; valores em R$.
 - Toda tela deve funcionar nos dois temas e ter estados de carregamento, vazio e erro.
 - Vários escritórios no mesmo SQLite; o escritório vem da sessão. Toda rota /api nova exige login automaticamente (middleware em core/seguranca.py); rota pública precisa entrar em ROTAS_PUBLICAS de propósito.
