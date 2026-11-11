@@ -18,6 +18,7 @@ import { Tomadores } from "@/features/emissor/Tomadores";
 import { EmitirNota } from "@/features/emissor/EmitirNota";
 import { NotasEmitidas } from "@/features/emissor/NotasEmitidas";
 import { EditarRecorrente, Recorrentes } from "@/features/emissor/Recorrentes";
+import { Administracao } from "@/features/admin/Administracao";
 import { Notificacoes } from "@/layout/Notificacoes";
 import { Cadastrar, Entrar, TrocarSenha } from "@/features/acesso/Acesso";
 import { Protegido } from "@/lib/sessao";
@@ -57,6 +58,7 @@ const rotas = createBrowserRouter([
       { path: "empresas/:id", element: <DetalheEmpresa /> },
       { path: "contabilidade", element: <AssistenteContabilidade /> },
       { path: "configuracoes", element: <Configuracoes /> },
+      { path: "admin", element: <Administracao /> },
       { path: "*", element: <NaoEncontrada /> },
     ],
   },

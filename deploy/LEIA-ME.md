@@ -3,11 +3,11 @@
 Uma instância só atende todos os escritórios. Cada escritório vê só os próprios dados, e o escritório vem do login.
 
 ```
-Internet ──443──> Caddy (HTTPS automático) ─┬─> site de vendas   https://<dominio>
+Internet ──443──> Caddy (HTTPS automático) ─┬─> site de vendas   https://mk.<dominio>  (<dominio> e www redirecionam)
                                             └─> contask-app      https://app.<dominio>
 ```
 
-- **Contas:** não há cadastro pela tela no servidor (`CADASTRO=fechado`). Escritório e usuário são criados só com o `contask.sh`, que roda como root por SSH. O SSH aceita apenas chave, então só quem tem a chave cadastrada (Heidy e Vit) cria ou libera contas.
+- **Contas:** não há cadastro pela tela no servidor (`CADASTRO=fechado`). Escritórios e usuários são criados pelo **painel de Administração** do sistema (menu lateral) ou pelo `contask.sh`. O painel só aparece para quem é administrador do sistema, e esse papel só é dado pelo servidor (`contask.sh usuario admin <email>`), que aceita SSH apenas com chave (Heidy e Vit).
 - **Emissor de NFS-e:** no servidor, fica todo na homologação (`EMISSOR_PRODUCAO=false`). Emissão real continua só na instalação local da CONTELB, até haver liberação expressa.
 
 ## 1. Contratar
@@ -40,9 +40,9 @@ Para entrar: `ssh root@<IP da VPS>`.
 
 1. Adicione o domínio na Cloudflare e troque os servidores DNS no Registro.br pelos que a Cloudflare indicar.
 2. Crie os registros apontando para o IP da VPS, com a nuvem **cinza** ("DNS only"), para o próprio Caddy emitir o HTTPS:
-   - `A  @    <IP da VPS>` (site de vendas)
-   - `A  www  <IP da VPS>`
    - `A  app  <IP da VPS>` (o sistema)
+   - `A  mk   <IP da VPS>` (site de vendas)
+   - `A  @    <IP da VPS>` e `A  www  <IP da VPS>` (redirecionam para o mk)
 
 ## 4. Instalar (uma vez)
 
@@ -70,14 +70,15 @@ O script:
 
 **Guarde a chave-mestra** no gerenciador de senhas: `cat /opt/contask/segredos/chave.env`. Sem ela, os certificados salvos não abrem.
 
-## 5. Primeiro escritório: o seu
+## 5. Primeiro escritório (o seu) e o painel de administração
 
 ```bash
 cd /opt/contask/codigo/deploy
 bash contask.sh escritorio novo "CONTELB" seu@email.com "Seu Nome"
+bash contask.sh usuario admin seu@email.com
 ```
 
-A senha inicial aparece **uma única vez**. Entre em `https://app.<dominio>` e troque a senha.
+A senha inicial aparece **uma única vez**. Entre em `https://app.<dominio>` e troque a senha. O item **Administração** aparece no menu lateral: é lá que você cria os escritórios e usuários do teste. Para o Vit, crie o usuário dele no seu escritório pelo painel e rode `bash contask.sh usuario admin <email do Vit>`.
 
 ## 6. Teste do ADN e da Sefin a partir da VPS (antes de chamar os escritórios)
 
@@ -89,11 +90,7 @@ Se o ADN ou a Sefin recusarem a conexão vinda da VPS, pare aqui.
 
 ## 7. Escritórios do teste
 
-Para cada escritório:
-
-```bash
-bash contask.sh escritorio novo "Contábil Silva" ana@silva.com "Ana Silva"
-```
+Para cada escritório: **Administração > Novo escritório** (ou `bash contask.sh escritorio novo "Contábil Silva" ana@silva.com "Ana Silva"`).
 
 Envie o endereço `https://app.<dominio>`, o e-mail e a senha inicial por um canal privado (WhatsApp direto, nunca em grupo). Antes, combine com o escritório um termo simples de teste: os certificados A1 dos clientes dele ficam guardados (cifrados) no servidor.
 
@@ -127,7 +124,13 @@ Configurações em `/opt/contask/contask.conf` (cadastro, emissão em produção
 2. Extraia a pasta `dados` do ZIP sobre `/opt/contask/dados` e rode `chown -R 1000:1000 /opt/contask/dados`.
 3. `bash contask.sh iniciar`
 
-## 10. Monitoramento
+## 10. Desenvolver e publicar
+
+1. Desenvolva e teste no PC, como hoje (`iniciar.bat` ou `npm run dev` + uvicorn). O banco do PC e o do servidor são separados.
+2. `git push` para a `main` no GitHub.
+3. No servidor: `cd /opt/contask/codigo/deploy && bash atualizar.sh`. Ele faz backup, gera a imagem nova, aplica as migrações e reinicia, com alguns segundos fora do ar. Publique fora do horário de pico.
+
+## 11. Monitoramento
 
 No UptimeRobot (grátis), crie um monitor HTTP para `https://app.<dominio>/api/ping`. Ele avisa por e-mail se o sistema sair do ar.
 

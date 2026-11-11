@@ -9,6 +9,8 @@ export interface Usuario {
   email: string;
   nome: string;
   trocar_senha: boolean;
+  /** suporte do Contask: vê o painel de administração (concedido só no servidor) */
+  admin_sistema?: boolean;
 }
 
 export interface Sessao {

@@ -6,6 +6,7 @@
     python -m app.tools.usuarios redefinir EMAIL                                # nova senha inicial
     python -m app.tools.usuarios desativar EMAIL | reativar EMAIL
     python -m app.tools.usuarios listar
+    python -m app.tools.usuarios admin EMAIL [--remover]                       # painel de administração
     python -m app.tools.usuarios convite "descrição"                           # só com CONTASK_CADASTRO=convite
     python -m app.tools.usuarios convites
 
@@ -59,6 +60,9 @@ def main(argv=None) -> None:
     for nome in ("redefinir", "desativar", "reativar"):
         sub.add_parser(nome).add_argument("email")
     sub.add_parser("listar")
+    ad = sub.add_parser("admin")
+    ad.add_argument("email")
+    ad.add_argument("--remover", action="store_true")
     cv = sub.add_parser("convite")
     cv.add_argument("descricao")
     sub.add_parser("convites")
@@ -102,7 +106,14 @@ def main(argv=None) -> None:
         elif a.cmd == "listar":
             for u in db.scalars(select(Usuario).order_by(Usuario.escritorio_id, Usuario.email)):
                 acesso = f"{u.ultimo_acesso_em:%d/%m/%Y %H:%M}" if u.ultimo_acesso_em else "nunca"
-                print(f"esc {u.escritorio_id:>3}  {u.email:40} {'ativo' if u.ativo else 'inativo':8} último acesso: {acesso}  {u.nome}")
+                adm = " [admin]" if u.admin_sistema else ""
+                print(f"esc {u.escritorio_id:>3}  {u.email:40} {'ativo' if u.ativo else 'inativo':8} último acesso: {acesso}  {u.nome}{adm}")
+        elif a.cmd == "admin":
+            u = _buscar(db, a.email)
+            u.admin_sistema = not a.remover
+            db.commit()
+            print(f"{u.email}: {'agora é administrador do sistema' if u.admin_sistema else 'não é mais administrador'}. "
+                  "Saia e entre de novo para o painel aparecer ou sumir.")
         elif a.cmd == "convite":
             from app.core import convites
             codigo = convites.gerar(db, a.descricao)

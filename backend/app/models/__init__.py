@@ -354,6 +354,9 @@ class Usuario(Base):
     senha_hash: Mapped[str] = mapped_column(String(300))
     ativo: Mapped[bool] = mapped_column(Boolean, default=True)
     trocar_senha: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Administrador do sistema (suporte do Contask): cria escritórios e usuários pelo painel.
+    # Só é concedido no servidor: python -m app.tools.usuarios admin EMAIL
+    admin_sistema: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
     ultimo_acesso_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

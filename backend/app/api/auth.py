@@ -32,7 +32,8 @@ class TrocaSenha(BaseModel):
 def _usuario_json(u) -> dict | None:
     if u is None:
         return None
-    return {"id": u.id, "email": u.email, "nome": u.nome, "trocar_senha": u.trocar_senha}
+    return {"id": u.id, "email": u.email, "nome": u.nome, "trocar_senha": u.trocar_senha,
+            "admin_sistema": bool(u.admin_sistema)}
 
 
 def _eu(db: Session, u) -> dict:

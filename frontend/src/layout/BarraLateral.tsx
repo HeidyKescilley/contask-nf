@@ -1,12 +1,15 @@
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { Dica } from "@/components/ui/tooltip";
+import { useSessao } from "@/lib/sessao";
 import { cn } from "@/lib/utils";
-import { NAVEGACAO } from "./navegacao";
+import { NAV_ADMIN, NAVEGACAO } from "./navegacao";
 
 export function BarraLateral({ recolhida, alternar }: { recolhida: boolean; alternar: () => void }) {
   // Rota ativa calculada aqui: o Slot do tooltip não aceita className em forma de função.
   const { search, pathname } = useLocation();
+  const admin = !!useSessao().data?.usuario?.admin_sistema;
+  const itens = admin ? [...NAVEGACAO, NAV_ADMIN] : NAVEGACAO;
   return (
     <aside
       className={cn(
@@ -25,7 +28,7 @@ export function BarraLateral({ recolhida, alternar }: { recolhida: boolean; alte
       </div>
 
       <nav className="flex-1 space-y-0.5 p-2">
-        {NAVEGACAO.map(({ rota, rotulo, icone: Icone }) => {
+        {itens.map(({ rota, rotulo, icone: Icone }) => {
           const ativa = pathname === rota || pathname.startsWith(`${rota}/`);
           return (
           <Dica key={rota} texto={rotulo} ativo={recolhida}>

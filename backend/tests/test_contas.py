@@ -58,3 +58,32 @@ def test_ferramenta_cria_escritorios_separados(app_teste, monkeypatch, capsys):
             assert db.scalar(select(Usuario).where(Usuario.email == "caio@silva.com")).escritorio_id == esc_ana
         usuarios.main(["escritorios"])
         assert "2 usuário(s)" in capsys.readouterr().out
+
+
+def test_painel_de_administracao(cliente, capsys):
+    from app.tools import usuarios
+    # Usuário comum não entra no painel
+    assert cliente.get("/api/admin/escritorios").status_code == 403
+    assert cliente.get("/api/auth/eu").json()["usuario"]["admin_sistema"] is False
+    # O papel só é concedido pelo servidor
+    usuarios.main(["admin", "teste@contask.local"])
+    assert cliente.get("/api/auth/eu").json()["usuario"]["admin_sistema"] is True
+    r = cliente.post("/api/admin/escritorios", json={"nome": "Contábil Silva", "email": "ana@silva.com", "nome_usuario": "Ana"})
+    assert r.status_code == 201, r.text
+    senha, ana = r.json()["senha_inicial"], r.json()["usuario"]
+    assert ana["trocar_senha"] and len(senha) >= 10
+    r = cliente.post(f"/api/admin/escritorios/{ana['escritorio_id']}/usuarios", json={"email": "bia@silva.com", "nome": "Bia"})
+    assert r.status_code == 201
+    assert cliente.post("/api/admin/escritorios", json={"nome": "Outro", "email": "ana@silva.com"}).status_code == 409
+    lista = cliente.get("/api/admin/escritorios").json()
+    silva = next(e for e in lista if e["nome"] == "Contábil Silva")
+    assert {u["email"] for u in silva["usuarios"]} == {"ana@silva.com", "bia@silva.com"}
+    # Nova senha e desativar
+    nova = cliente.post(f"/api/admin/usuarios/{ana['id']}/senha").json()["senha_inicial"]
+    assert nova != senha
+    assert cliente.put(f"/api/admin/usuarios/{ana['id']}/ativo", json={"ativo": False}).json()["ativo"] is False
+    eu = cliente.get("/api/auth/eu").json()["usuario"]["id"]
+    assert cliente.put(f"/api/admin/usuarios/{eu}/ativo", json={"ativo": False}).status_code == 409
+    # O escritório novo não enxerga as empresas do admin, e vice-versa (isolamento continua pelo login)
+    usuarios.main(["admin", "teste@contask.local", "--remover"])
+    assert cliente.get("/api/admin/escritorios").status_code == 403

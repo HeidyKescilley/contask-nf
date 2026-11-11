@@ -1,6 +1,7 @@
 # Caddy: HTTPS automático (Let's Encrypt).
-#   https://<DOMINIO_BASE>           site de vendas (pasta site/)
+#   https://<SITE>.<DOMINIO_BASE>        site de vendas (pasta site/)
 #   https://<SUBDOMINIO>.<DOMINIO_BASE>  o sistema (todos os escritórios)
+#   https://<DOMINIO_BASE> e www         redirecionam para o site de vendas
 {
 	email {$ACME_EMAIL}
 }
@@ -14,15 +15,15 @@
 	}
 }
 
-{$DOMINIO_BASE} {
+{$SITE}.{$DOMINIO_BASE} {
 	root * /srv/site
 	file_server
 	encode zstd gzip
 	import seguranca
 }
 
-www.{$DOMINIO_BASE} {
-	redir https://{$DOMINIO_BASE}{uri} permanent
+{$DOMINIO_BASE}, www.{$DOMINIO_BASE} {
+	redir https://{$SITE}.{$DOMINIO_BASE}{uri} permanent
 }
 
 {$SUBDOMINIO}.{$DOMINIO_BASE} {
