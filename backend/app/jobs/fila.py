@@ -106,10 +106,13 @@ class Gerenciador:
     def enfileirar_incrementais(self) -> int:
         n = 0
         with self._sf() as db:
-            q = select(Empresa).where(Empresa.ativa)
-            if config().teste:
-                q = q.where(Empresa.is_contabilidade.is_(False))
-            for e in db.scalars(q):
+            from app.core.escritorios import em_teste, ids_bloqueados
+            bloqueados = ids_bloqueados(db)
+            for e in db.scalars(select(Empresa).where(Empresa.ativa)):
+                if e.escritorio_id in bloqueados:
+                    continue  # escritório suspenso ou com o teste vencido: sem busca automática
+                if e.is_contabilidade and em_teste(db, e.escritorio_id):
+                    continue
                 if db.scalar(select(BuscaJob.id).where(BuscaJob.empresa_id == e.id, BuscaJob.status.in_(PENDENTES))):
                     continue
                 enfileirar(db, e.id, "incremental")
@@ -138,13 +141,15 @@ class Gerenciador:
                 por_escritorio[eid] = por_escritorio.get(eid, 0) + 1
                 ocupados.add(chave)
             with self._sf() as db:
+                from app.core.escritorios import ids_bloqueados
+                bloqueados = ids_bloqueados(db)
                 prioridade = case((BuscaJob.tipo == "incremental", 1), else_=0)
                 for job in db.scalars(select(BuscaJob).where(BuscaJob.status == "fila")
                                       .order_by(prioridade, BuscaJob.criado_em, BuscaJob.id)):
                     if job.id in self._rodando:
                         continue
                     e = db.get(Empresa, job.empresa_id)
-                    if e is None or por_escritorio.get(e.escritorio_id, 0) >= self._max:
+                    if e is None or e.escritorio_id in bloqueados or por_escritorio.get(e.escritorio_id, 0) >= self._max:
                         continue
                     cert = certificado_da_empresa(db, e)
                     chave = f"cert:{cert.id}" if cert else f"empresa:{job.empresa_id}"

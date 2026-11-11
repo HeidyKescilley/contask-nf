@@ -139,6 +139,7 @@ def entrar(db: Session, email: str, senha: str, ip: str) -> tuple[Usuario, str]:
         limitador.falhou(*chaves)
         raise ErroLogin("E-mail ou senha incorretos.")
     limitador.limpar(*chaves)
+    _exigir_escritorio_liberado(db, u)
     token = secrets.token_urlsafe(32)
     db.execute(delete(SessaoUsuario).where(SessaoUsuario.expira_em < agora()))
     db.add(SessaoUsuario(token_hash=_hash_token(token), usuario_id=u.id, criado_em=agora(),
@@ -146,6 +147,15 @@ def entrar(db: Session, email: str, senha: str, ip: str) -> tuple[Usuario, str]:
     u.ultimo_acesso_em = agora()
     db.commit()
     return u, token
+
+
+def _exigir_escritorio_liberado(db: Session, u: Usuario) -> None:
+    if u.admin_sistema:
+        return
+    from app.core.escritorios import motivo_bloqueio
+    motivo = motivo_bloqueio(db.get(Escritorio, u.escritorio_id))
+    if motivo:
+        raise ErroLogin(motivo)
 
 
 def usuario_da_sessao(db: Session, token: str | None) -> Usuario | None:
@@ -162,6 +172,10 @@ def usuario_da_sessao(db: Session, token: str | None) -> Usuario | None:
     u = db.get(Usuario, s.usuario_id)
     if u is None or not u.ativo:
         return None
+    if not u.admin_sistema:
+        from app.core.escritorios import bloqueado
+        if bloqueado(db, u.escritorio_id):
+            return None  # suspenso: a sessão volta a valer se o escritório for reativado
     # Renova a sessão em uso (no máximo uma escrita por hora)
     novo = agora() + timedelta(days=config().sessao_dias)
     if novo - exp > timedelta(hours=1):

@@ -97,7 +97,20 @@ Envie o endereço `https://app.<dominio>`, o e-mail e a senha inicial por um can
 
 ## 8. Dia a dia
 
-Sempre em `cd /opt/contask/codigo/deploy`:
+**Pelo painel de Administração** (menu lateral do sistema):
+
+| Tarefa | Onde |
+|---|---|
+| Novo escritório e primeiro usuário | **Novo escritório**: situação (Ativo ou Em teste até uma data), mensalidade e dia do vencimento |
+| Mais usuários, nova senha, desativar uma pessoa | No cartão do escritório |
+| Registrar pagamento | **Pagamento**: o próximo vencimento passa para o mês seguinte |
+| Suspender por falta de pagamento | **Suspender**: ninguém do escritório entra e as buscas e notas recorrentes param. **Reativar** devolve tudo como estava |
+| Mudar limite de XMLs, mensalidade ou teste | **Plano** |
+| Ver o que mudou e os pagamentos | **Histórico** |
+
+O painel destaca quem está em atraso, mas a suspensão é sempre manual. Um teste com data vencida bloqueia o acesso sozinho. O escritório de um administrador do sistema não pode ser suspenso.
+
+**Pelo servidor**, sempre em `cd /opt/contask/codigo/deploy`:
 
 | Tarefa | Comando |
 |---|---|

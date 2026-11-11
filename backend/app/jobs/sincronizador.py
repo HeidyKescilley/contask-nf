@@ -217,7 +217,8 @@ def executar_job(job_id: int, sessao_factory: Callable[[], Session], ctx: Contex
             registrar(db, job, "Refazer do zero: a busca recomeça do NSU 0 (documentos já salvos não são duplicados).")
         if job.tipo == "incremental" and sync.ultima_busca_em is None:
             job.tipo = "inicial"  # histórico ainda não terminou (nunca chegou ao fim da fila): não conta no limite
-        if config().teste and empresa.is_contabilidade:
+        from app.core.escritorios import em_teste
+        if empresa.is_contabilidade and em_teste(db, empresa.escritorio_id):
             job.status, job.finalizado_em = "cancelado", agora()
             job.mensagem = "No teste grátis, só a empresa escolhida é buscada; a contabilidade entra pelo certificado."
             registrar(db, job, job.mensagem)

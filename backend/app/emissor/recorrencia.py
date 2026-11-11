@@ -111,6 +111,9 @@ def executar_pendentes(db: Session, hoje: date | None = None) -> list[int]:
             rec = db.get(NotaRecorrente, rid)
             if rec is None or not rec.ativa or rec.proxima_em is None or rec.proxima_em > hoje:
                 continue
+            from app.core.escritorios import bloqueado
+            if bloqueado(db, rec.escritorio_id):
+                continue  # suspenso: retoma na reativação (no mesmo mês) sem emitir em atraso
             if rec.proxima_em < hoje.replace(day=1):
                 # Mês perdido: não emite atrasado
                 rec.ultimo_erro = (f"A nota de {rec.proxima_em:%m/%Y} não foi emitida: o sistema estava desligado no dia "

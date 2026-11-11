@@ -87,3 +87,75 @@ def test_painel_de_administracao(cliente, capsys):
     # O escritório novo não enxerga as empresas do admin, e vice-versa (isolamento continua pelo login)
     usuarios.main(["admin", "teste@contask.local", "--remover"])
     assert cliente.get("/api/admin/escritorios").status_code == 403
+
+
+def _admin_com_escritorio(cliente, **plano):
+    from app.tools import usuarios
+    usuarios.main(["admin", "teste@contask.local"])
+    r = cliente.post("/api/admin/escritorios", json={"nome": "Contábil Silva", "email": "ana@silva.com", "nome_usuario": "Ana", **plano})
+    assert r.status_code == 201, r.text
+    return r.json()
+
+
+def _entrar_como(app_teste, email, senha):
+    c = TestClient(app_teste, base_url="http://127.0.0.1:8765")
+    return c, c.post("/api/auth/entrar", json={"email": email, "senha": senha})
+
+
+def test_suspender_bloqueia_acesso_e_reativar_libera(app_teste, cliente):
+    from app.core import autenticacao as auth
+    from app.core.db import nova_sessao
+    from sqlalchemy import select
+    from app.models import Usuario
+    criado = _admin_com_escritorio(cliente)
+    esc = criado["usuario"]["escritorio_id"]
+    with nova_sessao() as db:  # Ana já trocou a senha
+        u = db.scalar(select(Usuario).where(Usuario.email == "ana@silva.com"))
+        u.senha_hash, u.trocar_senha = auth.gerar_hash(SENHA_TESTE), False
+        db.commit()
+    ana, r = _entrar_como(app_teste, "ana@silva.com", SENHA_TESTE)
+    assert r.status_code == 200 and ana.get("/api/empresas").status_code == 200
+    corpo = {"nome": "Contábil Silva", "situacao": "suspenso"}
+    r = cliente.put(f"/api/admin/escritorios/{esc}", json=corpo)
+    assert r.status_code == 200 and r.json()["bloqueio"]
+    assert ana.get("/api/empresas").status_code == 401  # sessão deixa de valer
+    _, r = _entrar_como(app_teste, "ana@silva.com", SENHA_TESTE)
+    assert r.status_code == 401 and "suspenso" in r.json()["detail"]
+    cliente.put(f"/api/admin/escritorios/{esc}", json={**corpo, "situacao": "ativo"})
+    assert ana.get("/api/empresas").status_code == 200  # volta sem novo login
+    hist = cliente.get(f"/api/admin/escritorios/{esc}/historico").json()
+    assert [h["tipo"] for h in hist][:2] == ["situacao", "situacao"] and hist[-1]["tipo"] == "criado"
+    # O escritório do administrador não pode ser suspenso
+    eu = cliente.get("/api/auth/eu").json()["escritorio"]["id"]
+    assert cliente.put(f"/api/admin/escritorios/{eu}", json={"nome": "X Y", "situacao": "suspenso"}).status_code == 409
+
+
+def test_teste_vencido_bloqueia_e_plano_por_escritorio(app_teste, cliente):
+    from datetime import timedelta
+    from app.core import escritorios, uso
+    from app.core.db import nova_sessao
+    criado = _admin_com_escritorio(cliente, situacao="teste", teste_ate=str(escritorios.hoje() + timedelta(days=7)),
+                                   limite_xmls_mes=500)
+    esc = criado["usuario"]["escritorio_id"]
+    with nova_sessao() as db:
+        assert escritorios.em_teste(db, esc) and not escritorios.bloqueado(db, esc)
+        assert escritorios.limite_xmls(db, esc) == 500
+        assert uso.resumo(db, esc)["situacao"] == "teste"
+    ontem = str(escritorios.hoje() - timedelta(days=1))
+    r = cliente.put(f"/api/admin/escritorios/{esc}", json={"nome": "Contábil Silva", "situacao": "teste", "teste_ate": ontem})
+    assert "teste" in r.json()["bloqueio"]
+    with nova_sessao() as db:
+        assert esc in escritorios.ids_bloqueados(db)
+
+
+def test_pagamento_empurra_vencimento(cliente):
+    criado = _admin_com_escritorio(cliente, mensalidade="79.90", dia_vencimento=31, proximo_vencimento="2026-10-31")
+    esc = criado["usuario"]["escritorio_id"]
+    lista = {e["id"]: e for e in cliente.get("/api/admin/escritorios").json()}
+    assert lista[esc]["dias_atraso"] > 0 and lista[esc]["mensalidade"] == 79.9
+    r = cliente.post(f"/api/admin/escritorios/{esc}/pagamento", json={"observacao": "Pix"}).json()
+    assert r["proximo_vencimento"] == "2026-11-30"  # 31 em mês de 30 dias
+    r = cliente.post(f"/api/admin/escritorios/{esc}/pagamento", json={}).json()
+    assert r["proximo_vencimento"] == "2026-12-31"
+    pag = [h for h in cliente.get(f"/api/admin/escritorios/{esc}/historico").json() if h["tipo"] == "pagamento"]
+    assert len(pag) == 2 and pag[-1]["valor"] == 79.9 and "Pix" in pag[-1]["descricao"]

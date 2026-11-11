@@ -129,7 +129,8 @@ def _aviso_situacao(situacao: str | None) -> str | None:
 
 def _agendar_busca_inicial(db: Session, e: Empresa) -> None:
     db.flush()
-    if config().teste and e.is_contabilidade:
+    from app.core.escritorios import em_teste
+    if e.is_contabilidade and em_teste(db, e.escritorio_id):
         return  # no teste, a contabilidade entra só pelo certificado
     enfileirar(db, e.id, "inicial" if not db.get(SyncEstado, e.id) or not db.get(SyncEstado, e.id).ultimo_nsu else "incremental")
 

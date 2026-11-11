@@ -36,6 +36,29 @@ class Escritorio(Base):
     __tablename__ = "escritorio"
     id: Mapped[int] = mapped_column(primary_key=True)
     nome: Mapped[str] = mapped_column(String(200))
+    # teste (teste grátis, até teste_ate) | ativo | suspenso (ninguém entra; buscas e recorrências param)
+    situacao: Mapped[str] = mapped_column(String(10), default="ativo", server_default="ativo")
+    teste_ate: Mapped[date | None] = mapped_column(Date)
+    # Limite de XMLs novos por mês; vazio = o padrão do sistema (CONTASK_LIMITE_XMLS_MES), 0 = sem limite
+    limite_xmls_mes: Mapped[int | None] = mapped_column(Integer)
+    # Mensalidade: controle manual (a cobrança é feita fora do sistema)
+    mensalidade: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    dia_vencimento: Mapped[int | None] = mapped_column(Integer)
+    proximo_vencimento: Mapped[date | None] = mapped_column(Date)
+    observacoes: Mapped[str | None] = mapped_column(Text)
+    criado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=agora)
+
+
+class EscritorioEvento(Base):
+    """Histórico administrativo: situação, plano e pagamentos."""
+    __tablename__ = "escritorio_evento"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    escritorio_id: Mapped[int] = mapped_column(ForeignKey("escritorio.id", ondelete="CASCADE"), index=True)
+    usuario_id: Mapped[int | None] = mapped_column(ForeignKey("usuario.id", ondelete="SET NULL"))
+    momento: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
+    tipo: Mapped[str] = mapped_column(String(20))  # criado | situacao | plano | pagamento
+    descricao: Mapped[str] = mapped_column(Text)
+    valor: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
 
 
 class Certificado(Base):
