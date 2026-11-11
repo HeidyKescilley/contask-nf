@@ -57,6 +57,8 @@
   .topo .container { display: flex; align-items: center; gap: 24px; height: 64px; }
   .marca { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 17px; text-decoration: none; letter-spacing: -0.01em; }
   .marca span { color: var(--destaque); }
+  .acoes-topo { display: flex; gap: 10px; align-items: center; }
+  .marca div { white-space: nowrap; }
   .marca svg { width: 28px; height: 28px; }
   nav.links { display: flex; gap: 22px; margin-left: auto; font-size: 14px; }
   nav.links a { text-decoration: none; color: var(--texto-2); }
@@ -188,7 +190,7 @@
     .recursos { grid-template-columns: 1fr 1fr; }
     .passos { grid-template-columns: 1fr; }
     nav.links { display: none; }
-    .topo .botao { margin-left: auto; }
+    .acoes-topo { margin-left: auto; }
     .hero { padding-top: 48px; }
     section.bloco { padding: 60px 0; }
   }
@@ -239,7 +241,10 @@
       <a href="#preco">Preço</a>
       <a href="#duvidas">Dúvidas</a>
     </nav>
-    <a class="botao primario pequeno" data-whats="Olá! Quero fazer o teste grátis do Contask NF." href="#contato">Teste grátis</a>
+    <div class="acoes-topo">
+      <a class="botao secundario pequeno" href="https://app.contasknf.com.br/entrar">Entrar</a>
+      <a class="botao primario pequeno" data-whats="Olá! Quero fazer o teste grátis do Contask NF." href="#contato">Teste grátis</a>
+    </div>
   </div>
 </header>
 
@@ -476,6 +481,7 @@
       <a href="#seguranca">Segurança</a>
       <a href="#preco">Preço</a>
       <a data-email href="#contato">Contato</a>
+      <a href="https://app.contasknf.com.br/entrar">Entrar no sistema</a>
     </nav>
   </div>
 </footer>
