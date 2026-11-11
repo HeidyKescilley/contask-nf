@@ -1,111 +1,146 @@
-# Contask NF na internet (VPS)
+# Contask NF na internet (Hostinger KVM 2)
 
-Cada escritório roda numa **instância separada** (um contêiner Docker com banco, certificados e chave próprios) e acessa por um endereço próprio, por exemplo `https://contabil-silva.contasknf.com.br`. O Caddy recebe as conexões, emite os certificados HTTPS sozinho e repassa cada endereço à instância certa.
+Uma instância só atende todos os escritórios. Cada escritório vê só os próprios dados, e o escritório vem do login.
 
 ```
-Internet ──443──> Caddy ──> contask-contabil-silva   (dados, chave e limite próprios)
-                        └─> contask-escritorio-x
+Internet ──443──> Caddy (HTTPS automático) ─┬─> site de vendas   https://<dominio>
+                                            └─> contask-app      https://app.<dominio>
 ```
 
-Cada instância usa cerca de 150 MB de memória. Uma VPS de 8 GB comporta 30 ou mais escritórios.
+- **Contas:** não há cadastro pela tela no servidor (`CADASTRO=fechado`). Escritório e usuário são criados só com o `contask.sh`, que roda como root por SSH. O SSH aceita apenas chave, então só quem tem a chave cadastrada (Heidy e Vit) cria ou libera contas.
+- **Emissor de NFS-e:** no servidor, fica todo na homologação (`EMISSOR_PRODUCAO=false`). Emissão real continua só na instalação local da CONTELB, até haver liberação expressa.
 
-## 1. O que contratar
+## 1. Contratar
 
-| Item | Sugestão | Custo |
+| Item | Escolha | Custo |
 |---|---|---|
-| VPS | Hostinger KVM 2, datacenter **São Paulo**, Ubuntu 24.04 | ~R$ 44/mês (promoção) |
-| Domínio | `contasknf.com.br` (ou outro) no Registro.br | ~R$ 40/ano |
-| DNS | Cloudflare, plano gratuito (só DNS, nuvem **cinza**) | grátis |
-| Backup externo (opcional) | Cloudflare R2 (10 GB grátis) | grátis no início |
+| VPS | Hostinger **KVM 2**, plano mensal, datacenter **Brasil (São Paulo)**, sistema **Ubuntu 24.04** | conforme a Hostinger |
+| Domínio | o que já foi comprado | — |
+| DNS | Cloudflare, plano grátis | grátis |
+| Backup externo | Cloudflare R2 (até 10 GB grátis) | grátis no início |
 
-**Por que no Brasil:** serviços do governo podem bloquear IPs do exterior. Antes de pagar o plano longo, faça o teste do passo 4.
+Na compra, a Hostinger pede uma senha de root e, opcionalmente, uma **chave SSH**. Cadastre a chave (passo 2). Se não der na compra, cadastre depois no painel em VPS > Configurações > Chaves SSH.
 
-## 2. DNS
+**Por que no Brasil:** serviços do governo podem bloquear IPs do exterior. O teste do passo 6 confirma se o ADN aceita o IP da VPS.
 
-No Cloudflare (ou no DNS do Registro.br), crie apontando para o IP da VPS:
+## 2. Chaves SSH (Heidy e Vit, uma vez cada)
 
-- `A  *    <IP da VPS>` (curinga: todos os escritórios)
-- `A  @    <IP da VPS>` (site de vendas em `https://contasknf.com.br`, servido da pasta `site/`)
+No PowerShell de cada um:
 
-Antes de divulgar o site, preencha o WhatsApp e o e-mail de contato no fim de `site/index.html` (objeto `CONTATO`).
+```powershell
+ssh-keygen -t ed25519 -C "heidy-contask"
+Get-Content $env:USERPROFILE\.ssh\id_ed25519.pub
+```
 
-Na Cloudflare, deixe a nuvem **cinza** ("DNS only"). Assim o próprio Caddy emite o HTTPS.
+Copie a linha que começa com `ssh-ed25519` e cole no painel da Hostinger (ou em `/root/.ssh/authorized_keys` na VPS, uma linha por pessoa). A chave privada (`id_ed25519`, sem `.pub`) nunca sai do computador de cada um.
 
-## 3. Preparar a VPS (uma vez)
+Para entrar: `ssh root@<IP da VPS>`.
 
-Entre por SSH como root e rode:
+## 3. DNS (Cloudflare)
+
+1. Adicione o domínio na Cloudflare e troque os servidores DNS no Registro.br pelos que a Cloudflare indicar.
+2. Crie os registros apontando para o IP da VPS, com a nuvem **cinza** ("DNS only"), para o próprio Caddy emitir o HTTPS:
+   - `A  @    <IP da VPS>` (site de vendas)
+   - `A  www  <IP da VPS>`
+   - `A  app  <IP da VPS>` (o sistema)
+
+## 4. Instalar (uma vez)
+
+O repositório é privado. Na VPS, gere uma chave só de leitura e cadastre no GitHub em *Settings > Deploy keys* do repositório (sem marcar "Allow write access"):
+
+```bash
+ssh-keygen -t ed25519 -f /root/.ssh/github_contask -N "" -C "vps-contask"
+cat /root/.ssh/github_contask.pub
+printf "Host github.com\n  IdentityFile /root/.ssh/github_contask\n" >> /root/.ssh/config
+```
+
+Depois:
 
 ```bash
 apt-get update && apt-get install -y git
-git clone <URL do repositório privado> /opt/contask/codigo
-bash /opt/contask/codigo/deploy/instalar_vps.sh contasknf.com.br seu@email.com
+git clone git@github.com:HeidyKescilley/contask-nf.git /opt/contask/codigo
+bash /opt/contask/codigo/deploy/instalar_vps.sh <seu-dominio> <seu-email>
 ```
 
-O script faz o seguinte:
-- instala Docker, firewall (só 22, 80 e 443), swap de 2 GB e atualizações automáticas de segurança;
-- gera a imagem do sistema e sobe o Caddy;
-- agenda o backup diário.
+O script:
+- instala Docker, firewall (só 22, 80 e 443), fail2ban, swap de 2 GB e atualizações automáticas de segurança;
+- desliga o login por senha no SSH, se já houver chave cadastrada;
+- gera a chave-mestra em `/opt/contask/segredos/chave.env` (só root lê);
+- gera a imagem, sobe o sistema e o Caddy e agenda o backup diário.
 
-## 4. Teste do ADN a partir da VPS (antes de qualquer cliente)
+**Guarde a chave-mestra** no gerenciador de senhas: `cat /opt/contask/segredos/chave.env`. Sem ela, os certificados salvos não abrem.
 
-Crie o seu próprio escritório como primeiro cliente e libere o teste:
+## 5. Primeiro escritório: o seu
 
 ```bash
-bash /opt/contask/codigo/deploy/novo_cliente.sh piloto seu@email.com "Seu Nome"
-bash /opt/contask/codigo/deploy/cliente.sh piloto liberar
+cd /opt/contask/codigo/deploy
+bash contask.sh escritorio novo "CONTELB" seu@email.com "Seu Nome"
 ```
 
-Depois, faça o seguinte:
-1. Abra `https://piloto.contasknf.com.br`, entre com a senha inicial mostrada e crie a sua senha.
-2. Cadastre a contabilidade com o certificado e uma empresa.
-3. Confira na Central de Buscas que as notas chegam. Se o ADN recusar a conexão vinda da VPS, pare aqui e me avise.
+A senha inicial aparece **uma única vez**. Entre em `https://app.<dominio>` e troque a senha.
 
-## 5. Dia a dia
+## 6. Teste do ADN e da Sefin a partir da VPS (antes de chamar os escritórios)
 
-| Tarefa | Comando (`cd /opt/contask/codigo/deploy`) |
+1. Cadastre a contabilidade com o certificado e uma empresa.
+2. Confira na Central de Buscas que as notas chegam do ADN.
+3. No emissor, emita uma nota na homologação.
+
+Se o ADN ou a Sefin recusarem a conexão vinda da VPS, pare aqui.
+
+## 7. Escritórios do teste
+
+Para cada escritório:
+
+```bash
+bash contask.sh escritorio novo "Contábil Silva" ana@silva.com "Ana Silva"
+```
+
+Envie o endereço `https://app.<dominio>`, o e-mail e a senha inicial por um canal privado (WhatsApp direto, nunca em grupo). Antes, combine com o escritório um termo simples de teste: os certificados A1 dos clientes dele ficam guardados (cifrados) no servidor.
+
+## 8. Dia a dia
+
+Sempre em `cd /opt/contask/codigo/deploy`:
+
+| Tarefa | Comando |
 |---|---|
-| Novo escritório (começa em teste grátis: 1 empresa, 5 XMLs) | `bash novo_cliente.sh <cliente> <email> "<nome>" [limite]` |
-| Liberar depois da assinatura | `bash cliente.sh <cliente> liberar` |
-| Listar escritórios | `bash cliente.sh lista` |
-| Suspender (falta de pagamento) | `bash cliente.sh <cliente> parar` |
-| Reativar | `bash cliente.sh <cliente> iniciar` |
-| Mudar o limite de XMLs | `bash cliente.sh <cliente> limite 6000` (0 = sem limite) |
-| Novo usuário do escritório | `bash cliente.sh <cliente> usuarios criar <email> "<nome>"` |
-| Esqueceu a senha | `bash cliente.sh <cliente> usuarios redefinir <email>` |
-| Ver o log | `bash cliente.sh <cliente> logs` |
+| Novo escritório | `bash contask.sh escritorio novo "<nome>" <email> "<pessoa>"` |
+| Listar escritórios (com id) | `bash contask.sh escritorio lista` |
+| Mais um usuário num escritório | `bash contask.sh usuario novo <email> "<nome>" <id do escritório>` |
+| Listar usuários | `bash contask.sh usuario lista` |
+| Esqueceu a senha | `bash contask.sh usuario senha <email>` |
+| Bloquear / desbloquear acesso | `bash contask.sh usuario desativar <email>` / `reativar <email>` |
+| Estado, memória e disco | `bash contask.sh estado` |
+| Log | `bash contask.sh logs 200` |
 | Publicar nova versão | `bash atualizar.sh` (faz backup antes) |
 | Backup agora | `bash backup.sh` |
 
-A senha inicial aparece **uma única vez** na tela de quem rodou o comando. Envie-a por um canal privado. O sistema obriga a troca no primeiro acesso.
+Configurações em `/opt/contask/contask.conf` (cadastro, emissão em produção, limite de XMLs, destino do backup). Depois de mudar, rode `bash contask.sh reiniciar`.
 
-## 6. Backup e chaves
+## 9. Backup
 
-- **Backup diário às 03:30.** Fica em `/opt/contask/backups/<cliente>/` por 7 dias e inclui banco, XMLs e certificados **cifrados**.
-- **Cópia fora da VPS:**
-  1. Configure o rclone com o R2 (`rclone config`).
-  2. Preencha `RCLONE_DESTINO=r2:contask-backups` em `/opt/contask/contask.conf`.
-- **A chave de cada cliente não vai no backup, de propósito.** Assim, um backup vazado não abre os certificados.
-  - A chave fica em `/opt/contask/clientes/<cliente>/segredos/chave.key`.
-  - Guarde uma cópia de cada chave no seu gerenciador de senhas.
-  - Sem a chave, as notas continuam acessíveis, mas o cliente precisa reenviar o certificado.
+- **Diário às 03:30** e antes de cada atualização, em `/opt/contask/backups/`, por 14 dias. Inclui banco, XMLs e certificados **cifrados**.
+- **Cópia fora da VPS (recomendado):** crie um bucket no Cloudflare R2, rode `rclone config` (tipo S3, provedor Cloudflare) e preencha `RCLONE_DESTINO=r2:<bucket>` no `contask.conf`.
+- **A chave-mestra não vai no backup**, de propósito: um backup vazado não abre os certificados.
 
-**Para restaurar um cliente:**
-1. `bash cliente.sh <cliente> parar`
-2. Extraia a pasta `dados` do ZIP sobre `/opt/contask/clientes/<cliente>/dados` e rode `chown -R 1000:1000` nela.
-3. `bash cliente.sh <cliente> iniciar`
+**Restaurar:**
+1. `bash contask.sh parar`
+2. Extraia a pasta `dados` do ZIP sobre `/opt/contask/dados` e rode `chown -R 1000:1000 /opt/contask/dados`.
+3. `bash contask.sh iniciar`
 
-## 7. Monitoramento
+## 10. Monitoramento
 
-No UptimeRobot (gratuito), crie um monitor HTTP para `https://<cliente>.contasknf.com.br/api/ping` de cada escritório. Ele avisa por e-mail se algum sair do ar.
+No UptimeRobot (grátis), crie um monitor HTTP para `https://app.<dominio>/api/ping`. Ele avisa por e-mail se o sistema sair do ar.
 
 ## Segurança: o que já está ligado
 
 - Login obrigatório:
   - senha com scrypt;
-  - sessão em cookie HttpOnly, Secure e SameSite=Strict;
-  - bloqueio por 15 minutos após 5 tentativas erradas;
+  - cookie HttpOnly, Secure e SameSite=Strict;
+  - bloqueio temporário após tentativas erradas;
   - troca de senha obrigatória no primeiro acesso.
-- Cada escritório tem banco, pasta e chave-mestra próprios. Um não enxerga o outro.
+- Sem cadastro pela tela; contas só pelo `contask.sh`.
+- SSH só com chave, fail2ban e firewall.
 - Somente HTTPS (HSTS). O sistema recusa endereços (Host) e origens que não sejam o próprio domínio.
-- O contêiner roda sem root, com limite de memória. A porta do sistema não fica exposta: só o Caddy acessa.
-- No ADN, o sistema só faz chamadas de leitura.
+- O contêiner roda sem root, com limite de memória, e a porta do sistema não fica exposta: só o Caddy acessa.
+- Certificados cifrados com a chave-mestra, que fica fora da imagem e fora do backup.
+- No ADN, o sistema só faz chamadas de leitura. O emissor fica na homologação.

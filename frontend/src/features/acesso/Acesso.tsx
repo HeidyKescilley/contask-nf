@@ -97,9 +97,13 @@ export function Entrar() {
           {entrar.isPending ? <Loader2 className="animate-spin" /> : <LogIn />} Entrar
         </Button>
         <p className="text-center text-xs text-texto-2">Esqueceu a senha? Fale com o suporte do Contask NF.</p>
-        <p className="text-center text-sm text-texto-2">
-          Não tem conta? <Link to="/cadastrar" className="text-destaque hover:underline">Cadastre o escritório</Link>
-        </p>
+        {sessao.data?.cadastro === "fechado" ? (
+          <p className="text-center text-sm text-texto-2">Não tem conta? Peça o acesso ao suporte do Contask NF.</p>
+        ) : (
+          <p className="text-center text-sm text-texto-2">
+            Não tem conta? <Link to="/cadastrar" className="text-destaque hover:underline">Cadastre o escritório</Link>
+          </p>
+        )}
       </form>
     </Moldura>
   );
@@ -113,10 +117,12 @@ export function Cadastrar() {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [confirma, setConfirma] = useState("");
+  const [convite, setConvite] = useState("");
+  const pedeConvite = sessao.data?.cadastro === "convite";
   const diferentes = confirma.length > 0 && confirma !== senha;
   const cadastrar = useMutation({
     mutationFn: () => api<{ usuario: Usuario }>("/api/auth/cadastrar", {
-      method: "POST", body: JSON.stringify({ nome, email, senha }),
+      method: "POST", body: JSON.stringify({ nome, email, senha, convite: pedeConvite ? convite : null }),
     }),
     onSuccess: async () => {
       qc.removeQueries({ predicate: (q) => q.queryKey[0] !== "sessao" });
@@ -128,6 +134,14 @@ export function Cadastrar() {
 
   if (sessao.isLoading) return <Moldura titulo="Cadastrar" descricao="Carregando..."><Esqueleto className="h-40 w-full" /></Moldura>;
   if (sessao.data?.usuario) return <Navigate to="/dashboard" replace />;
+  if (sessao.data?.cadastro === "fechado") {
+    return (
+      <Moldura titulo="Cadastrar" descricao="O cadastro de novos escritórios é feito pelo suporte do Contask NF.">
+        <p className="text-sm text-texto-2">Peça o acesso ao suporte: você recebe o e-mail de entrada e uma senha inicial, que é trocada no primeiro acesso.</p>
+        <p className="mt-4 text-center text-sm"><Link to="/entrar" className="text-destaque hover:underline">Voltar para entrar</Link></p>
+      </Moldura>
+    );
+  }
 
   const enviar = (e: FormEvent) => {
     e.preventDefault();
@@ -138,6 +152,11 @@ export function Cadastrar() {
       <form onSubmit={enviar} className="space-y-4">
         {sessao.isError && <Aviso tom="erro">{(sessao.error as Error).message}</Aviso>}
         {cadastrar.isError && <Aviso tom="erro">{(cadastrar.error as Error).message}</Aviso>}
+        {pedeConvite && (
+          <Campo rotulo="Código de convite" ajuda="Enviado pelo suporte do Contask NF. Vale uma vez.">
+            {(p) => <Input {...p} value={convite} onChange={(e) => setConvite(e.target.value.toUpperCase())} autoComplete="off" required />}
+          </Campo>
+        )}
         <Campo rotulo="Nome">
           {(p) => <Input {...p} value={nome} onChange={(e) => setNome(e.target.value)} autoComplete="name" autoFocus required />}
         </Campo>
@@ -152,7 +171,7 @@ export function Cadastrar() {
             autoComplete="new-password" required />}
         </Campo>
         <Button type="submit" variante="primario" className="w-full"
-          disabled={cadastrar.isPending || !nome.trim() || !email || !senha || !confirma || diferentes}>
+          disabled={cadastrar.isPending || !nome.trim() || !email || !senha || !confirma || diferentes || (pedeConvite && !convite.trim())}>
           {cadastrar.isPending ? <Loader2 className="animate-spin" /> : <ShieldCheck />} Criar escritório
         </Button>
         <p className="text-center text-sm text-texto-2">

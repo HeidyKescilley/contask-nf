@@ -21,6 +21,7 @@ class Cadastro(BaseModel):
     nome: str
     email: str
     senha: str
+    convite: str | None = None
 
 
 class TrocaSenha(BaseModel):
@@ -36,7 +37,9 @@ def _usuario_json(u) -> dict | None:
 
 def _eu(db: Session, u) -> dict:
     if u is None:
-        return {"usuario": None, "escritorio": None, "tem_contabilidade": False, "empresas": 0}
+        # Sem login: a tela de entrada precisa saber se mostra o cadastro e se ele pede convite
+        return {"usuario": None, "escritorio": None, "tem_contabilidade": False, "empresas": 0,
+                "cadastro": config().cadastro}
     esc = db.get(Escritorio, u.escritorio_id)
     empresas = int(db.scalar(select(func.count()).select_from(Empresa).where(Empresa.escritorio_id == u.escritorio_id)) or 0)
     tem = db.scalar(select(Empresa.id).where(Empresa.escritorio_id == u.escritorio_id, Empresa.is_contabilidade))
@@ -66,8 +69,19 @@ def eu(request: Request, db: Session = Depends(sessao)):
 
 @router.post("/cadastrar", status_code=201)
 def cadastrar(dados: Cadastro, request: Request, response: Response, db: Session = Depends(sessao)):
+    from app.core import convites
+    modo = config().cadastro
+    if modo == "fechado":
+        raise HTTPException(403, "O cadastro de novos escritórios está fechado. Fale com o suporte do Contask NF.")
+    convite = None
+    if modo == "convite":
+        convite = convites.valido(db, dados.convite or "")
+        if convite is None:
+            raise HTTPException(400, "Código de convite inválido ou já usado.")
     try:
-        auth.criar_usuario(db, dados.email, dados.nome, dados.senha, trocar_senha=False)
+        u = auth.criar_usuario(db, dados.email, dados.nome, dados.senha, trocar_senha=False)
+        if convite is not None:
+            convites.marcar_usado(convite, u.escritorio_id)
         db.commit()
         u, token = auth.entrar(db, dados.email, dados.senha, ip_cliente(request))
     except auth.ErroLogin as e:

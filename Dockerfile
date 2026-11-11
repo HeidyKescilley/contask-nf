@@ -1,4 +1,5 @@
-# Contask NF: imagem de uma instância (um escritório por contêiner).
+# Contask NF: imagem do sistema (uma instância atende todos os escritórios).
+# A chave-mestra (CONTASK_CHAVE_MESTRA) entra só na execução (--env-file), nunca na imagem.
 # Build: docker build -t contask-nf .
 
 # 1) Interface
@@ -15,11 +16,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     CONTASK_HOST=0.0.0.0 \
     CONTASK_PORTA=8765 \
-    CONTASK_LOGIN=true \
-    CONTASK_COOKIE_SEGURO=true \
+    CONTASK_COOKIE_SECURE=true \
+    CONTASK_CADASTRO=fechado \
+    CONTASK_EMISSOR_PRODUCAO=false \
     CONTASK_DADOS_DIR=/app/dados \
     CONTASK_FRONTEND_DIST=/app/frontend/dist \
-    CONTASK_CHAVE_MESTRA_ARQUIVO=/segredos/chave.key \
     TZ=America/Sao_Paulo
 
 WORKDIR /app
@@ -30,8 +31,8 @@ COPY --from=frontend /src/frontend/dist frontend/dist
 
 # Usuário sem privilégios; as pastas montadas devem pertencer ao UID 1000
 RUN useradd --uid 1000 --create-home contask \
-    && mkdir -p /app/dados /segredos /backups \
-    && chown -R contask:contask /app/dados /segredos /backups
+    && mkdir -p /app/dados /backups \
+    && chown -R contask:contask /app/dados /backups
 USER contask
 
 EXPOSE 8765

@@ -1,23 +1,36 @@
-# Caddy: HTTPS automático (Let's Encrypt) e um endereço por escritório.
-# Cada cliente ganha um arquivo em sites/<cliente>.caddy, criado pelo novo_cliente.sh.
+# Caddy: HTTPS automático (Let's Encrypt).
+#   https://<DOMINIO_BASE>           site de vendas (pasta site/)
+#   https://<SUBDOMINIO>.<DOMINIO_BASE>  o sistema (todos os escritórios)
 {
 	email {$ACME_EMAIL}
 }
 
-# Site de vendas no domínio principal (pasta site/ do repositório)
-{$DOMINIO_BASE} {
-	root * /srv/site
-	file_server
-	encode zstd gzip
+(seguranca) {
 	header {
 		Strict-Transport-Security "max-age=31536000"
 		X-Content-Type-Options nosniff
 		Referrer-Policy strict-origin-when-cross-origin
+		-Server
 	}
+}
+
+{$DOMINIO_BASE} {
+	root * /srv/site
+	file_server
+	encode zstd gzip
+	import seguranca
 }
 
 www.{$DOMINIO_BASE} {
 	redir https://{$DOMINIO_BASE}{uri} permanent
 }
 
-import /etc/caddy/sites/*.caddy
+{$SUBDOMINIO}.{$DOMINIO_BASE} {
+	encode zstd gzip
+	import seguranca
+	# Uploads de certificado e importações: limite folgado, mas finito
+	request_body {
+		max_size 20MB
+	}
+	reverse_proxy contask-app:8765
+}

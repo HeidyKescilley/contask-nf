@@ -23,6 +23,8 @@ class Config(BaseSettings):
     # Domínio único, separado por vírgula. Vazio = só localhost.
     hosts: str = ""
     sessao_dias: int = 14
+    # Cadastro de escritório: aberto (instalação local) | convite (servidor na internet) | fechado
+    cadastro: str = "aberto"
     cookie_secure: bool = False  # CONTASK_COOKIE_SECURE: cookie Secure só no HTTPS
     # Limite mensal de XMLs novos baixados (0 = sem limite). A carga inicial do histórico não conta.
     limite_xmls_mes: int = 0

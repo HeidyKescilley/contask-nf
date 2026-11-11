@@ -16,6 +16,8 @@ export interface Sessao {
   escritorio: { id: number; nome: string } | null;
   tem_contabilidade: boolean;
   empresas: number;
+  /** só sem login: aberto (local) | convite | fechado (servidor: contas criadas pelo suporte) */
+  cadastro?: "aberto" | "convite" | "fechado";
 }
 
 export interface Uso {

@@ -19,6 +19,18 @@ class Base(DeclarativeBase):
     pass
 
 
+class Convite(Base):
+    """Código de uso único para cadastrar um escritório (CONTASK_CADASTRO=convite). Só o hash fica gravado."""
+    __tablename__ = "convite"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    codigo_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    descricao: Mapped[str] = mapped_column(String(200))
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
+    usado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revogado: Mapped[bool] = mapped_column(Boolean, default=False)
+    escritorio_id: Mapped[int | None] = mapped_column(ForeignKey("escritorio.id", ondelete="SET NULL"))
+
+
 class Escritorio(Base):
     """Cliente que paga. Um usuário vê todas as empresas deste escritório."""
     __tablename__ = "escritorio"

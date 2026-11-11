@@ -198,7 +198,9 @@ def _escritorio_do_cadastro(db: Session, nome: str) -> Escritorio:
     return esc
 
 
-def criar_usuario(db: Session, email: str, nome: str, senha: str, *, trocar_senha: bool = True) -> Usuario:
+def criar_usuario(db: Session, email: str, nome: str, senha: str, *, trocar_senha: bool = True,
+                  escritorio_id: int | None = None, novo_escritorio: str | None = None) -> Usuario:
+    """Sem escritorio_id/novo_escritorio: regra do cadastro pela tela (_escritorio_do_cadastro)."""
     email = normalizar_email(email)
     if "@" not in email or len(email) > 200:
         raise ErroLogin("E-mail inválido.")
@@ -206,7 +208,18 @@ def criar_usuario(db: Session, email: str, nome: str, senha: str, *, trocar_senh
         raise ErroLogin("Já existe um usuário com esse e-mail.")
     validar_nova_senha(senha)
     nome_limpo = (nome or "").strip() or email
-    esc = _escritorio_do_cadastro(db, nome_limpo)
+    if escritorio_id is not None:
+        esc = db.get(Escritorio, escritorio_id)
+        if esc is None:
+            raise ErroLogin(f"Escritório {escritorio_id} não encontrado.")
+    elif novo_escritorio is not None:
+        if not novo_escritorio.strip():
+            raise ErroLogin("Informe o nome do escritório.")
+        esc = Escritorio(nome=novo_escritorio.strip()[:200])
+        db.add(esc)
+        db.flush()
+    else:
+        esc = _escritorio_do_cadastro(db, nome_limpo)
     u = Usuario(email=email, nome=nome_limpo, senha_hash=gerar_hash(senha), ativo=True,
                 trocar_senha=trocar_senha, criado_em=agora(), escritorio_id=esc.id)
     db.add(u)
