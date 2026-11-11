@@ -3,7 +3,7 @@
 Uma instância só atende todos os escritórios. Cada escritório vê só os próprios dados, e o escritório vem do login.
 
 ```
-Internet ──443──> Caddy (HTTPS automático) ─┬─> site de vendas   https://mk.<dominio>  (<dominio> e www redirecionam)
+Internet ──443──> Caddy (HTTPS automático) ─┬─> site de vendas   https://<dominio>  (o www redireciona)
                                             └─> contask-app      https://app.<dominio>
 ```
 
@@ -36,13 +36,14 @@ Copie a linha que começa com `ssh-ed25519` e cole no painel da Hostinger (ou em
 
 Para entrar: `ssh root@<IP da VPS>`.
 
-## 3. DNS (Cloudflare)
+## 3. DNS (Registro.br)
 
-1. Adicione o domínio na Cloudflare e troque os servidores DNS no Registro.br pelos que a Cloudflare indicar.
-2. Crie os registros apontando para o IP da VPS, com a nuvem **cinza** ("DNS only"), para o próprio Caddy emitir o HTTPS:
-   - `A  app  <IP da VPS>` (o sistema)
-   - `A  mk   <IP da VPS>` (site de vendas)
-   - `A  @    <IP da VPS>` e `A  www  <IP da VPS>` (redirecionam para o mk)
+No Registro.br, em **DNS**, escolha **Utilizar DNS do Registro.br** e, no **Modo avançado** da zona, crie:
+- `A      contasknf.com.br       <IP da VPS>` (site de vendas)
+- `CNAME  www.contasknf.com.br   contasknf.com.br` (redireciona para o site)
+- `A      app.contasknf.com.br   <IP da VPS>` (o sistema)
+
+Se o DNS estiver na Cloudflare, use os mesmos registros com a nuvem **cinza** ("DNS only"), para o próprio Caddy emitir o HTTPS.
 
 ## 4. Instalar (uma vez)
 

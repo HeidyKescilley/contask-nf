@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Prepara uma VPS Ubuntu 24.04 limpa e sobe o Contask NF. Rode uma vez, como root:
-#   bash /opt/contask/codigo/deploy/instalar_vps.sh contasknf.com.br voce@email.com [sistema] [site]
-# Resultado: sistema em https://app.contasknf.com.br e site de vendas em https://mk.contasknf.com.br
+#   bash /opt/contask/codigo/deploy/instalar_vps.sh contasknf.com.br voce@email.com [subdominio-do-sistema]
+# Resultado: site de vendas em https://contasknf.com.br e sistema em https://app.contasknf.com.br
 set -euo pipefail
 source "$(dirname "$0")/comum.sh"
 exigir_root
@@ -9,9 +9,8 @@ exigir_root
 DOMINIO_BASE="${1:-}"
 ACME_EMAIL="${2:-}"
 SUBDOMINIO="${3:-app}"
-SITE="${4:-mk}"
-[ -n "$DOMINIO_BASE" ] && [ -n "$ACME_EMAIL" ] || erro "uso: instalar_vps.sh <dominio> <email-para-o-https> [sistema] [site]"
-[[ "$SUBDOMINIO" =~ ^[a-z0-9-]+$ && "$SITE" =~ ^[a-z0-9-]+$ ]] || erro "subdomínio inválido: $SUBDOMINIO / $SITE"
+[ -n "$DOMINIO_BASE" ] && [ -n "$ACME_EMAIL" ] || erro "uso: instalar_vps.sh <dominio> <email-para-o-https> [subdominio-do-sistema]"
+[[ "$SUBDOMINIO" =~ ^[a-z0-9-]+$ ]] || erro "subdomínio inválido: $SUBDOMINIO"
 
 echo "==> Pacotes do sistema"
 apt-get update -q
@@ -54,7 +53,6 @@ if [ ! -f "$CONF" ]; then
 # Configuração do servidor do Contask NF (sem segredos)
 DOMINIO_BASE=$DOMINIO_BASE
 SUBDOMINIO=$SUBDOMINIO
-SITE=$SITE
 ACME_EMAIL=$ACME_EMAIL
 # Cadastro pela tela: fechado (contas só pelo contask.sh) | convite | aberto
 CADASTRO=fechado
@@ -91,7 +89,7 @@ echo "==> Caddy (HTTPS)"
 docker rm -f contask-caddy >/dev/null 2>&1 || true
 docker run -d --name contask-caddy --restart unless-stopped --network "$REDE" \
   -p 80:80 -p 443:443 -p 443:443/udp \
-  -e ACME_EMAIL="$ACME_EMAIL" -e DOMINIO_BASE="$DOMINIO_BASE" -e SUBDOMINIO="$SUBDOMINIO" -e SITE="$SITE" \
+  -e ACME_EMAIL="$ACME_EMAIL" -e DOMINIO_BASE="$DOMINIO_BASE" -e SUBDOMINIO="$SUBDOMINIO" \
   -v "$CODIGO/site:/srv/site:ro" -v "$BASE/caddy/Caddyfile:/etc/caddy/Caddyfile:ro" \
   -v "$BASE/caddy/data:/data" -v "$BASE/caddy/config:/config" \
   --log-opt max-size=10m --log-opt max-file=3 \
@@ -105,7 +103,7 @@ EOF
 cat <<EOF
 
 Pronto.
-  Site:    https://$SITE.$DOMINIO_BASE   (contasknf.com.br e www redirecionam para ele)
+  Site:    https://$DOMINIO_BASE   (o www redireciona para ele)
   Sistema: https://$SUBDOMINIO.$DOMINIO_BASE   (o HTTPS sai em até 1 minuto depois do DNS apontar)
 
 Próximo passo, criar o primeiro escritório:

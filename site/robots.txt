@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://mk.contasknf.com.br/sitemap.xml
+Sitemap: https://contasknf.com.br/sitemap.xml
