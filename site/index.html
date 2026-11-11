@@ -135,6 +135,15 @@
   .alt .recurso { background: var(--fundo); }
   .recurso p { margin: 0; color: var(--texto-2); font-size: 15px; }
 
+  .emissor { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; margin-bottom: 36px; }
+  .lista-check { list-style: none; padding: 0; margin: 22px 0 0; display: grid; gap: 11px; }
+  .lista-check li { display: grid; grid-template-columns: 20px 1fr; gap: 10px; font-size: 15px; }
+  .lista-check li svg { width: 18px; height: 18px; color: var(--destaque); margin-top: 3px; }
+  .campo-mock { display: grid; gap: 2px; background: var(--fundo); border-radius: 10px; padding: 9px 12px; font-size: 13px; }
+  .campo-mock small { color: var(--texto-2); font-size: 11.5px; }
+  .campo-mock b { font-weight: 500; }
+  .duas { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .alt .item-seg { background: var(--fundo); }
   .seguranca { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 48px; align-items: start; }
   .itens-seg { display: grid; gap: 14px; }
   .item-seg { display: grid; grid-template-columns: 40px 1fr; gap: 14px; padding: 18px; border-radius: 14px; background: var(--superficie); border: 1px solid var(--borda); }
@@ -178,7 +187,7 @@
   footer a:hover { color: var(--texto); }
 
   @media (max-width: 900px) {
-    .hero .container, .seguranca, .preco-grade { grid-template-columns: 1fr; gap: 40px; }
+    .hero .container, .seguranca, .preco-grade, .emissor { grid-template-columns: 1fr; gap: 40px; }
     .recursos { grid-template-columns: 1fr 1fr; }
     .passos { grid-template-columns: 1fr; }
     nav.links { display: none; }
@@ -217,6 +226,9 @@
   <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
   <symbol id="i-box" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/></symbol>
   <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/></symbol>
+  <symbol id="i-repeat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
   <symbol id="i-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.3-9.3M17 6l3 3M14 9l2 2"/></symbol>
 </svg>
 
@@ -229,6 +241,7 @@
     <nav class="links" aria-label="Seções">
       <a href="#como-funciona">Como funciona</a>
       <a href="#recursos">Recursos</a>
+      <a href="#emissor">Emissor</a>
       <a href="#seguranca">Segurança</a>
       <a href="#preco">Preço</a>
       <a href="#duvidas">Dúvidas</a>
@@ -246,7 +259,7 @@
       <div>
         <span class="selo"><svg width="14" height="14" aria-hidden="true"><use href="#i-zap"/></svg> NFS-e do Padrão Nacional</span>
         <h1>As NFS-e de todos os seus clientes, <em>baixadas sozinhas.</em></h1>
-        <p class="lead">O Contask NF busca no Ambiente Nacional as notas prestadas e tomadas de cada empresa do escritório, usando a procuração eletrônica. Sem entrar no portal empresa por empresa e sem baixar XML um a um.</p>
+        <p class="lead">O Contask NF busca no Ambiente Nacional as notas prestadas e tomadas de cada empresa do escritório, usando a procuração eletrônica. Sem entrar no portal empresa por empresa e sem baixar XML um a um. E ainda emite as notas, inclusive as que se repetem todo mês.</p>
         <div class="acoes">
           <a class="botao primario" data-whats="Olá! Quero fazer o teste grátis do Contask NF." href="#contato">
             <svg aria-hidden="true"><use href="#i-whats"/></svg> Testar de graça
@@ -359,23 +372,67 @@
     </div>
   </section>
 
-  <section class="bloco" id="seguranca" aria-labelledby="t-seg">
+  <section class="bloco" id="emissor" aria-labelledby="t-emissor">
+    <div class="container">
+      <div class="emissor">
+        <div>
+          <div class="titulo-secao" style="margin-bottom:0">
+            <span class="sobre">Emissor de NFS-e</span>
+            <h2 id="t-emissor">Emita as notas dos seus clientes sem abrir o portal</h2>
+            <p>A nota vai direto para o Sistema Nacional da NFS-e, com o certificado da empresa ou pela procuração do escritório. Cadastre uma vez e emita em poucos cliques.</p>
+          </div>
+          <ul class="lista-check">
+            <li><svg aria-hidden="true"><use href="#i-check"/></svg> Tomador preenchido pelo CNPJ e guardado para as próximas notas</li>
+            <li><svg aria-hidden="true"><use href="#i-check"/></svg> Serviços cadastrados com os códigos oficiais (LC 116 e NBS)</li>
+            <li><svg aria-hidden="true"><use href="#i-check"/></svg> ISS retido e retenções federais, com o valor líquido calculado na hora</li>
+            <li><svg aria-hidden="true"><use href="#i-check"/></svg> Texto do Simples Nacional e do PROCON incluídos automaticamente</li>
+            <li><svg aria-hidden="true"><use href="#i-check"/></svg> DANFSe, XML e cancelamento na mesma tela, com filtro por mês e tomador</li>
+          </ul>
+        </div>
+
+        <figure class="tela" aria-label="Ilustração da tela de emissão com dados fictícios" style="margin:0">
+          <div class="tela-barra"><i></i><i></i><i></i><b>Emitir nota · Clínica Bem Estar Ltda</b></div>
+          <div class="tela-corpo">
+            <div class="campo-mock"><small>Tomador</small><b>Alfa Engenharia e Obras Ltda</b></div>
+            <div class="campo-mock"><small>Serviço · 17.19.01</small><b>Honorários contábeis 10/2026</b></div>
+            <div class="duas">
+              <div class="campo-mock"><small>Valor do serviço</small><b class="mono">R$ 1.500,00</b></div>
+              <div class="campo-mock"><small>Valor líquido</small><b class="mono">R$ 1.500,00</b></div>
+            </div>
+            <div class="lista" role="list">
+              <div class="linha" role="listitem"><div class="nome"><b>NFS-e nº 128 autorizada</b><small>DANFSe e XML prontos</small></div><span class="mono" style="color:var(--texto-2)">09:12</span><span class="tag ok">Autorizada</span></div>
+              <div class="linha" role="listitem"><div class="nome"><b>Honorários mensais</b><small>Todo dia 5 · próxima em 05/12</small></div><span class="mono" style="color:var(--texto-2)">dia 5</span><span class="tag busca">Recorrente</span></div>
+            </div>
+            <figcaption class="tela-rodape">Ilustração com dados fictícios</figcaption>
+          </div>
+        </figure>
+      </div>
+
+      <div class="recursos">
+        <div class="recurso"><div class="icone"><svg aria-hidden="true"><use href="#i-repeat"/></svg></div><h3>Notas recorrentes</h3><p>Honorários, mensalidades e contratos saem sozinhos todo mês, no dia escolhido. A descrição se ajusta: "Honorários {mês anterior}" vira "Honorários 10/2026".</p></div>
+        <div class="recurso"><div class="icone"><svg aria-hidden="true"><use href="#i-copy"/></svg></div><h3>Duplicar e rascunho</h3><p>Duplique qualquer nota, inclusive as emitidas fora do sistema, ou deixe uma preenchida para emitir depois.</p></div>
+        <div class="recurso"><div class="icone"><svg aria-hidden="true"><use href="#i-send"/></svg></div><h3>Sem nota em dobro</h3><p>O número da nota é reservado antes do envio. Se a internet cair, o sistema confere no Sistema Nacional antes de reenviar.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="bloco alt" id="seguranca" aria-labelledby="t-seg">
     <div class="container seguranca">
       <div class="titulo-secao" style="margin-bottom:0">
         <span class="sobre">Segurança</span>
         <h2 id="t-seg">O certificado do seu escritório fica protegido</h2>
-        <p>Sabemos que essa é a primeira pergunta. Por isso o sistema foi desenhado para usar o certificado o mínimo possível e só para leitura.</p>
+        <p>Sabemos que essa é a primeira pergunta. Por isso o certificado é usado só para o que você pede: consultar as notas e emitir quando você mandar.</p>
       </div>
       <div class="itens-seg">
         <div class="item-seg"><div class="icone"><svg aria-hidden="true"><use href="#i-lock"/></svg></div><div><h3>Cifrado do começo ao fim</h3><p>O arquivo e a senha do certificado ficam cifrados, com uma chave exclusiva do seu escritório. A senha nunca aparece na tela nem em registros.</p></div></div>
-        <div class="item-seg"><div class="icone"><svg aria-hidden="true"><use href="#i-eye"/></svg></div><div><h3>Só consulta, nunca emissão</h3><p>O sistema apenas lê as notas no Ambiente Nacional. Ele não emite, não cancela e não manifesta nenhuma nota.</p></div></div>
-        <div class="item-seg"><div class="icone"><svg aria-hidden="true"><use href="#i-box"/></svg></div><div><h3>Ambiente exclusivo do escritório</h3><p>Cada escritório tem seu próprio servidor isolado, banco de dados e endereço. Nenhum outro cliente enxerga os seus dados.</p></div></div>
+        <div class="item-seg"><div class="icone"><svg aria-hidden="true"><use href="#i-eye"/></svg></div><div><h3>Nada é emitido sem você</h3><p>A busca só lê as notas no Ambiente Nacional. Uma nota só é emitida quando alguém da sua equipe confirma, ou por uma recorrência que você mesmo programou.</p></div></div>
+        <div class="item-seg"><div class="icone"><svg aria-hidden="true"><use href="#i-box"/></svg></div><div><h3>Dados separados por escritório</h3><p>Cada escritório só enxerga as próprias empresas, notas e certificados. O acesso vem do login de cada pessoa, e nenhum outro cliente vê os seus dados.</p></div></div>
         <div class="item-seg"><div class="icone"><svg aria-hidden="true"><use href="#i-key"/></svg></div><div><h3>Acesso com login e HTTPS</h3><p>Conexão sempre criptografada, senha individual para cada pessoa da equipe e bloqueio após tentativas erradas.</p></div></div>
       </div>
     </div>
   </section>
 
-  <section class="bloco alt" id="preco" aria-labelledby="t-preco">
+  <section class="bloco" id="preco" aria-labelledby="t-preco">
     <div class="container preco-grade">
       <div>
         <div class="titulo-secao" style="margin-bottom:24px">
@@ -399,6 +456,7 @@
           <li><svg aria-hidden="true"><use href="#i-check"/></svg> Histórico completo de cada empresa, sem custo extra</li>
           <li><svg aria-hidden="true"><use href="#i-check"/></svg> Usuários ilimitados da equipe</li>
           <li><svg aria-hidden="true"><use href="#i-check"/></svg> DANFSe, exportação ZIP e relatórios</li>
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg> Emissor de NFS-e com notas recorrentes</li>
           <li><svg aria-hidden="true"><use href="#i-check"/></svg> Backup diário e suporte por WhatsApp</li>
         </ul>
         <a class="botao primario" data-whats="Olá! Quero fazer o teste grátis do Contask NF." href="#contato">
@@ -408,7 +466,7 @@
     </div>
   </section>
 
-  <section class="bloco" id="duvidas" aria-labelledby="t-faq">
+  <section class="bloco alt" id="duvidas" aria-labelledby="t-faq">
     <div class="container">
       <div class="titulo-secao">
         <span class="sobre">Dúvidas</span>
@@ -417,7 +475,7 @@
       <div class="faq">
         <details>
           <summary>Preciso instalar alguma coisa?</summary>
-          <p>Não. O Contask NF funciona no navegador, em um endereço exclusivo do seu escritório. Basta entrar com e-mail e senha.</p>
+          <p>Não. O Contask NF funciona no navegador, em app.contasknf.com.br. Basta entrar com e-mail e senha.</p>
         </details>
         <details>
           <summary>Meus clientes precisam me dar procuração?</summary>
@@ -436,8 +494,8 @@
           <p>O sistema avisa ao chegar em 80%. Ao atingir o limite, as buscas de notas novas param até o mês seguinte, e tudo que já foi baixado continua disponível. Se precisar de mais, ampliamos o seu plano.</p>
         </details>
         <details>
-          <summary>O sistema emite ou cancela notas?</summary>
-          <p>Não. Ele só consulta. Nada é emitido, cancelado ou manifestado em nome dos seus clientes.</p>
+          <summary>O sistema emite notas?</summary>
+          <p>Sim, pelo emissor de NFS-e, para as empresas que você marcar como emissoras. A nota só sai quando alguém da equipe confirma ou por uma recorrência que você programou. A busca de notas continua sendo só leitura: nada é cancelado ou manifestado sem você pedir.</p>
         </details>
         <details>
           <summary>Como funciona o teste grátis?</summary>
@@ -451,7 +509,7 @@
     </div>
   </section>
 
-  <section class="final alt bloco" id="contato" aria-labelledby="t-final" style="border-bottom:0">
+  <section class="final bloco" id="contato" aria-labelledby="t-final" style="border-bottom:0">
     <div class="container">
       <h2 id="t-final">Teste com uma empresa do seu escritório</h2>
       <p>Em poucos minutos você vê notas reais de um cliente seu, baixadas sem abrir o portal. O teste é grátis.</p>
@@ -470,6 +528,7 @@
     <div>© <span id="ano">2026</span> Contask NF</div>
     <nav aria-label="Rodapé">
       <a href="#como-funciona">Como funciona</a>
+      <a href="#emissor">Emissor</a>
       <a href="#seguranca">Segurança</a>
       <a href="#preco">Preço</a>
       <a data-email href="#contato">Contato</a>
