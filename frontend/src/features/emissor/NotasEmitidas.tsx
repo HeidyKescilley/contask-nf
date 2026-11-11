@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import {
   AlertTriangle, BadgeCheck, Ban, Building2, ChevronLeft, ChevronRight, Clock, Copy, Download, FilePen, FileText, Loader2,
-  MoreHorizontal, Plus, ReceiptText, Repeat, RotateCcw, Search, Trash2, X, XCircle,
+  Lock, MoreHorizontal, Plus, ReceiptText, Repeat, RotateCcw, Search, Trash2, X, XCircle,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -20,6 +20,7 @@ import {
   type FiltrosNotas, type ItemNota, type NotaEmitida, type Rascunho,
 } from "@/lib/emissor";
 import { nomeExibicao, useEmpresaSelecionada } from "@/lib/empresas";
+import { useTesteGratis } from "@/lib/sessao";
 import { formatarData, formatarDataHora, formatarDoc } from "@/lib/formato";
 import { moeda } from "@/lib/notas";
 import { cn } from "@/lib/utils";
@@ -240,6 +241,7 @@ export function NotasEmitidas() {
 function Linha({ n, comEmpresa, navegar, aoCancelar }: {
   n: ItemNota; comEmpresa: (r: string) => string; navegar: (r: string) => void; aoCancelar: (n: NotaEmitida) => void;
 }) {
+  const { emTeste } = useTesteGratis();
   const adn = n.origem === "adn";
   const duplicar = adn ? `duplicar_adn=${n.id}` : `duplicar=${n.id}`;
   const danfse = adn ? `/api/notas/${n.id}/pdf` : `/api/emissor/notas/${n.id}/danfse`;
@@ -272,10 +274,12 @@ function Linha({ n, comEmpresa, navegar, aoCancelar }: {
             {temXml && (
               <>
                 <DropdownMenuItem asChild><a href={danfse} target="_blank" rel="noreferrer"><FileText /> Abrir DANFSe</a></DropdownMenuItem>
-                <DropdownMenuItem asChild><a href={xml}><Download /> Baixar XML da NFS-e</a></DropdownMenuItem>
+                {emTeste
+                  ? <DropdownMenuItem disabled><Lock /> XML disponível no plano</DropdownMenuItem>
+                  : <DropdownMenuItem asChild><a href={xml}><Download /> Baixar XML da NFS-e</a></DropdownMenuItem>}
               </>
             )}
-            {!adn && n.situacao === "cancelada" && (
+            {!adn && !emTeste && n.situacao === "cancelada" && (
               <DropdownMenuItem asChild><a href={`/api/emissor/notas/${n.id}/xml?tipo=cancelamento`}><Download /> XML do cancelamento</a></DropdownMenuItem>
             )}
             {!adn && (n.situacao === "rejeitada" || n.situacao === "pendente") && (
@@ -284,7 +288,7 @@ function Linha({ n, comEmpresa, navegar, aoCancelar }: {
             {(!adn || n.tem_xml) && (
               <>
                 <DropdownMenuItem onSelect={() => navegar(comEmpresa(`/emissor/emitir?${duplicar}`))}><Copy /> Duplicar</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => navegar(comEmpresa(`/emissor/recorrentes/nova?${duplicar}`))}><Repeat /> Criar recorrência</DropdownMenuItem>
+                {!emTeste && <DropdownMenuItem onSelect={() => navegar(comEmpresa(`/emissor/recorrentes/nova?${duplicar}`))}><Repeat /> Criar recorrência</DropdownMenuItem>}
               </>
             )}
             {!adn && n.situacao === "autorizada" && (

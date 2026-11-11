@@ -1,13 +1,14 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle2, Clock, Download, FileArchive, FileSpreadsheet, FileText, Loader2, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock, Download, FileArchive, FileSpreadsheet, FileText, Loader2, Lock, XCircle } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { Cabecalho, EstadoErro, Esqueleto } from "@/components/estados";
+import { Cabecalho, EstadoErro, EstadoVazio, Esqueleto } from "@/components/estados";
 import { Selo } from "@/components/selos";
 import { Button } from "@/components/ui/button";
 import { Aviso, Input } from "@/components/ui/campos";
 import { api } from "@/lib/api";
 import { nomeExibicao, useEmpresaSelecionada } from "@/lib/empresas";
+import { useTesteGratis } from "@/lib/sessao";
 import { formatarDataHora } from "@/lib/formato";
 import { moeda, periodo } from "@/lib/notas";
 import { cn } from "@/lib/utils";
@@ -70,6 +71,7 @@ function Opcoes<T extends string>({ valor, opcoes, aoMudar, nome }: { valor: T; 
 
 export function Exportacoes() {
   const { empresa, empresas, carregando } = useEmpresaSelecionada();
+  const teste = useTesteGratis();
   const [f, setF] = useState<Filtros>(PADRAO);
   const [verEmpresas, setVerEmpresas] = useState(false);
   const ativas = empresas.filter((e) => e.ativa).length;
@@ -95,7 +97,17 @@ export function Exportacoes() {
     onError: (e) => toast.error((e as Error).message),
   });
 
-  if (carregando) return <><Cabecalho titulo="Exportações" /><Esqueleto className="h-96 w-full" /></>;
+  if (carregando || teste.carregando) return <><Cabecalho titulo="Exportações" /><Esqueleto className="h-96 w-full" /></>;
+  if (teste.emTeste) {
+    return (
+      <>
+        <Cabecalho titulo="Exportações" descricao="Gere um ZIP com os XMLs e um relatório em PDF ou XLSX." />
+        <EstadoVazio icone={Lock} titulo="Exportação disponível no plano">
+          No teste grátis dá para ver as notas e abrir o PDF de cada uma. O ZIP com os XMLs e os relatórios ficam liberados ao assinar o plano: fale com o suporte do Contask NF.
+        </EstadoVazio>
+      </>
+    );
+  }
   if (!empresa) return <><Cabecalho titulo="Exportações" descricao="Gere um ZIP com os XMLs e um relatório em PDF ou XLSX." /><EstadoSemEmpresa icone={FileArchive} /></>;
 
   const p = previa.data;

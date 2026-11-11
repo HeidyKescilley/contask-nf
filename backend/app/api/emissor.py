@@ -672,6 +672,8 @@ def cancelar_nota(nota_id: int, dados: CancelamentoIn, db: Session = Depends(ses
 def xml_nota(nota_id: int, tipo: str = Query("nfse", pattern="^(nfse|dps|cancelamento)$"),
              db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
     from app.core.config import config
+    from app.core.escritorios import exigir_plano
+    exigir_plano(db, esc)
     n = _nota(db, nota_id, esc)
     rel = {"nfse": n.xml_nfse_path, "dps": n.xml_dps_path, "cancelamento": n.xml_cancelamento_path}[tipo]
     if not rel or not (config().dados_dir / rel).is_file():
@@ -685,6 +687,9 @@ def xml_nota(nota_id: int, tipo: str = Query("nfse", pattern="^(nfse|dps|cancela
 def danfse_nota(nota_id: int, download: int = 0, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
     from app.core.config import config
     from app.fiscal.danfse import gerar_danfse
+    if download:
+        from app.core.escritorios import exigir_plano
+        exigir_plano(db, esc)
     n = _nota(db, nota_id, esc)
     if not n.xml_nfse_path or not (config().dados_dir / n.xml_nfse_path).is_file():
         raise HTTPException(404, "A nota ainda não foi autorizada.")

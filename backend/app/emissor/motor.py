@@ -271,6 +271,10 @@ def _recuperar(cli: ClienteSefin, db: Session, e: Empresa, nota: NotaEmitida, mo
 # ---------------------------------------------------------------------------
 
 def emitir(db: Session, esc: int, usuario_id: int | None, ent: Entrada) -> NotaEmitida:
+    from app.core.escritorios import em_teste, emissoes_do_escritorio
+    if em_teste(db, esc) and emissoes_do_escritorio(db, esc) >= config().teste_max_emissoes:
+        raise ErroEmissao(f"O teste grátis permite emitir {config().teste_max_emissoes} nota, e ela já foi usada. "
+                          "Para continuar emitindo, assine o plano: fale com o suporte do Contask NF.", 402)
     e, cfg = _empresa_pronta(db, esc, ent.empresa_id)
     amb = ambiente(cfg)
     nota = NotaEmitida(escritorio_id=esc, empresa_id=e.id, usuario_id=usuario_id, ambiente=amb, serie=cfg.serie,

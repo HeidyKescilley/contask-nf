@@ -1,11 +1,12 @@
 import * as D from "@radix-ui/react-dialog";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, Download, ExternalLink, FileCode2, FileText, Loader2, RefreshCw, X } from "lucide-react";
+import { AlertTriangle, Download, ExternalLink, FileCode2, FileText, Loader2, Lock, RefreshCw, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Copiar } from "@/components/Copiar";
 import { Button } from "@/components/ui/button";
 import { formatarDoc } from "@/lib/formato";
 import { dataHoraXml, dataXml, moeda, useDetalheNota } from "@/lib/notas";
+import { useTesteGratis } from "@/lib/sessao";
 import { cn } from "@/lib/utils";
 import { SeloNota } from "./SeloNota";
 
@@ -48,6 +49,7 @@ function Linha({ rotulo, children, mono }: { rotulo: string; children: React.Rea
 }
 
 export function PainelNota({ modo, aoFechar, aoTrocar }: { modo: ModoPainel; aoFechar: () => void; aoTrocar: (m: ModoPainel) => void }) {
+  const { emTeste } = useTesteGratis();
   const id = modo?.id ?? null;
   const det = useDetalheNota(id);
   const pdf = usePdf(id, modo?.tipo === "pdf");
@@ -83,9 +85,15 @@ export function PainelNota({ modo, aoFechar, aoTrocar }: { modo: ModoPainel; aoF
           <div className="flex items-center gap-2 border-b border-borda bg-superficie px-5 py-2">
             {id && (
               <>
-                <Button tamanho="pequeno" asChild><a href={`/api/notas/${id}/pdf?download=1`}><Download /> Baixar PDF</a></Button>
-                <Button tamanho="pequeno" asChild><a href={`/api/notas/${id}/xml`}><FileCode2 /> Baixar XML</a></Button>
-                {modo?.tipo === "pdf" && pdf.data && (
+                {emTeste ? (
+                  <span className="inline-flex items-center gap-1.5 text-xs text-texto-2"><Lock className="size-3.5" aria-hidden /> Download do PDF e do XML disponível no plano</span>
+                ) : (
+                  <>
+                    <Button tamanho="pequeno" asChild><a href={`/api/notas/${id}/pdf?download=1`}><Download /> Baixar PDF</a></Button>
+                    <Button tamanho="pequeno" asChild><a href={`/api/notas/${id}/xml`}><FileCode2 /> Baixar XML</a></Button>
+                  </>
+                )}
+                {!emTeste && modo?.tipo === "pdf" && pdf.data && (
                   <Button tamanho="pequeno" variante="fantasma" asChild><a href={pdf.data} target="_blank" rel="noreferrer"><ExternalLink /> Abrir em nova aba</a></Button>
                 )}
               </>

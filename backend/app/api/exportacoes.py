@@ -40,12 +40,16 @@ def _out(db: Session, x: Exportacao) -> dict:
 @router.post("/empresas/{empresa_id}/exportacoes/previa")
 def previa_exportacao(empresa_id: int, dados: dict, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
     _empresa(db, empresa_id, esc)
+    from app.core.escritorios import exigir_plano
+    exigir_plano(db, esc)
     return previa(db, empresa_id, _filtros(dados))
 
 
 @router.post("/empresas/{empresa_id}/exportacoes", status_code=201)
 def criar_exportacao(empresa_id: int, dados: dict, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
     _empresa(db, empresa_id, esc)
+    from app.core.escritorios import exigir_plano
+    exigir_plano(db, esc)
     f = _filtros(dados)
     if not previa(db, empresa_id, f)["total"]:
         raise HTTPException(422, "Nenhuma nota com esses filtros: não há o que exportar.")
@@ -76,6 +80,8 @@ def historico(empresa_id: int, db: Session = Depends(sessao), esc: int = Depends
 
 @router.get("/exportacoes/{exp_id}/arquivo")
 def baixar(exp_id: int, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
+    from app.core.escritorios import exigir_plano
+    exigir_plano(db, esc)
     x = obter_exportacao(db, exp_id, esc)
     if x.status != "concluido" or not x.zip_path:
         raise HTTPException(409, "A exportação ainda não terminou.")

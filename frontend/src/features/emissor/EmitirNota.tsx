@@ -19,6 +19,7 @@ import {
   type Servico, type Tomador,
 } from "@/lib/emissor";
 import { nomeExibicao, useEmpresaSelecionada } from "@/lib/empresas";
+import { useTesteGratis } from "@/lib/sessao";
 import { formatarDoc, mascararCnpj, UFS } from "@/lib/formato";
 import { moeda } from "@/lib/notas";
 import { cn } from "@/lib/utils";
@@ -207,6 +208,9 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
   const atualizar = useAtualizarEmissor();
   const navegar = useNavigate();
   const modoRec = !!recorrencia;
+  const teste = useTesteGratis();
+  // No teste grátis só uma nota pode ser emitida; corrigir e reenviar a mesma continua valendo
+  const semEmissao = !modoRec && !nota && teste.emTeste && teste.emissoesRestantes === 0;
 
   const producao = empresa.ambiente === 1;
   const servicos = useServicos(empresa.id);
@@ -243,6 +247,8 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
 
   const problemas: string[] = [];
   if (empresa.pendencias.length) problemas.push(...empresa.pendencias);
+  if (semEmissao) problemas.push("A emissão do teste grátis já foi usada. Assine o plano para continuar emitindo.");
+  if (modoRec && teste.emTeste) problemas.push("As notas recorrentes ficam liberadas ao assinar o plano.");
   if (modoRec) {
     if (!rec?.nome.trim()) problemas.push("Dê um nome à recorrência.");
     if (!proxima) problemas.push("Informe o dia da emissão (1 a 31).");
@@ -339,7 +345,7 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
           {resultado.chave && <div className="mt-3 text-sm"><Copiar texto={resultado.chave} exibir={resultado.chave} className="font-mono text-xs" /></div>}
           <div className="mt-6 flex flex-wrap justify-center gap-2">
             <Button asChild variante="primario"><a href={`/api/emissor/notas/${resultado.id}/danfse`} target="_blank" rel="noreferrer"><FileText /> Abrir DANFSe</a></Button>
-            <Button asChild><a href={`/api/emissor/notas/${resultado.id}/xml`}><Download /> Baixar XML</a></Button>
+            {!teste.emTeste && <Button asChild><a href={`/api/emissor/notas/${resultado.id}/xml`}><Download /> Baixar XML</a></Button>}
             <Button onClick={() => { setResultado(null); setF({ ...vazio(), servicoId: f.servicoId, descricao: f.descricao }); }}><Plus /> Emitir outra nota</Button>
             <Button variante="fantasma" onClick={() => navegar(`/emissor?empresa=${empresa.id}`)}>Ver notas</Button>
           </div>
@@ -363,6 +369,15 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
               </ul>
             ) : <p className="mt-1">{nota.mensagem}</p>}
             <p className="mt-2 text-texto-2">Corrija abaixo e envie de novo: a nota usa o mesmo número da DPS.</p>
+          </Aviso>
+        )}
+
+        {teste.emTeste && !modoRec && (
+          <Aviso tom={semEmissao ? "alerta" : "info"}>
+            <strong>Teste grátis:</strong>{" "}
+            {semEmissao
+              ? "a nota de demonstração já foi emitida. Para continuar emitindo, fale com o suporte do Contask NF e assine o plano. Dá para salvar rascunhos."
+              : `você pode emitir ${teste.emissoesRestantes} nota para conhecer o emissor. Depois, as emissões ficam liberadas ao assinar o plano.`}
           </Aviso>
         )}
 

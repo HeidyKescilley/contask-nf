@@ -66,3 +66,25 @@ def mes_seguinte(d: date, dia: int | None = None) -> date:
     """Mesmo dia (ou o dia de vencimento) no mês seguinte; meses curtos usam o último dia."""
     ano, mes = (d.year + 1, 1) if d.month == 12 else (d.year, d.month + 1)
     return no_dia(ano, mes, dia or d.day)
+
+
+# ---------------------------------------------------------------------------
+# Recursos fechados no teste grátis
+# ---------------------------------------------------------------------------
+
+MSG_XML = ("No teste grátis dá para ver as notas e abrir o PDF. O download do XML e a exportação ficam "
+           "liberados ao assinar o plano: fale com o suporte do Contask NF.")
+
+
+def emissoes_do_escritorio(db: Session, escritorio_id: int) -> int:
+    from sqlalchemy import func
+    from app.models import NotaEmitida
+    return int(db.scalar(select(func.count()).select_from(NotaEmitida)
+                         .where(NotaEmitida.escritorio_id == escritorio_id)) or 0)
+
+
+def exigir_plano(db: Session, escritorio_id: int, mensagem: str = MSG_XML) -> None:
+    """402 no teste grátis: o recurso só existe no plano pago."""
+    if em_teste(db, escritorio_id):
+        from fastapi import HTTPException
+        raise HTTPException(402, mensagem)

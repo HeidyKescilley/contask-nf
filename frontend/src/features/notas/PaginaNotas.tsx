@@ -1,4 +1,4 @@
-import { ArrowDownToLine, ArrowUpFromLine, ChevronLeft, ChevronRight, Download, Eye, FileCode2, Search, X } from "lucide-react";
+import { ArrowDownToLine, ArrowUpFromLine, ChevronLeft, ChevronRight, Download, Eye, FileCode2, Lock, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Copiar } from "@/components/Copiar";
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/campos";
 import { Dica } from "@/components/ui/tooltip";
 import { useEmpresaSelecionada } from "@/lib/empresas";
+import { useTesteGratis } from "@/lib/sessao";
 import { formatarDoc } from "@/lib/formato";
 import { dataHoraXml, moeda, periodo, useNotas, type Nota, type Papel } from "@/lib/notas";
 import { cn } from "@/lib/utils";
@@ -203,6 +204,7 @@ function Tabela({ itens, papel, ordem, aoOrdenar, carregando, abrir }: {
 }
 
 function LinhaNota({ n, papel, abrir }: { n: Nota; papel: Papel; abrir: (m: ModoPainel) => void }) {
+  const { emTeste } = useTesteGratis();
   const nome = papel === "prestada" ? (n.tomador_nome ?? (n.tomador_doc ? "—" : "Tomador não informado")) : (n.emitente_nome ?? "—");
   const doc = papel === "prestada" ? n.tomador_doc : n.emitente_doc;
   const cancelada = n.status === "cancelada";
@@ -230,12 +232,20 @@ function LinhaNota({ n, papel, abrir }: { n: Nota; papel: Papel; abrir: (m: Modo
           <Dica texto="Ver PDF" lado="top">
             <button onClick={() => abrir({ tipo: "pdf", id: n.id })} className="rounded-lg p-1.5 text-texto-2 hover:bg-superficie hover:text-destaque" aria-label={`Ver PDF da nota ${n.numero ?? ""}`}><Eye className="size-4" /></button>
           </Dica>
-          <Dica texto="Baixar PDF" lado="top">
-            <a href={`/api/notas/${n.id}/pdf?download=1`} className="rounded-lg p-1.5 text-texto-2 hover:bg-superficie hover:text-destaque" aria-label={`Baixar PDF da nota ${n.numero ?? ""}`}><Download className="size-4" /></a>
-          </Dica>
-          <Dica texto="Baixar XML" lado="top">
-            <a href={`/api/notas/${n.id}/xml`} className="rounded-lg p-1.5 text-texto-2 hover:bg-superficie hover:text-destaque" aria-label={`Baixar XML da nota ${n.numero ?? ""}`}><FileCode2 className="size-4" /></a>
-          </Dica>
+          {emTeste ? (
+            <Dica texto="Download do PDF e do XML: disponível no plano" lado="top">
+              <span className="rounded-lg p-1.5 text-texto-2" aria-label="Download disponível no plano"><Lock className="size-4" /></span>
+            </Dica>
+          ) : (
+            <>
+              <Dica texto="Baixar PDF" lado="top">
+                <a href={`/api/notas/${n.id}/pdf?download=1`} className="rounded-lg p-1.5 text-texto-2 hover:bg-superficie hover:text-destaque" aria-label={`Baixar PDF da nota ${n.numero ?? ""}`}><Download className="size-4" /></a>
+              </Dica>
+              <Dica texto="Baixar XML" lado="top">
+                <a href={`/api/notas/${n.id}/xml`} className="rounded-lg p-1.5 text-texto-2 hover:bg-superficie hover:text-destaque" aria-label={`Baixar XML da nota ${n.numero ?? ""}`}><FileCode2 className="size-4" /></a>
+              </Dica>
+            </>
+          )}
         </div>
       </td>
     </tr>

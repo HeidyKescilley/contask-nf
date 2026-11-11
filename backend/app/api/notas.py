@@ -174,6 +174,8 @@ def _arquivo_xml(n: Nota) -> Path:
 
 @router.get("/notas/{nota_id}/xml")
 def baixar_xml(nota_id: int, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
+    from app.core.escritorios import exigir_plano
+    exigir_plano(db, esc)
     n = obter_nota(db, nota_id, esc)
     return FileResponse(_arquivo_xml(n), media_type="application/xml", filename=f"{n.chave}.xml")
 
@@ -187,6 +189,9 @@ def marca_dagua(n: Nota) -> str | None:
 @router.get("/notas/{nota_id}/pdf")
 def danfse(nota_id: int, download: int = 0, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
     """DANFSe gerado localmente a partir do XML (NT 008/2026), guardado para os próximos acessos."""
+    if download:
+        from app.core.escritorios import exigir_plano
+        exigir_plano(db, esc)  # no teste, o PDF só abre para ver
     n = obter_nota(db, nota_id, esc)
     xml_path = _arquivo_xml(n)
     marca = marca_dagua(n)

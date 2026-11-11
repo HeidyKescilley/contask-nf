@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { AlertTriangle, ArrowLeft, BadgeCheck, Building2, Pause, Pencil, Play, Plus, Repeat, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowLeft, BadgeCheck, Building2, Lock, Pause, Pencil, Play, Plus, Repeat, Trash2 } from "lucide-react";
 import { useMemo } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -13,6 +13,7 @@ import {
   type CorpoEmissao, type EmpresaEmissora, type ModeloAdn, type NotaEmitida, type Recorrente,
 } from "@/lib/emissor";
 import { nomeExibicao, useEmpresaSelecionada } from "@/lib/empresas";
+import { useTesteGratis } from "@/lib/sessao";
 import { formatarDoc } from "@/lib/formato";
 import { moeda } from "@/lib/notas";
 import { cn } from "@/lib/utils";
@@ -40,7 +41,8 @@ function SemEmissora({ selecionada }: { selecionada: { id: number } | null }) {
 
 export function Recorrentes() {
   const { selecionada, empresa, carregando, erro, refetch } = useEmpresaEmissoraSelecionada();
-  const pronta = !!empresa?.emite_nfse;
+  const { emTeste } = useTesteGratis();
+  const pronta = !!empresa?.emite_nfse && !emTeste;
   const lista = useRecorrentes(pronta ? empresa!.id : null);
   const nova = `/emissor/recorrentes/nova?empresa=${empresa?.id ?? ""}`;
 
@@ -51,7 +53,12 @@ export function Recorrentes() {
       <AbasEmissor />
       {carregando && <Esqueleto className="h-64 w-full" />}
       {erro && <EstadoErro mensagem={erro.message} tentarDeNovo={() => refetch()} />}
-      {!carregando && !erro && !pronta && <SemEmissora selecionada={selecionada} />}
+      {!carregando && !erro && emTeste && (
+        <EstadoVazio icone={Lock} titulo="Notas recorrentes estão no plano">
+          No teste grátis dá para emitir uma nota para conhecer o emissor. As notas que saem sozinhas todo mês ficam liberadas ao assinar o plano: fale com o suporte do Contask NF.
+        </EstadoVazio>
+      )}
+      {!carregando && !erro && !emTeste && !pronta && <SemEmissora selecionada={selecionada} />}
       {pronta && (
         <>
           {lista.isLoading && <Esqueleto className="h-48 w-full" />}

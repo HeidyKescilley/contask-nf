@@ -366,8 +366,10 @@ def listar_recorrentes(empresa_id: int, db: Session = Depends(sessao), esc: int 
 
 @router.post("/recorrentes", status_code=201)
 def criar_recorrente(d: RecorrenteIn, request: Request, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
+    from app.core.escritorios import exigir_plano
     from app.emissor.recorrencia import calcular_proxima, hoje_brasilia
     _empresa(db, d.empresa_id, esc)
+    exigir_plano(db, esc, "As notas recorrentes ficam liberadas ao assinar o plano: fale com o suporte do Contask NF.")
     dados = _validar_recorrente(db, d)
     u = getattr(request.state, "usuario", None)
     r = NotaRecorrente(escritorio_id=esc, empresa_id=d.empresa_id, usuario_id=u.id if u else None, nome=d.nome.strip(),

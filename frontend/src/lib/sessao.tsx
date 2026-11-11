@@ -28,7 +28,19 @@ export interface Uso {
   limite: number | null;
   percentual: number | null;
   situacao: "sem_limite" | "ok" | "aviso" | "atingido" | "teste";
-  teste: { max_xmls: number; max_empresas: number; concluido: boolean } | null;
+  teste: { max_xmls: number; max_empresas: number; concluido: boolean; max_emissoes: number; emissoes: number } | null;
+}
+
+/** Teste grátis do escritório: XML e exportação fechados, PDF só para ver, emissões contadas. */
+export function useTesteGratis() {
+  const { data, isLoading } = useUso();
+  const t = data?.teste ?? null;
+  return {
+    carregando: isLoading,
+    emTeste: !!t,
+    emissoesRestantes: t ? Math.max(t.max_emissoes - t.emissoes, 0) : null,
+    maxEmissoes: t?.max_emissoes ?? null,
+  };
 }
 
 /** Disparado pelo cliente da API quando o servidor responde 401/403 de sessão. */
