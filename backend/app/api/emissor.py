@@ -16,7 +16,7 @@ from app.core.certificados import situacao_validade
 from app.core.db import sessao
 from app.emissor import tabelas
 from app.emissor import textos
-from app.emissor.motor import ambiente, eh_simples, producao_disponivel
+from app.emissor.motor import ambiente, bloqueio_municipio, eh_simples, producao_disponivel
 from app.fiscal.documentos import cnpj_valido, cpf_valido, raiz_cnpj
 from app.models import Certificado, EmissorEmpresa, Empresa, NotaEmitida, ServicoEmissor, SyncEstado, Tomador
 
@@ -165,6 +165,8 @@ def _item_empresa(db: Session, e: Empresa) -> dict:
         if not garantir_municipio(db, e, cfg):
             pendencias.append("Não foi possível descobrir o código IBGE do município da empresa. Confira o município e "
                               "a UF no cadastro da empresa ou informe o código nos dados do prestador.")
+    if bloqueio_municipio(cfg):
+        pendencias.append(bloqueio_municipio(cfg))
     if not e.ativa:
         pendencias.append("A empresa está inativa.")
     avisos = []

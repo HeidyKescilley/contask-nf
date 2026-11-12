@@ -61,7 +61,9 @@ def test_textos_legais_na_nota(cliente, sefin):
 
     # Lucro presumido: sai do Simples e o texto do Simples não vai, mesmo marcado
     base = {k: cfg[k] for k in ("inscricao_municipal", "op_simples", "reg_ap_trib_sn", "reg_esp_trib", "serie", "proximo_numero")}
-    r = cliente.put(f"/api/emissor/empresas/{e['id']}/config", json={**base, "proximo_numero": 3, "regime_tributario": "presumido"})
+    # (em São Paulo: no DF, fora do Simples, o emissor nacional não aceita a empresa)
+    r = cliente.put(f"/api/emissor/empresas/{e['id']}/config", json={**base, "proximo_numero": 3, "regime_tributario": "presumido",
+                                                                    "cod_municipio": "3550308"})
     assert r.status_code == 200, r.text
     assert r.json()["config"]["op_simples"] == "1" and r.json()["config"]["simples"] is False
     cliente.post("/api/emissor/notas", json=_emissao(e, s, texto_simples=True))
@@ -214,3 +216,21 @@ def test_editar_e_pausar_recorrente(cliente, sefin):
     assert r.json()["proxima_em"] is not None
     assert cliente.delete(f"/api/emissor/recorrentes/{rid}").status_code == 204
     assert cliente.get(f"/api/emissor/empresas/{e['id']}/recorrentes").json() == []
+
+
+def test_df_fora_do_simples_e_barrado_antes_da_sefin(cliente, sefin):
+    e, s = _pronta(cliente)
+    cfg = cliente.get(f"/api/emissor/empresas/{e['id']}").json()["config"]
+    base = {k: cfg[k] for k in ("inscricao_municipal", "op_simples", "reg_ap_trib_sn", "reg_esp_trib", "serie", "proximo_numero")}
+    r = cliente.put(f"/api/emissor/empresas/{e['id']}/config", json={**base, "regime_tributario": "presumido"})
+    item = r.json()
+    assert item["config"]["cod_municipio"] == "5300108"
+    assert any("E0084" in p for p in item["pendencias"]) and not item["pronta"]
+    enviadas = len(sefin.recebidas)
+    r = cliente.post("/api/emissor/notas", json=_emissao(e, s))
+    assert r.status_code == 422 and "ISSNet" in r.json()["detail"]
+    assert len(sefin.recebidas) == enviadas  # nada foi à Sefin
+    assert cliente.get(f"/api/emissor/empresas/{e['id']}").json()["config"]["proximo_numero"] == cfg["proximo_numero"]
+    # Do Simples, no DF: emite normalmente
+    r = cliente.put(f"/api/emissor/empresas/{e['id']}/config", json={**base, "regime_tributario": "simples"})
+    assert not any("E0084" in p for p in r.json()["pendencias"])

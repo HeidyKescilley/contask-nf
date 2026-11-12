@@ -63,6 +63,19 @@ def eh_simples(cfg: EmissorEmpresa | None) -> bool:
     return cfg.op_simples in ("2", "3")
 
 
+BRASILIA = "5300108"
+MSG_DF = ("No DF, só as empresas do Simples Nacional (e MEI) emitem pelo Emissor Nacional. As demais continuam no "
+          "emissor do DF (ISSNet) e não estão no cadastro nacional (CNC), então a Sefin recusa a nota (E0084). "
+          "Emita esta nota pelo ISSNet do DF. Se a empresa for do Simples, ajuste o regime tributário nos dados do prestador.")
+
+
+def bloqueio_municipio(cfg: EmissorEmpresa | None) -> str | None:
+    """Município que não aceita esta empresa no padrão nacional: hoje, o DF fora do Simples."""
+    if cfg is not None and cfg.cod_municipio == BRASILIA and not eh_simples(cfg):
+        return MSG_DF
+    return None
+
+
 # Injetável nos testes
 FabricaCliente = Callable[[int, bytes, str], ClienteSefin]
 fabrica_cliente: FabricaCliente = lambda amb, pfx, senha: ClienteSefin(ambiente=amb, pfx=pfx, senha=senha)  # noqa: E731
@@ -125,7 +138,10 @@ def _empresa_pronta(db: Session, esc: int, empresa_id: int) -> tuple[Empresa, Em
         raise ErroEmissao("Na homologação a Sefin recusa a emissão por procuração (E0718). Escolha Produção no ambiente "
                           "de emissão desta empresa ou cadastre o certificado A1 dela.")
     from app.emissor.municipio import garantir_municipio
-    if not garantir_municipio(db, e, cfg):
+    municipio_ok = garantir_municipio(db, e, cfg)
+    if bloqueio_municipio(cfg):
+        raise ErroEmissao(MSG_DF)  # barrado antes de gastar número e sem enviar à Sefin
+    if not municipio_ok:
         raise ErroEmissao("Não foi possível descobrir o código IBGE do município da empresa. Confira o município e a UF "
                           "no cadastro da empresa ou informe o código nos dados do prestador.")
     return e, cfg
