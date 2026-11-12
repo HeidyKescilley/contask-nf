@@ -280,7 +280,7 @@ function CamposPlano({ p, setP, comSuspenso }: { p: FormPlano; setP: (p: FormPla
         {(a) => (
           <Select {...a} value={p.situacao} onChange={(ev) => setP({ ...p, situacao: ev.target.value as Situacao })}>
             <option value="ativo">Ativo</option>
-            <option value="teste">Em teste (5 notas só em PDF e 1 emissão)</option>
+            <option value="teste">Em teste (1 empresa, PDF, 1 exportação e 1 emissão)</option>
             {comSuspenso && <option value="suspenso">Suspenso</option>}
           </Select>
         )}

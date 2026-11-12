@@ -28,11 +28,12 @@ class Config(BaseSettings):
     cookie_secure: bool = False  # CONTASK_COOKIE_SECURE: cookie Secure só no HTTPS
     # Limite mensal de XMLs novos baixados (0 = sem limite). A carga inicial do histórico não conta.
     limite_xmls_mes: int = 0
-    # Teste grátis: só 1 empresa (além da contabilidade, que entra só pelo certificado) e no máximo
-    # `teste_max_xmls` XMLs no total. Liberado ao desligar CONTASK_TESTE (as buscas continuam do NSU salvo).
+    # Teste grátis: a contabilidade e mais 1 empresa, com a busca completa das notas. O XML avulso
+    # fica fechado (o PDF abre para ver), com uma exportação de até `teste_max_dias_exportacao` dias.
     teste: bool = False
-    teste_max_xmls: int = 5
     teste_max_empresas: int = 1
+    teste_max_exportacoes: int = 1
+    teste_max_dias_exportacao: int = 30
     teste_max_emissoes: int = 1  # NFS-e que o teste grátis pode emitir
     # Emissor de NFS-e: falso = produção restrita (homologação, sem valor fiscal). Ligar só com
     # liberação expressa de quem é dono do projeto (CONTASK_EMISSOR_PRODUCAO=true).

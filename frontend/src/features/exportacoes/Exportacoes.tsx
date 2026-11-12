@@ -2,7 +2,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { AlertTriangle, CheckCircle2, Clock, Download, FileArchive, FileSpreadsheet, FileText, Loader2, Lock, XCircle } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { Cabecalho, EstadoErro, EstadoVazio, Esqueleto } from "@/components/estados";
+import { Cabecalho, EstadoErro, Esqueleto } from "@/components/estados";
 import { Selo } from "@/components/selos";
 import { Button } from "@/components/ui/button";
 import { Aviso, Input } from "@/components/ui/campos";
@@ -40,6 +40,12 @@ const PADRAO = (): Filtros => {
   const [ini, fim] = periodo("mes_passado");
   return { tipo: "ambos", inicio: ini, fim, campo_data: "competencia", status: "autorizada", relatorio: "xlsx", incluir_xml: true, incluir_eventos: false, escopo: "empresa" };
 };
+
+/** Dias do período, contando o primeiro e o último (null sem as duas datas). */
+function diasDoPeriodo(f: Filtros): number | null {
+  if (!f.inicio || !f.fim) return null;
+  return Math.round((Date.parse(f.fim) - Date.parse(f.inicio)) / 86_400_000) + 1;
+}
 
 function corpo(f: Filtros) {
   return JSON.stringify({ ...f, inicio: f.inicio || null, fim: f.fim || null });
@@ -93,30 +99,33 @@ export function Exportacoes() {
   });
   const gerar = useMutation({
     mutationFn: () => api<ItemHistorico>(`/api/empresas/${empresa!.id}/exportacoes`, { method: "POST", body: corpo(f) }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["exportacoes", "historico"] }); toast.success("Exportação na fila. O download aparece no histórico ao terminar."); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["exportacoes", "historico"] }); qc.invalidateQueries({ queryKey: ["uso"] }); toast.success("Exportação na fila. O download aparece no histórico ao terminar."); },
     onError: (e) => toast.error((e as Error).message),
   });
 
   if (carregando || teste.carregando) return <><Cabecalho titulo="Exportações" /><Esqueleto className="h-96 w-full" /></>;
-  if (teste.emTeste) {
-    return (
-      <>
-        <Cabecalho titulo="Exportações" descricao="Gere um ZIP com os XMLs e um relatório em PDF ou XLSX." />
-        <EstadoVazio icone={Lock} titulo="Exportação disponível no plano">
-          No teste grátis dá para ver as notas e abrir o PDF de cada uma. O ZIP com os XMLs e os relatórios ficam liberados ao assinar o plano: fale com o suporte do Contask NF.
-        </EstadoVazio>
-      </>
-    );
-  }
   if (!empresa) return <><Cabecalho titulo="Exportações" descricao="Gere um ZIP com os XMLs e um relatório em PDF ou XLSX." /><EstadoSemEmpresa icone={FileArchive} /></>;
 
   const p = previa.data;
   const atalhoAtivo = (["mes", "mes_passado", "trimestre", "ano"] as const).find((a) => { const [i, fi] = periodo(a); return i === f.inicio && fi === f.fim; });
   const desatualizada = corpo(f) !== corpo(fDeb) || previa.isFetching;
+  const maxDias = teste.emTeste ? teste.maxDiasExportacao ?? 30 : null;
+  const dias = diasDoPeriodo(f);
+  const semExportacao = teste.emTeste && teste.exportacoesRestantes === 0;
+  const foraDoPeriodo = maxDias !== null && (dias === null || dias > maxDias);
 
   return (
     <>
       <Cabecalho titulo="Exportações" descricao="Gere um ZIP com os XMLs e um relatório em PDF ou XLSX." />
+      {teste.emTeste && (
+        <div className="mb-5">
+          <Aviso tom={semExportacao ? "alerta" : "info"}>
+            {semExportacao
+              ? <><Lock className="mr-1 inline size-4 align-[-3px]" aria-hidden />A exportação do teste grátis já foi usada. As exportações ficam liberadas ao assinar o plano: fale com o suporte do Contask NF.</>
+              : <><strong>Teste grátis:</strong> você pode fazer 1 exportação, de um período de até {maxDias} dias.</>}
+          </Aviso>
+        </div>
+      )}
       <div className="grid grid-cols-[minmax(0,560px)_minmax(0,1fr)] items-start gap-6">
         <form onSubmit={(e) => { e.preventDefault(); gerar.mutate(); }} className="rounded-xl border border-borda bg-superficie p-5">
           <Grupo rotulo="Empresas" ajuda={f.escopo === "todas" ? "Um único ZIP com uma pasta por empresa (CNPJ seguido do nome), cada uma com os XMLs e o relatório dela, e um resumo geral na raiz." : undefined}>
@@ -127,7 +136,9 @@ export function Exportacoes() {
             <Opcoes nome="Tipo" valor={f.tipo} aoMudar={(v) => set("tipo", v)}
               opcoes={[{ id: "prestados", rotulo: "Prestados (saídas)" }, { id: "tomados", rotulo: "Tomados (entradas)" }, { id: "ambos", rotulo: "Ambos" }]} />
           </Grupo>
-          <Grupo rotulo="Período" ajuda={!f.inicio && !f.fim ? "Sem período: exporta todas as notas." : undefined}>
+          <Grupo rotulo="Período" ajuda={maxDias !== null
+            ? (foraDoPeriodo ? <span className="text-cancelada">No teste grátis, escolha um período de até {maxDias} dias, com data inicial e final.</span> : `Até ${maxDias} dias no teste grátis.`)
+            : !f.inicio && !f.fim ? "Sem período: exporta todas as notas." : undefined}>
             <div className="flex flex-wrap items-center gap-2">
               <select value={f.campo_data} onChange={(e) => set("campo_data", e.target.value as Filtros["campo_data"])} aria-label="Data usada no período"
                 className="h-9 rounded-xl border border-borda bg-superficie px-2 text-sm">
@@ -138,11 +149,12 @@ export function Exportacoes() {
               <Input type="date" value={f.fim} onChange={(e) => set("fim", e.target.value)} className="w-[150px]" aria-label="Fim" />
             </div>
             <div className="flex flex-wrap gap-1">
-              {([["mes", "Este mês"], ["mes_passado", "Mês passado"], ["trimestre", "Trimestre"], ["ano", "Ano"]] as const).map(([id, rot]) => (
+              {([["mes", "Este mês"], ["mes_passado", "Mês passado"], ["trimestre", "Trimestre"], ["ano", "Ano"]] as const)
+                .filter(([id]) => maxDias === null || id === "mes" || id === "mes_passado").map(([id, rot]) => (
                 <button key={id} type="button" aria-pressed={atalhoAtivo === id} onClick={() => { const [i, fi] = periodo(id); setF((x) => ({ ...x, inicio: i, fim: fi })); }}
                   className={cn("h-7 rounded-lg px-2 text-[13px]", atalhoAtivo === id ? "bg-destaque-suave font-medium text-destaque" : "text-texto-2 hover:bg-superficie-2 hover:text-texto")}>{rot}</button>
               ))}
-              <button type="button" onClick={() => setF((x) => ({ ...x, inicio: "", fim: "" }))} className="h-7 rounded-lg px-2 text-[13px] text-texto-2 hover:bg-superficie-2 hover:text-texto">Tudo</button>
+              {maxDias === null && <button type="button" onClick={() => setF((x) => ({ ...x, inicio: "", fim: "" }))} className="h-7 rounded-lg px-2 text-[13px] text-texto-2 hover:bg-superficie-2 hover:text-texto">Tudo</button>}
             </div>
           </Grupo>
           <Grupo rotulo="Status">
@@ -198,8 +210,9 @@ export function Exportacoes() {
               </div>
             )}
           </div>
-          <Button type="submit" variante="primario" className="mt-4 w-full" disabled={gerar.isPending || !p || p.total === 0 || previa.isError}>
-            {gerar.isPending ? <Loader2 className="animate-spin" /> : <FileArchive />} {p && p.total === 0 ? "Nenhuma nota para exportar" : "Gerar exportação"}
+          <Button type="submit" variante="primario" className="mt-4 w-full" disabled={gerar.isPending || !p || p.total === 0 || previa.isError || semExportacao || foraDoPeriodo}>
+            {gerar.isPending ? <Loader2 className="animate-spin" /> : semExportacao ? <Lock /> : <FileArchive />}{" "}
+            {semExportacao ? "Exportação do teste já usada" : p && p.total === 0 ? "Nenhuma nota para exportar" : "Gerar exportação"}
           </Button>
         </form>
 

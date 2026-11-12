@@ -206,7 +206,7 @@ def test_sem_limite(cliente):
     assert cliente.get("/api/uso").json()["situacao"] == "sem_limite"
 
 
-# --- teste grátis (1 empresa, 5 XMLs) ------------------------------------------
+# --- teste grátis (contabilidade e mais 1 empresa) ------------------------------------------
 
 @pytest.fixture()
 def modo_teste(monkeypatch):
@@ -217,37 +217,50 @@ def modo_teste(monkeypatch):
     cfgmod.config.cache_clear()
 
 
-def test_teste_baixa_so_5_xmls_e_continua_depois_de_liberar(cliente, modo_teste, monkeypatch):
+def test_teste_busca_todas_as_notas_da_empresa_e_da_contabilidade(cliente, modo_teste):
     eid, adn = _preparar(cliente, 120)
-    with nova_sessao() as db:  # a contabilidade não foi agendada; só a empresa escolhida
+    with nova_sessao() as db:  # a contabilidade também entra na fila
+        from app.models import Empresa
+        contab = db.query(Empresa).filter(Empresa.is_contabilidade).one().id
         tipos = {(j.empresa_id, j.tipo) for j in db.query(BuscaJob)}
-    assert tipos == {(eid, "inicial")}
+    assert tipos == {(eid, "inicial"), (contab, "inicial")}
     j = _rodar(adn, eid)
-    assert j.status == "erro" and "Teste grátis concluído" in j.mensagem and j.docs_recebidos == 5
-    with nova_sessao() as db:
-        from app.models import DocumentoDfe, Nota
-        assert db.query(DocumentoDfe).count() == 5 and db.query(Nota).count() == 5
-        sync = db.get(SyncEstado, eid)
-        assert sync.situacao == "limite_teste" and sync.ultima_busca_em is None
-        nsu_salvo = sync.ultimo_nsu
-    u = cliente.get("/api/uso").json()
-    assert u["situacao"] == "teste" and u["usados"] == 5 and u["teste"]["concluido"] is True
-
-    j = _rodar(adn, eid, "incremental")  # nova tentativa: nem chama o ADN
-    assert j.status == "erro" and j.docs_recebidos == 0
-
-    # Assinou: desliga o teste; a busca continua do NSU salvo e o histórico não conta no limite do mês
-    from app.core import config as cfgmod
-    monkeypatch.setenv("CONTASK_TESTE", "false")
-    monkeypatch.setenv("CONTASK_LIMITE_XMLS_MES", "10")
-    cfgmod.config.cache_clear()
-    j = _rodar(adn, eid, "incremental")
-    assert j.tipo == "inicial" and j.status == "concluido" and j.docs_recebidos == 115
-    assert nsu_salvo > 0
+    assert j.status == "concluido" and j.docs_recebidos == 120
+    j = _rodar(adn, contab)
+    assert j.status == "concluido"
     with nova_sessao() as db:
         from app.models import Nota
-        assert db.query(Nota).count() == 120
-    assert cliente.get("/api/uso").json()["usados"] == 0
+        assert db.query(Nota).filter(Nota.empresa_id == eid).count() == 120
+        assert db.get(SyncEstado, eid).situacao == "em_dia"
+    u = cliente.get("/api/uso").json()
+    assert u["situacao"] == "teste" and u["usados"] == 120 and u["limite"] is None
+    assert u["teste"]["max_exportacoes"] == 1 and u["teste"]["max_dias_exportacao"] == 30
+
+
+def test_teste_permite_uma_exportacao_de_ate_30_dias(cliente, modo_teste):
+    from datetime import date, timedelta
+    eid, adn = _preparar(cliente, 3)
+    _rodar(adn, eid)
+    with nova_sessao() as db:
+        from app.models import Nota
+        comp = date.fromisoformat(str(db.query(Nota).first().competencia)[:10])
+    url = f"/api/empresas/{eid}/exportacoes"
+    assert cliente.post(url + "/previa", json={}).status_code == 200
+    r = cliente.post(url, json={"status": "todas"})  # sem período
+    assert r.status_code == 422 and "30 dias" in r.json()["detail"]
+    r = cliente.post(url, json={"status": "todas", "inicio": str(comp - timedelta(days=30)), "fim": str(comp)})
+    assert r.status_code == 422  # 31 dias
+    corpo = {"status": "todas", "inicio": str(comp - timedelta(days=29)), "fim": str(comp)}
+    r = cliente.post(url, json=corpo)
+    assert r.status_code == 201, r.text
+    assert cliente.get(f"/api/exportacoes/{r.json()['id']}/arquivo").status_code == 200
+    assert cliente.get("/api/uso").json()["teste"]["exportacoes"] == 1
+    r = cliente.post(url, json=corpo)
+    assert r.status_code == 402 and "uma exportação" in r.json()["detail"]
+    # O XML avulso continua fechado
+    with nova_sessao() as db:
+        nid = db.query(Nota).first().id
+    assert cliente.get(f"/api/notas/{nid}/xml").status_code == 402
 
 
 def test_teste_aceita_uma_empresa(cliente, modo_teste):
@@ -261,13 +274,3 @@ def test_teste_aceita_uma_empresa(cliente, modo_teste):
     r = cliente.post("/api/importacao/empresas", json={"linhas": [{"cnpj": EMP}]})
     assert r.status_code == 200
 
-
-def test_teste_nao_busca_a_contabilidade(cliente, modo_teste):
-    eid, adn = _preparar(cliente, 3)
-    with nova_sessao() as db:
-        from app.models import Empresa
-        contab = db.query(Empresa).filter(Empresa.is_contabilidade).one()
-        db.add(BuscaJob(empresa_id=contab.id, tipo="incremental", status="fila"))
-        db.commit()
-    j = _rodar(adn, contab.id)
-    assert j.status == "cancelado" and "contabilidade" in j.mensagem and j.docs_recebidos == 0

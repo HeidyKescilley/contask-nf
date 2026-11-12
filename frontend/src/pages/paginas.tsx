@@ -79,7 +79,7 @@ export function Configuracoes() {
             <Linha rotulo="Empresas cadastradas" valor={sessao.data ? String(sessao.data.empresas) : "…"} />
             {uso.isError && <Linha rotulo="XMLs novos no mês" valor="não foi possível consultar" ok={false} />}
             {uso.data?.teste && (
-              <Linha rotulo="Teste grátis" valor={`${n(uso.data.usados)} de ${n(uso.data.teste.max_xmls)} XMLs`} ok={!uso.data.teste.concluido} />
+              <Linha rotulo="Teste grátis" valor={`${n(uso.data.usados)} XMLs buscados (sem limite)`} />
             )}
             {uso.data && !uso.data.teste && (
               <Linha

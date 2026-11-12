@@ -28,10 +28,13 @@ export interface Uso {
   limite: number | null;
   percentual: number | null;
   situacao: "sem_limite" | "ok" | "aviso" | "atingido" | "teste";
-  teste: { max_xmls: number; max_empresas: number; concluido: boolean; max_emissoes: number; emissoes: number } | null;
+  teste: {
+    max_empresas: number; max_emissoes: number; emissoes: number;
+    max_exportacoes: number; exportacoes: number; max_dias_exportacao: number;
+  } | null;
 }
 
-/** Teste grátis do escritório: XML e exportação fechados, PDF só para ver, emissões contadas. */
+/** Teste grátis do escritório: XML avulso fechado, PDF só para ver, uma exportação curta e uma emissão. */
 export function useTesteGratis() {
   const { data, isLoading } = useUso();
   const t = data?.teste ?? null;
@@ -40,6 +43,8 @@ export function useTesteGratis() {
     emTeste: !!t,
     emissoesRestantes: t ? Math.max(t.max_emissoes - t.emissoes, 0) : null,
     maxEmissoes: t?.max_emissoes ?? null,
+    exportacoesRestantes: t ? Math.max(t.max_exportacoes - t.exportacoes, 0) : null,
+    maxDiasExportacao: t?.max_dias_exportacao ?? null,
   };
 }
 

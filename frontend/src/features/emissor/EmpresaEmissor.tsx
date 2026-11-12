@@ -135,7 +135,7 @@ function PainelAmbiente({ e }: { e: EmpresaEmissora }) {
   });
 
   return (
-    <Painel titulo="Ambiente de emissão" descricao="Escolha onde as notas desta empresa são emitidas. Toda empresa começa na homologação.">
+    <Painel titulo="Ambiente de emissão" descricao="Escolha onde as notas desta empresa são emitidas. Toda empresa começa em produção; use a homologação para testar sem valor fiscal.">
       {sistema.isLoading && <Esqueleto className="h-10 w-full" />}
       {sistema.isError && <EstadoErro mensagem={(sistema.error as Error).message} tentarDeNovo={() => sistema.refetch()} />}
       {sistema.data && (

@@ -1,7 +1,8 @@
 """Situação e plano de cada escritório (painel de administração).
 
 - suspenso: ninguém do escritório entra; as buscas automáticas e as notas recorrentes param.
-- teste: teste grátis (1 empresa e poucos XMLs); com `teste_ate` vencido, o acesso fica bloqueado.
+- teste: teste grátis (contabilidade e mais 1 empresa, busca completa, XML avulso fechado, 1 exportação
+  de até 30 dias e 1 emissão); com `teste_ate` vencido, o acesso fica bloqueado.
 - ativo: uso normal, com o limite de XMLs do escritório (ou o padrão do sistema).
 O administrador do sistema nunca é bloqueado, para não perder o acesso ao painel.
 """
@@ -72,8 +73,16 @@ def mes_seguinte(d: date, dia: int | None = None) -> date:
 # Recursos fechados no teste grátis
 # ---------------------------------------------------------------------------
 
-MSG_XML = ("No teste grátis dá para ver as notas e abrir o PDF. O download do XML e a exportação ficam "
-           "liberados ao assinar o plano: fale com o suporte do Contask NF.")
+MSG_XML = ("No teste grátis dá para ver as notas e abrir o PDF. O download do XML de cada nota fica "
+           "liberado ao assinar o plano: fale com o suporte do Contask NF.")
+
+
+def exportacoes_do_escritorio(db: Session, escritorio_id: int) -> int:
+    """Exportações já pedidas (as que deram erro não contam)."""
+    from sqlalchemy import func
+    from app.models import Empresa, Exportacao
+    return int(db.scalar(select(func.count()).select_from(Exportacao).join(Empresa, Empresa.id == Exportacao.empresa_id)
+                         .where(Empresa.escritorio_id == escritorio_id, Exportacao.status != "erro")) or 0)
 
 
 def emissoes_do_escritorio(db: Session, escritorio_id: int) -> int:

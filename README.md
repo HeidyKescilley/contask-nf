@@ -72,9 +72,9 @@ Vários escritórios usam o mesmo banco. O cadastro público cria o escritório 
   - ao atingir, as buscas param até o mês seguinte.
 
 - **Teste grátis** (`CONTASK_TESTE=true`, padrão de todo escritório novo na VPS):
-  - aceita 1 empresa, além da contabilidade, que entra só pelo certificado;
-  - baixa no máximo 5 XMLs;
-  - depois da assinatura, `cliente.sh <cliente> liberar`: a busca continua do NSU salvo, e o restante do histórico não conta no limite do mês.
+  - aceita 1 empresa, além da contabilidade; as duas têm a busca completa das notas;
+  - o XML de cada nota fica fechado (o PDF abre para ver);
+  - permite 1 exportação, de um período de até 30 dias, e 1 emissão de NFS-e.
 
 No uso local (`iniciar.bat`) o login e a chave-mestra valem do mesmo jeito. Limite mensal e teste grátis só entram se as variáveis correspondentes estiverem ligadas; a contagem é por escritório.
 

@@ -1,4 +1,4 @@
-"""Teste grátis por escritório: XML e exportação fechados, PDF só para ver, uma emissão."""
+"""Teste grátis por escritório: XML avulso fechado, PDF só para ver, uma exportação curta e uma emissão."""
 from app.core.db import nova_sessao
 from app.models import Escritorio
 from tests.test_emissor_motor import _emissao, _pronta, sefin  # noqa: F401 (fixture)
@@ -12,7 +12,7 @@ def _em_teste(cliente):
     return esc
 
 
-def test_teste_fecha_xml_exportacao_e_libera_uma_emissao(cliente, sefin):
+def test_teste_fecha_xml_e_libera_uma_emissao(cliente, sefin):
     e, s = _pronta(cliente)
     _em_teste(cliente)
     uso = cliente.get("/api/uso").json()
@@ -30,8 +30,7 @@ def test_teste_fecha_xml_exportacao_e_libera_uma_emissao(cliente, sefin):
     r = cliente.post("/api/emissor/notas", json=_emissao(e, s))
     assert r.status_code == 402 and "teste grátis" in r.json()["detail"]
     assert cliente.get(f"/api/emissor/empresas/{e['id']}").json()["config"]["proximo_numero"] == 2
-    # Exportação e recorrência fechadas
-    assert cliente.post(f"/api/empresas/{e['id']}/exportacoes/previa", json={}).status_code == 402
+    # Recorrência fechada
     rec = {"empresa_id": e["id"], "nome": "Mensal", "dia": 5, "dados": {k: v for k, v in _emissao(e, s).items()
                                                                      if k not in ("empresa_id", "competencia")}}
     assert cliente.post("/api/emissor/recorrentes", json=rec).status_code == 402
@@ -55,3 +54,9 @@ def test_plano_ativo_libera_tudo(cliente, sefin):
     assert n1["situacao"] == n2["situacao"] == "autorizada"
     assert cliente.get(f"/api/emissor/notas/{n1['id']}/xml").status_code == 200
     assert cliente.get(f"/api/emissor/notas/{n1['id']}/danfse?download=1").status_code == 200
+
+
+def test_empresa_emissora_nova_comeca_em_producao(cliente, sefin):
+    e, _s = _pronta(cliente)
+    cfg = cliente.get(f"/api/emissor/empresas/{e['id']}").json()["config"]
+    assert cfg["producao_liberada"] is True

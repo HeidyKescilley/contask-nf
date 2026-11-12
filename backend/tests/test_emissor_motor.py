@@ -309,8 +309,10 @@ def test_producao_so_com_liberacao(cliente, sefin, monkeypatch):
     cfgmod.config.cache_clear()
     try:
         assert cliente.get("/api/emissor/ambiente").json()["producao_disponivel"] is True
-        # Chave geral ligada, mas a empresa não liberada: continua na produção restrita
-        assert cliente.get(f"/api/emissor/empresas/{e['id']}").json()["ambiente"] == 2
+        # Chave geral ligada: a empresa começa em produção; voltando para a homologação, vai à produção restrita
+        assert cliente.get(f"/api/emissor/empresas/{e['id']}").json()["ambiente"] == 1
+        r = cliente.put(f"/api/emissor/empresas/{e['id']}/producao", json={"liberada": False})
+        assert r.status_code == 200 and r.json()["ambiente"] == 2
         cliente.post("/api/emissor/notas", json=_emissao(e, s))
         assert etree.fromstring(sefin.recebidas[-1])[0].find("n:tpAmb", NS).text == "2"
         r = cliente.put(f"/api/emissor/empresas/{e['id']}/producao", json={"liberada": True})

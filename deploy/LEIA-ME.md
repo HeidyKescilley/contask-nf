@@ -8,7 +8,7 @@ Internet ──443──> Caddy (HTTPS automático) ─┬─> site de vendas   
 ```
 
 - **Contas:** não há cadastro pela tela no servidor (`CADASTRO=fechado`). Escritórios e usuários são criados pelo **painel de Administração** do sistema (menu lateral) ou pelo `contask.sh`. O painel só aparece para quem é administrador do sistema, e esse papel só é dado pelo servidor (`contask.sh usuario admin <email>`), que aceita SSH apenas com chave (Heidy e Vit).
-- **Emissor de NFS-e:** a produção está ligada no servidor (`EMISSOR_PRODUCAO=true` no `contask.conf`, desde 11/11/2026). Toda empresa começa na homologação, e o escritório escolhe Produção empresa por empresa, no Ambiente de emissão. Para desligar para todos: `EMISSOR_PRODUCAO=false` e `bash contask.sh reiniciar`.
+- **Emissor de NFS-e:** a produção está ligada no servidor (`EMISSOR_PRODUCAO=true` no `contask.conf`, desde 11/11/2026). Desde 12/11/2026, toda empresa começa em produção (inclusive no teste grátis), e o escritório pode passar uma empresa para a homologação no Ambiente de emissão. Para desligar para todos: `EMISSOR_PRODUCAO=false` e `bash contask.sh reiniciar`.
 
 ## 1. Contratar
 
@@ -160,4 +160,4 @@ No UptimeRobot (grátis), crie um monitor HTTP para `https://app.<dominio>/api/p
 - Somente HTTPS (HSTS). O sistema recusa endereços (Host) e origens que não sejam o próprio domínio.
 - O contêiner roda sem root, com limite de memória, e a porta do sistema não fica exposta: só o Caddy acessa.
 - Certificados cifrados com a chave-mestra, que fica fora da imagem e fora do backup.
-- No ADN, o sistema só faz chamadas de leitura. No emissor, toda empresa começa na homologação, e a produção é escolhida empresa por empresa.
+- No ADN, o sistema só faz chamadas de leitura. No emissor, toda empresa começa em produção, e a homologação é escolhida empresa por empresa.

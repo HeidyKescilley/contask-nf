@@ -109,7 +109,7 @@ def config_prestador(db: Session, e: Empresa) -> EmissorEmpresa:
         else:
             op, ap = "1", None
         ibge = d.get("codigo_municipio_ibge")
-        c = EmissorEmpresa(empresa_id=e.id, op_simples=op, reg_ap_trib_sn=ap, reg_esp_trib="0", serie="1", proximo_numero=1,
+        c = EmissorEmpresa(empresa_id=e.id, op_simples=op, reg_ap_trib_sn=ap, reg_esp_trib="0", serie="1", proximo_numero=1, producao_liberada=True,
                            cod_municipio=str(ibge) if ibge else None)
         db.add(c)
         db.flush()

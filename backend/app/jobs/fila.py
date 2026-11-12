@@ -106,13 +106,11 @@ class Gerenciador:
     def enfileirar_incrementais(self) -> int:
         n = 0
         with self._sf() as db:
-            from app.core.escritorios import em_teste, ids_bloqueados
+            from app.core.escritorios import ids_bloqueados
             bloqueados = ids_bloqueados(db)
             for e in db.scalars(select(Empresa).where(Empresa.ativa)):
                 if e.escritorio_id in bloqueados:
                     continue  # escritório suspenso ou com o teste vencido: sem busca automática
-                if e.is_contabilidade and em_teste(db, e.escritorio_id):
-                    continue
                 if db.scalar(select(BuscaJob.id).where(BuscaJob.empresa_id == e.id, BuscaJob.status.in_(PENDENTES))):
                     continue
                 enfileirar(db, e.id, "incremental")

@@ -18,11 +18,11 @@ function AvisoUso() {
     return (
       <div className="mb-5">
         <Aviso tom="info">
-          {data.teste.concluido
-            ? <><strong>Teste grátis:</strong> as {n(data.teste.max_xmls)} primeiras notas já foram buscadas. Confira cada uma e abra o PDF.
-              O download dos XMLs, o histórico completo, todas as empresas e as emissões ficam liberados ao assinar o plano: fale com o suporte.</>
-            : <><strong>Teste grátis:</strong> {n(data.usados)} de {n(data.teste.max_xmls)} notas buscadas, com {data.teste.max_empresas} empresa,
-              e {data.teste.max_emissoes - data.teste.emissoes} emissão de nota disponível. Dá para ver cada nota e abrir o PDF.</>}
+          <strong>Teste grátis:</strong> o escritório e mais {data.teste.max_empresas} empresa, com todas as notas buscadas
+          ({n(data.usados)} até agora). Dá para ver cada nota e abrir o PDF, fazer{" "}
+          {Math.max(data.teste.max_exportacoes - data.teste.exportacoes, 0)} exportação de até {data.teste.max_dias_exportacao} dias
+          e {Math.max(data.teste.max_emissoes - data.teste.emissoes, 0)} emissão de nota. O download do XML de cada nota, todas as
+          empresas e as demais exportações e emissões ficam liberados ao assinar o plano.
         </Aviso>
       </div>
     );
