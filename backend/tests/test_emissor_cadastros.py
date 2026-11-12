@@ -47,7 +47,9 @@ def test_marcar_em_lote_e_pendencias(cliente):
     assert itens[prop["id"]]["certificado"]["procuracao"] is False and itens[prop["id"]]["avisos"] == []
     assert itens[prop["id"]]["certificado"]["titular_doc"] == OUTRO
     assert itens[prop["id"]]["pendencias"] == ["Cadastre pelo menos um serviço.",
-                                               "Informe o município da empresa (código IBGE) nos dados do prestador."]
+                                               "Não foi possível descobrir o código IBGE do município da empresa. "
+                                               "Confira o município e a UF no cadastro da empresa ou informe o código "
+                                               "nos dados do prestador."]
     assert not itens[prop["id"]]["pronta"]
     assert itens[prop["id"]]["config"]["serie"] == "1" and itens[prop["id"]]["config"]["proximo_numero"] == 1
 
@@ -166,3 +168,27 @@ def test_isolamento_entre_escritorios(app_teste):
         assert b.delete(f"/api/emissor/tomadores/{t['id']}").status_code == 404
         assert b.get("/api/emissor/tomadores").json() == []
         assert b.put("/api/emissor/empresas/emissao", json={"empresa_ids": [prop["id"]], "emite": True}).status_code == 404
+
+
+def test_municipio_ibge_pelo_nome_e_uf():
+    from app.core import ibge
+    assert ibge.normalizar("Santa Bárbara d'Oeste") == "SANTA BARBARA D OESTE"
+    assert ibge.codigo("DF", "Brasília") == "5300108"
+    assert ibge.codigo("df", "BRASILIA") == "5300108"
+    assert ibge.codigo(None, "5300108") == "5300108"  # já digitado como código
+    assert ibge.codigo("SP", "Cidade Inexistente") is None
+    assert ibge.codigo("XX", "Brasília") is None
+
+
+def test_garantir_municipio_preenche_o_prestador():
+    from app.emissor.municipio import garantir_municipio
+    from app.models import EmissorEmpresa, Empresa
+
+    class Db:
+        def commit(self):
+            pass
+    e = Empresa(cnpj="38030646000194", razao_social="X", uf="DF", municipio="Brasília")
+    cfg = EmissorEmpresa(empresa_id=1)
+    assert garantir_municipio(Db(), e, cfg) == "5300108" and cfg.cod_municipio == "5300108"
+    sem = Empresa(cnpj="60741606000100", razao_social="Y")
+    assert garantir_municipio(Db(), sem, EmissorEmpresa(empresa_id=2)) is None

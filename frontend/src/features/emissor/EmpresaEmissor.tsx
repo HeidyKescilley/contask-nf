@@ -175,7 +175,7 @@ function PainelAmbiente({ e }: { e: EmpresaEmissora }) {
 function FormPrestador({ e, cfg }: { e: EmpresaEmissora; cfg: ConfigPrestador }) {
   const atualizar = useAtualizarEmissor();
   const inicial = {
-    ...cfg, inscricao_municipal: cfg.inscricao_municipal ?? "", reg_ap_trib_sn: cfg.reg_ap_trib_sn ?? "", proximo_numero: String(cfg.proximo_numero),
+    ...cfg, inscricao_municipal: cfg.inscricao_municipal ?? "", cod_municipio: cfg.cod_municipio ?? "", reg_ap_trib_sn: cfg.reg_ap_trib_sn ?? "", proximo_numero: String(cfg.proximo_numero),
     // Sem regime gravado: Simples se a DPS já dizia MEI/ME-EPP; senão, a pessoa escolhe
     regime_tributario: (cfg.regime_tributario ?? (cfg.op_simples === "1" ? "" : "simples")) as RegimeTributario | "",
   };
@@ -186,9 +186,11 @@ function FormPrestador({ e, cfg }: { e: EmpresaEmissora; cfg: ConfigPrestador })
       method: "PUT",
       body: JSON.stringify({ ...d, op_simples: d.regime_tributario === "simples" ? d.op_simples : "1",
         reg_ap_trib_sn: d.regime_tributario === "simples" && d.op_simples === "3" ? d.reg_ap_trib_sn || null : null,
-        regime_tributario: d.regime_tributario || null, proximo_numero: Number(d.proximo_numero) || 0 }),
+        regime_tributario: d.regime_tributario || null, proximo_numero: Number(d.proximo_numero) || 0,
+        cod_municipio: d.cod_municipio || null }),
     }),
     onSuccess: () => { atualizar(); toast.success("Dados do prestador salvos."); },
+    onError: (er) => toast.error((er as Error).message),
   });
 
   return (
@@ -235,6 +237,10 @@ function FormPrestador({ e, cfg }: { e: EmpresaEmissora; cfg: ConfigPrestador })
         </Campo>
         <Campo rotulo="Inscrição municipal" ajuda="Só preencha se o município tiver a inscrição no cadastro nacional (CNC). Informar sem ter gera recusa (E0120).">
           {(p) => <Input {...p} value={d.inscricao_municipal} maxLength={15} onChange={(ev) => setD({ ...d, inscricao_municipal: ev.target.value })} />}
+        </Campo>
+        <Campo rotulo="Código IBGE do município"
+          ajuda={cfg.cod_municipio ? "Preenchido sozinho pelo município e UF da empresa." : "Não foi possível descobrir pelo município da empresa: informe os 7 dígitos (ex.: Brasília 5300108)."}>
+          {(p) => <Input {...p} value={d.cod_municipio} inputMode="numeric" maxLength={7} onChange={(ev) => setD({ ...d, cod_municipio: apenasDigitos(ev.target.value) })} />}
         </Campo>
         <Campo rotulo="Série da DPS" ajuda="De 1 a 49999. Use outra série se a empresa já emite por outro sistema.">
           {(p) => <Input {...p} value={d.serie} inputMode="numeric" maxLength={5} onChange={(ev) => setD({ ...d, serie: apenasDigitos(ev.target.value) })} />}

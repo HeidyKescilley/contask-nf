@@ -648,12 +648,12 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
           {emitir.isError && <div className="mt-3"><Aviso tom="erro">{(emitir.error as Error).message}</Aviso></div>}
           {salvarRecorrencia.isError && <div className="mt-3"><Aviso tom="erro">{(salvarRecorrencia.error as Error).message}</Aviso></div>}
           {modoRec ? (
-            <Button variante="primario" className="mt-4 w-full" disabled={problemas.length > 0 || salvarRecorrencia.isPending} onClick={() => setRevisar(true)}>
+            <Button variante="primario" className="mt-4 w-full" disabled={salvarRecorrencia.isPending} onClick={() => setRevisar(true)}>
               <Repeat /> Salvar recorrência
             </Button>
           ) : (
             <>
-              <Button variante="primario" className="mt-4 w-full" disabled={problemas.length > 0 || emitir.isPending} onClick={() => setRevisar(true)}>
+              <Button variante="primario" className="mt-4 w-full" disabled={emitir.isPending} onClick={() => setRevisar(true)}>
                 {nota ? <><RotateCcw /> Revisar e reenviar</> : <><Send /> Revisar e emitir</>}
               </Button>
               {!nota && (
@@ -684,6 +684,17 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
             <Linha rotulo="ISS" valor={f.issRetido ? "Retido pelo tomador" : "Não retido"} />
             {federais > 0 && <Linha rotulo="Retenções federais" valor={moeda(federais)} />}
           </dl>
+          {problemas.length > 0 && (
+            <div className="mt-3">
+              <Aviso tom="alerta">
+                <strong>Confira antes de enviar:</strong>
+                <ul className="mt-1 list-disc space-y-0.5 pl-5">{problemas.map((x) => <li key={x}>{x}</li>)}</ul>
+                Você pode enviar mesmo assim: a Sefin valida a nota e o resultado aparece aqui.
+              </Aviso>
+            </div>
+          )}
+          {emitir.isError && <div className="mt-3"><Aviso tom="erro">{(emitir.error as Error).message}</Aviso></div>}
+          {salvarRecorrencia.isError && <div className="mt-3"><Aviso tom="erro">{(salvarRecorrencia.error as Error).message}</Aviso></div>}
           {modoRec && proxima && (
             <p className="mt-3 rounded-lg bg-superficie-2 px-3 py-2 text-sm">{aplicarVariaveis(f.descricao, proxima)}</p>
           )}

@@ -9,6 +9,8 @@ export interface ConfigPrestador {
   reg_esp_trib: string;
   serie: string;
   proximo_numero: number;
+  /** IBGE do município (7 dígitos), descoberto sozinho pelo município e UF da empresa */
+  cod_municipio: string | null;
   producao_liberada: boolean;
   regime_tributario: RegimeTributario | null;
   /** true quando a empresa é do Simples (regime escolhido ou, sem ele, MEI/ME-EPP): acrescenta o texto legal */

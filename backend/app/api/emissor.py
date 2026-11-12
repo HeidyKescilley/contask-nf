@@ -161,7 +161,10 @@ def _item_empresa(db: Session, e: Empresa) -> dict:
     if n_serv == 0:
         pendencias.append("Cadastre pelo menos um serviço.")
     if cfg is not None and not cfg.cod_municipio:
-        pendencias.append("Informe o município da empresa (código IBGE) nos dados do prestador.")
+        from app.emissor.municipio import garantir_municipio
+        if not garantir_municipio(db, e, cfg):
+            pendencias.append("Não foi possível descobrir o código IBGE do município da empresa. Confira o município e "
+                              "a UF no cadastro da empresa ou informe o código nos dados do prestador.")
     if not e.ativa:
         pendencias.append("A empresa está inativa.")
     avisos = []

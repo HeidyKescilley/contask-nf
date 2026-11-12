@@ -124,12 +124,10 @@ def _empresa_pronta(db: Session, esc: int, empresa_id: int) -> tuple[Empresa, Em
         # Barrado antes de gastar número: a produção restrita não reconhece procurações
         raise ErroEmissao("Na homologação a Sefin recusa a emissão por procuração (E0718). Escolha Produção no ambiente "
                           "de emissão desta empresa ou cadastre o certificado A1 dela.")
-    if not cfg.cod_municipio:
-        ibge = (e.dados_brasilapi or {}).get("codigo_municipio_ibge")
-        if ibge:
-            cfg.cod_municipio = str(ibge)
-    if not cfg.cod_municipio:
-        raise ErroEmissao("Informe o município da empresa (código IBGE) nos dados do prestador.")
+    from app.emissor.municipio import garantir_municipio
+    if not garantir_municipio(db, e, cfg):
+        raise ErroEmissao("Não foi possível descobrir o código IBGE do município da empresa. Confira o município e a UF "
+                          "no cadastro da empresa ou informe o código nos dados do prestador.")
     return e, cfg
 
 

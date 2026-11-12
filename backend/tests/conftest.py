@@ -32,3 +32,16 @@ def cliente(app_teste):
         })
         assert r.status_code == 201, r.text
         yield c
+
+
+@pytest.fixture(autouse=True)
+def _sem_rede_ibge(monkeypatch):
+    """Testes nunca saem para a internet atrás de municípios."""
+    from app.core import ibge
+    from app.emissor import municipio
+    ibge._cache.clear()
+    ibge._falhas.clear()
+    municipio._consultados.clear()
+    monkeypatch.setattr(ibge, "_baixar", lambda uf, cliente=None: {"DF": {"BRASILIA": "5300108"},
+                                                                    "SP": {"SAO PAULO": "3550308"}}.get(uf))
+    monkeypatch.setattr(municipio, "_consultar_cnpj", lambda e: None)
