@@ -34,6 +34,9 @@ export interface Uso {
   } | null;
 }
 
+/** Frase única de todo recurso fechado no teste grátis. */
+export const CONTRATE = "Contrate um plano para ter acesso completo ao sistema.";
+
 /** Teste grátis do escritório: XML avulso fechado, PDF só para ver, uma exportação curta e uma emissão. */
 export function useTesteGratis() {
   const { data, isLoading } = useUso();

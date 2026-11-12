@@ -19,6 +19,8 @@ from app.models import Escritorio
 
 BRASILIA = timezone(timedelta(hours=-3))
 SITUACOES = {"teste", "ativo", "suspenso"}
+# Frase única de todo recurso fechado no teste grátis
+CONTRATE = "Contrate um plano para ter acesso completo ao sistema."
 
 
 def hoje() -> date:
@@ -31,7 +33,7 @@ def motivo_bloqueio(esc: Escritorio | None) -> str | None:
     if esc.situacao == "suspenso":
         return "O acesso do seu escritório está suspenso. Fale com o suporte do Contask NF."
     if esc.situacao == "teste" and esc.teste_ate is not None and esc.teste_ate < hoje():
-        return "O período de teste do seu escritório terminou. Fale com o suporte do Contask NF para continuar."
+        return f"O período de teste do seu escritório terminou. {CONTRATE}"
     return None
 
 
@@ -73,8 +75,7 @@ def mes_seguinte(d: date, dia: int | None = None) -> date:
 # Recursos fechados no teste grátis
 # ---------------------------------------------------------------------------
 
-MSG_XML = ("No teste grátis dá para ver as notas e abrir o PDF. O download do XML de cada nota fica "
-           "liberado ao assinar o plano: fale com o suporte do Contask NF.")
+MSG_XML = f"No teste grátis dá para ver as notas e abrir o PDF, mas não baixar o XML. {CONTRATE}"
 
 
 def exportacoes_do_escritorio(db: Session, escritorio_id: int) -> int:

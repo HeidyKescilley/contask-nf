@@ -19,7 +19,7 @@ import {
   type Servico, type Tomador,
 } from "@/lib/emissor";
 import { nomeExibicao, useEmpresaSelecionada } from "@/lib/empresas";
-import { useTesteGratis } from "@/lib/sessao";
+import { CONTRATE, useTesteGratis } from "@/lib/sessao";
 import { formatarDoc, mascararCnpj, UFS } from "@/lib/formato";
 import { moeda } from "@/lib/notas";
 import { cn } from "@/lib/utils";
@@ -247,8 +247,8 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
 
   const problemas: string[] = [];
   if (empresa.pendencias.length) problemas.push(...empresa.pendencias);
-  if (semEmissao) problemas.push("A emissão do teste grátis já foi usada. Assine o plano para continuar emitindo.");
-  if (modoRec && teste.emTeste) problemas.push("As notas recorrentes ficam liberadas ao assinar o plano.");
+  if (semEmissao) problemas.push(`A emissão do teste grátis já foi usada. ${CONTRATE}`);
+  if (modoRec && teste.emTeste) problemas.push(`As notas recorrentes não fazem parte do teste grátis. ${CONTRATE}`);
   if (modoRec) {
     if (!rec?.nome.trim()) problemas.push("Dê um nome à recorrência.");
     if (!proxima) problemas.push("Informe o dia da emissão (1 a 31).");
@@ -376,8 +376,8 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
           <Aviso tom={semEmissao ? "alerta" : "info"}>
             <strong>Teste grátis:</strong>{" "}
             {semEmissao
-              ? "a nota de demonstração já foi emitida. Para continuar emitindo, fale com o suporte do Contask NF e assine o plano. Dá para salvar rascunhos."
-              : `você pode emitir ${teste.emissoesRestantes} nota para conhecer o emissor. Depois, as emissões ficam liberadas ao assinar o plano.`}
+              ? <>a nota de demonstração já foi emitida. Dá para salvar rascunhos. <strong>{CONTRATE}</strong></>
+              : `você pode emitir ${teste.emissoesRestantes} nota para conhecer o emissor. ${CONTRATE}`}
           </Aviso>
         )}
 

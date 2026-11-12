@@ -20,7 +20,7 @@ import {
   type FiltrosNotas, type ItemNota, type NotaEmitida, type Rascunho,
 } from "@/lib/emissor";
 import { nomeExibicao, useEmpresaSelecionada } from "@/lib/empresas";
-import { useTesteGratis } from "@/lib/sessao";
+import { CONTRATE, useTesteGratis } from "@/lib/sessao";
 import { formatarData, formatarDataHora, formatarDoc } from "@/lib/formato";
 import { moeda } from "@/lib/notas";
 import { cn } from "@/lib/utils";
@@ -275,7 +275,7 @@ function Linha({ n, comEmpresa, navegar, aoCancelar }: {
               <>
                 <DropdownMenuItem asChild><a href={danfse} target="_blank" rel="noreferrer"><FileText /> Abrir DANFSe</a></DropdownMenuItem>
                 {emTeste
-                  ? <DropdownMenuItem disabled><Lock /> XML disponível no plano</DropdownMenuItem>
+                  ? <DropdownMenuItem disabled title={CONTRATE}><Lock /> XML: contrate um plano</DropdownMenuItem>
                   : <DropdownMenuItem asChild><a href={xml}><Download /> Baixar XML da NFS-e</a></DropdownMenuItem>}
               </>
             )}

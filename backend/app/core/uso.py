@@ -57,8 +57,9 @@ def exigir_vaga_empresa(db: Session, escritorio_id: int, novas: int = 1) -> None
     atuais = int(db.scalar(select(func.count()).select_from(Empresa).where(
         Empresa.escritorio_id == escritorio_id, Empresa.is_contabilidade.is_(False))) or 0)
     if atuais + novas > cfg.teste_max_empresas:
-        raise LimiteTeste(f"No teste grátis dá para cadastrar {cfg.teste_max_empresas} empresa. "
-                          "Assine o plano para liberar todas as empresas.")
+        from app.core.escritorios import CONTRATE
+        raise LimiteTeste(f"No teste grátis dá para cadastrar {cfg.teste_max_empresas} empresa, além do escritório. "
+                          f"{CONTRATE}")
 
 
 def resumo(db: Session, escritorio_id: int) -> dict:

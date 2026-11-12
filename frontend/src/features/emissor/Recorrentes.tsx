@@ -13,7 +13,7 @@ import {
   type CorpoEmissao, type EmpresaEmissora, type ModeloAdn, type NotaEmitida, type Recorrente,
 } from "@/lib/emissor";
 import { nomeExibicao, useEmpresaSelecionada } from "@/lib/empresas";
-import { useTesteGratis } from "@/lib/sessao";
+import { CONTRATE, useTesteGratis } from "@/lib/sessao";
 import { formatarDoc } from "@/lib/formato";
 import { moeda } from "@/lib/notas";
 import { cn } from "@/lib/utils";
@@ -54,8 +54,8 @@ export function Recorrentes() {
       {carregando && <Esqueleto className="h-64 w-full" />}
       {erro && <EstadoErro mensagem={erro.message} tentarDeNovo={() => refetch()} />}
       {!carregando && !erro && emTeste && (
-        <EstadoVazio icone={Lock} titulo="Notas recorrentes estão no plano">
-          No teste grátis dá para emitir uma nota para conhecer o emissor. As notas que saem sozinhas todo mês ficam liberadas ao assinar o plano: fale com o suporte do Contask NF.
+        <EstadoVazio icone={Lock} titulo="Notas recorrentes bloqueadas no teste grátis">
+          No teste grátis dá para emitir uma nota para conhecer o emissor. {CONTRATE}
         </EstadoVazio>
       )}
       {!carregando && !erro && !emTeste && !pronta && <SemEmissora selecionada={selecionada} />}

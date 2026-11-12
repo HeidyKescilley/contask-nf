@@ -45,13 +45,12 @@ def previa_exportacao(empresa_id: int, dados: dict, db: Session = Depends(sessao
 
 def _regra_teste(db: Session, esc: int, f: Filtros) -> None:
     """Teste grátis: uma exportação, com período definido de até 30 dias."""
-    from app.core.escritorios import em_teste, exportacoes_do_escritorio
+    from app.core.escritorios import CONTRATE, em_teste, exportacoes_do_escritorio
     if not em_teste(db, esc):
         return
     cfg = config()
     if exportacoes_do_escritorio(db, esc) >= cfg.teste_max_exportacoes:
-        raise HTTPException(402, "O teste grátis permite uma exportação, e ela já foi feita. As exportações ficam "
-                                 "liberadas ao assinar o plano: fale com o suporte do Contask NF.")
+        raise HTTPException(402, f"O teste grátis permite uma exportação, e ela já foi feita. {CONTRATE}")
     if not f.inicio or not f.fim or (f.fim - f.inicio).days + 1 > cfg.teste_max_dias_exportacao:
         raise HTTPException(422, f"No teste grátis, a exportação vale para um período de até "
                                  f"{cfg.teste_max_dias_exportacao} dias. Informe as datas inicial e final.")

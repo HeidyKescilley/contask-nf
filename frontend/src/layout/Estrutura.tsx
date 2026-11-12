@@ -3,7 +3,7 @@ import { Outlet } from "react-router-dom";
 import { CentralBuscas } from "@/features/buscas/CentralBuscas";
 import { CentralProvider, useEventosTempoReal } from "@/lib/buscas";
 import { Aviso } from "@/components/ui/campos";
-import { useUso } from "@/lib/sessao";
+import { CONTRATE, useUso } from "@/lib/sessao";
 import { gravarLocal, lerLocal } from "@/lib/utils";
 import { BarraLateral } from "./BarraLateral";
 import { Topo } from "./Topo";
@@ -21,8 +21,7 @@ function AvisoUso() {
           <strong>Teste grátis:</strong> o escritório e mais {data.teste.max_empresas} empresa, com todas as notas buscadas
           ({n(data.usados)} até agora). Dá para ver cada nota e abrir o PDF, fazer{" "}
           {Math.max(data.teste.max_exportacoes - data.teste.exportacoes, 0)} exportação de até {data.teste.max_dias_exportacao} dias
-          e {Math.max(data.teste.max_emissoes - data.teste.emissoes, 0)} emissão de nota. O download do XML de cada nota, todas as
-          empresas e as demais exportações e emissões ficam liberados ao assinar o plano.
+          e {Math.max(data.teste.max_emissoes - data.teste.emissoes, 0)} emissão de nota. <strong>{CONTRATE}</strong>
         </Aviso>
       </div>
     );

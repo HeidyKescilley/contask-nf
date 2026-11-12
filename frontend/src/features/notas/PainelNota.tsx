@@ -6,7 +6,7 @@ import { Copiar } from "@/components/Copiar";
 import { Button } from "@/components/ui/button";
 import { formatarDoc } from "@/lib/formato";
 import { dataHoraXml, dataXml, moeda, useDetalheNota } from "@/lib/notas";
-import { useTesteGratis } from "@/lib/sessao";
+import { CONTRATE, useTesteGratis } from "@/lib/sessao";
 import { cn } from "@/lib/utils";
 import { SeloNota } from "./SeloNota";
 
@@ -86,7 +86,7 @@ export function PainelNota({ modo, aoFechar, aoTrocar }: { modo: ModoPainel; aoF
             {id && (
               <>
                 {emTeste ? (
-                  <span className="inline-flex items-center gap-1.5 text-xs text-texto-2"><Lock className="size-3.5" aria-hidden /> Download do PDF e do XML disponível no plano</span>
+                  <span className="inline-flex items-center gap-1.5 text-xs text-texto-2"><Lock className="size-3.5" aria-hidden /> Download do PDF e do XML bloqueado no teste grátis. {CONTRATE}</span>
                 ) : (
                   <>
                     <Button tamanho="pequeno" asChild><a href={`/api/notas/${id}/pdf?download=1`}><Download /> Baixar PDF</a></Button>

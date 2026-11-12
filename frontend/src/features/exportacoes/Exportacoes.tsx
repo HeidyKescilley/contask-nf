@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Aviso, Input } from "@/components/ui/campos";
 import { api } from "@/lib/api";
 import { nomeExibicao, useEmpresaSelecionada } from "@/lib/empresas";
-import { useTesteGratis } from "@/lib/sessao";
+import { CONTRATE, useTesteGratis } from "@/lib/sessao";
 import { formatarDataHora } from "@/lib/formato";
 import { moeda, periodo } from "@/lib/notas";
 import { cn } from "@/lib/utils";
@@ -121,8 +121,8 @@ export function Exportacoes() {
         <div className="mb-5">
           <Aviso tom={semExportacao ? "alerta" : "info"}>
             {semExportacao
-              ? <><Lock className="mr-1 inline size-4 align-[-3px]" aria-hidden />A exportação do teste grátis já foi usada. As exportações ficam liberadas ao assinar o plano: fale com o suporte do Contask NF.</>
-              : <><strong>Teste grátis:</strong> você pode fazer 1 exportação, de um período de até {maxDias} dias.</>}
+              ? <><Lock className="mr-1 inline size-4 align-[-3px]" aria-hidden />A exportação do teste grátis já foi usada. <strong>{CONTRATE}</strong></>
+              : <><strong>Teste grátis:</strong> você pode fazer 1 exportação, de um período de até {maxDias} dias. {CONTRATE}</>}
           </Aviso>
         </div>
       )}

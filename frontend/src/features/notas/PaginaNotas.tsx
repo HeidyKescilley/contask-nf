@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/campos";
 import { Dica } from "@/components/ui/tooltip";
 import { useEmpresaSelecionada } from "@/lib/empresas";
-import { useTesteGratis } from "@/lib/sessao";
+import { CONTRATE, useTesteGratis } from "@/lib/sessao";
 import { formatarDoc } from "@/lib/formato";
 import { dataHoraXml, moeda, periodo, useNotas, type Nota, type Papel } from "@/lib/notas";
 import { cn } from "@/lib/utils";
@@ -233,8 +233,8 @@ function LinhaNota({ n, papel, abrir }: { n: Nota; papel: Papel; abrir: (m: Modo
             <button onClick={() => abrir({ tipo: "pdf", id: n.id })} className="rounded-lg p-1.5 text-texto-2 hover:bg-superficie hover:text-destaque" aria-label={`Ver PDF da nota ${n.numero ?? ""}`}><Eye className="size-4" /></button>
           </Dica>
           {emTeste ? (
-            <Dica texto="Download do PDF e do XML: disponível no plano" lado="top">
-              <span className="rounded-lg p-1.5 text-texto-2" aria-label="Download disponível no plano"><Lock className="size-4" /></span>
+            <Dica texto={`Download do PDF e do XML bloqueado no teste grátis. ${CONTRATE}`} lado="top">
+              <span className="rounded-lg p-1.5 text-texto-2" aria-label={`Download bloqueado. ${CONTRATE}`}><Lock className="size-4" /></span>
             </Dica>
           ) : (
             <>
