@@ -28,6 +28,8 @@ www.{$DOMINIO_BASE} {
 {$SUBDOMINIO}.{$DOMINIO_BASE} {
 	encode zstd gzip
 	import seguranca
+	# O sistema fica fora do Google: só o site de vendas é indexado
+	header X-Robots-Tag "noindex, nofollow"
 	# Uploads de certificado e importações: limite folgado, mas finito
 	request_body {
 		max_size 20MB
