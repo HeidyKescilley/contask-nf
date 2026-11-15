@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Estrutura } from "@/layout/Estrutura";
 import { AssistenteContabilidade } from "@/features/empresas/AssistenteContabilidade";
@@ -28,6 +28,7 @@ import {
 } from "@/pages/paginas";
 import "./index.css";
 
+import { Inicio, MinhaEmpresa, SoContador } from "@/features/empresas/ContaEmpresa";
 const consultas = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1, refetchOnWindowFocus: false } },
 });
@@ -39,7 +40,7 @@ const rotas = createBrowserRouter([
   {
     element: <Protegido><Estrutura /></Protegido>,
     children: [
-      { index: true, element: <Navigate to="/dashboard" replace /> },
+      { index: true, element: <Inicio /> },
       { path: "dashboard", element: <Dashboard /> },
       { path: "tomados", element: <PaginaNotas key="tomada" papel="tomada" /> },
       { path: "prestados", element: <PaginaNotas key="prestada" papel="prestada" /> },
@@ -52,11 +53,12 @@ const rotas = createBrowserRouter([
       { path: "emissor/empresas", element: <EmpresasEmissoras /> },
       { path: "emissor/empresas/:id", element: <EmpresaEmissor /> },
       { path: "emissor/tomadores", element: <Tomadores /> },
-      { path: "empresas", element: <ListaEmpresas /> },
-      { path: "empresas/nova", element: <NovaEmpresa /> },
-      { path: "empresas/importar", element: <ImportarEmpresas /> },
+      { path: "empresas", element: <SoContador><ListaEmpresas /></SoContador> },
+      { path: "empresas/nova", element: <SoContador><NovaEmpresa /></SoContador> },
+      { path: "empresas/importar", element: <SoContador><ImportarEmpresas /></SoContador> },
       { path: "empresas/:id", element: <DetalheEmpresa /> },
       { path: "contabilidade", element: <AssistenteContabilidade /> },
+      { path: "minha-empresa", element: <MinhaEmpresa /> },
       { path: "configuracoes", element: <Configuracoes /> },
       { path: "admin", element: <Administracao /> },
       { path: "*", element: <NaoEncontrada /> },

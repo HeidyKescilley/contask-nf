@@ -17,5 +17,16 @@ export const NAVEGACAO: ItemNav[] = [
   { rota: "/configuracoes", rotulo: "Configurações", icone: Settings, descricao: "Sistema e preferências" },
 ];
 
+/** Conta de empresa: o emissor primeiro e "Minha empresa" no lugar da lista de empresas. */
+export const NAVEGACAO_EMPRESA: ItemNav[] = [
+  { rota: "/emissor", rotulo: "Emissor NFS-e", icone: ReceiptText, descricao: "Emitir notas, serviços e tomadores" },
+  { rota: "/dashboard", rotulo: "Dashboard", icone: LayoutDashboard, descricao: "Visão mensal da empresa" },
+  { rota: "/prestados", rotulo: "Notas emitidas", icone: ArrowUpFromLine, descricao: "Serviços prestados (saídas)" },
+  { rota: "/tomados", rotulo: "Notas recebidas", icone: ArrowDownToLine, descricao: "Serviços tomados (entradas)" },
+  { rota: "/exportacoes", rotulo: "Exportações", icone: FileArchive, descricao: "ZIP com XMLs e relatório" },
+  { rota: "/minha-empresa", rotulo: "Minha empresa", icone: Building2, descricao: "Dados e certificado digital" },
+  { rota: "/configuracoes", rotulo: "Configurações", icone: Settings, descricao: "Sistema e preferências" },
+];
+
 /** Só para o administrador do sistema. */
 export const NAV_ADMIN: ItemNav = { rota: "/admin", rotulo: "Administração", icone: ShieldCheck, descricao: "Escritórios e usuários do sistema" };

@@ -3,6 +3,7 @@
 #
 # Escritórios e usuários (não existe cadastro pela tela enquanto CADASTRO=fechado):
 #   bash contask.sh escritorio novo "Contábil Silva" ana@silva.com "Ana Silva"
+#   bash contask.sh empresa nova "Clínica X" bia@clinicax.com "Bia"     # conta de empresa (um CNPJ só, foco no emissor)
 #   bash contask.sh escritorio lista
 #   bash contask.sh usuario novo bia@silva.com "Bia" <id do escritório>
 #   bash contask.sh usuario lista
@@ -25,6 +26,10 @@ case "$GRUPO $ACAO" in
     contas novo-escritorio "$1" "$2" "${3:-}"
     echo "Envie o endereço, o e-mail e a senha inicial por um canal privado. A troca é obrigatória no primeiro acesso." ;;
   "escritorio lista") contas escritorios ;;
+  "empresa nova")
+    [ $# -ge 2 ] || erro "uso: contask.sh empresa nova \"<nome da empresa>\" <email> \"<nome da pessoa>\""
+    contas novo-escritorio "$1" "$2" "${3:-}" --tipo empresa
+    echo "Envie o endereço, o e-mail e a senha inicial por um canal privado. A troca é obrigatória no primeiro acesso." ;;
   "usuario novo")
     [ $# -ge 3 ] || erro "uso: contask.sh usuario novo <email> \"<nome>\" <id do escritório>"
     contas criar "$1" "$2" --escritorio "$3" ;;

@@ -14,6 +14,7 @@
   - Decisão em 12/11/2026: toda empresa emissora começa em produção (inclusive no teste grátis, cuja única emissão é nota real); a homologação é escolhida empresa por empresa.
 - Interface em pt-BR; datas dd/mm/aaaa; valores em R$.
 - Toda tela deve funcionar nos dois temas e ter estados de carregamento, vazio e erro.
+- Dois tipos de conta (`escritorio.tipo`): `contador` (várias empresas) e `empresa` (um CNPJ só, foco no emissor). Toda rota que cadastra empresa chama `exigir_conta_contador`.
 - Vários escritórios no mesmo SQLite; o escritório vem da sessão. Toda rota /api nova exige login automaticamente (middleware em core/seguranca.py); rota pública precisa entrar em ROTAS_PUBLICAS de propósito.
 - A chave-mestra é CONTASK_CHAVE_MESTRA. Sem ela a API não sobe. Testes com dados reais: use uma instância isolada (CONTASK_DADOS_DIR próprio), nunca o banco real.
 

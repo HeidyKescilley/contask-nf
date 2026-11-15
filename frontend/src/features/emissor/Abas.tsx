@@ -2,6 +2,7 @@ import { FlaskConical } from "lucide-react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { useEmpresasEmissoras } from "@/lib/emissor";
 import { useEmpresaSelecionada } from "@/lib/empresas";
+import { useContaEmpresa } from "@/lib/sessao";
 import { cn } from "@/lib/utils";
 
 const ABAS = [
@@ -34,6 +35,7 @@ export function AbasEmissor({ empresaId }: { empresaId?: number | null }) {
   // Só a empresa selecionada segue entre as abas; filtros e ids de uma página não vão para a outra
   const empresa = new URLSearchParams(search).get("empresa");
   const busca = empresa ? `?empresa=${empresa}` : "";
+  const contaEmpresa = useContaEmpresa();
   return (
     <>
       <FaixaAmbiente empresaId={empresaId} />
@@ -44,7 +46,7 @@ export function AbasEmissor({ empresaId }: { empresaId?: number | null }) {
             <NavLink key={a.rota} to={{ pathname: a.rota, search: busca }} aria-current={ativa ? "page" : undefined} end
               className={cn("-mb-px whitespace-nowrap border-b-2 px-3 pb-2.5 text-sm transition-colors duration-150",
                 ativa ? "border-destaque font-medium text-destaque" : "border-transparent text-texto-2 hover:text-texto")}>
-              {a.rotulo}
+              {contaEmpresa && a.rota === "/emissor/empresas" ? "Dados de emissão" : a.rotulo}
             </NavLink>
           );
         })}

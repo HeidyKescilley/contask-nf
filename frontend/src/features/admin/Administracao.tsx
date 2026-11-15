@@ -29,9 +29,15 @@ interface UsuarioAdm {
   ultimo_acesso_em: string | null;
 }
 type Situacao = "teste" | "ativo" | "suspenso";
+type Tipo = "contador" | "empresa";
+const TIPOS: { valor: Tipo; rotulo: string; dica: string }[] = [
+  { valor: "contador", rotulo: "Contador", dica: "Escritório de contabilidade: cadastra várias empresas clientes." },
+  { valor: "empresa", rotulo: "Empresa", dica: "A própria empresa: um CNPJ só, com foco na emissão de notas." },
+];
 interface EscritorioAdm {
   id: number;
   nome: string;
+  tipo: Tipo;
   empresas: number;
   usuarios: UsuarioAdm[];
   situacao: Situacao;
@@ -91,7 +97,7 @@ export function Administracao() {
   return (
     <>
       <Cabecalho titulo="Administração" descricao="Escritórios, usuários, situação e mensalidade. A senha inicial aparece uma única vez: envie por um canal privado."
-        acoes={<Button variante="primario" onClick={() => setNovoEsc(true)}><Plus /> Novo escritório</Button>} />
+        acoes={<Button variante="primario" onClick={() => setNovoEsc(true)}><Plus /> Nova conta</Button>} />
       {lista.isLoading && <Esqueleto className="h-64 w-full" />}
       {lista.isError && <EstadoErro mensagem={(lista.error as Error).message} tentarDeNovo={() => lista.refetch()} />}
       {lista.data?.length === 0 && (
@@ -165,9 +171,10 @@ function CartaoEscritorio({ e, euId, aoSenha, aoNovoUsuario, aoPlano, aoPagament
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="font-medium">{e.nome}</h2>
             <SeloSituacao e={e} />
+            <span className="rounded bg-superficie-2 px-1.5 py-0.5 text-xs text-texto-2">{e.tipo === "empresa" ? "Empresa" : "Contador"}</span>
           </div>
           <p className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-texto-2">
-            <span>{e.empresas} empresa(s)</span>
+            <span>{e.tipo === "empresa" ? (e.empresas ? "CNPJ cadastrado" : "CNPJ ainda não cadastrado") : `${e.empresas} empresa(s)`}</span>
             <span>XMLs no mês: <span className="font-mono">{e.xmls_no_mes}{e.limite_efetivo > 0 ? ` / ${e.limite_efetivo}` : ""}</span>{pct !== null && ` (${pct}%)`}</span>
             <span>Mensalidade: {e.mensalidade !== null ? moeda(e.mensalidade) : "—"}</span>
             <span>Próximo vencimento: {dataBR(e.proximo_vencimento)}</span>
@@ -310,24 +317,38 @@ function CamposPlano({ p, setP, comSuspenso }: { p: FormPlano; setP: (p: FormPla
   );
 }
 
+function CampoTipo({ tipo, setTipo }: { tipo: Tipo; setTipo: (t: Tipo) => void }) {
+  return (
+    <Campo rotulo="Tipo de conta" ajuda={TIPOS.find((t) => t.valor === tipo)?.dica}>
+      {(a) => (
+        <Select {...a} value={tipo} onChange={(ev) => setTipo(ev.target.value as Tipo)}>
+          {TIPOS.map((t) => <option key={t.valor} value={t.valor}>{t.rotulo}</option>)}
+        </Select>
+      )}
+    </Campo>
+  );
+}
+
 function NovoEscritorio({ aberto, aoFechar, aoCriar }: { aberto: boolean; aoFechar: () => void; aoCriar: (s: ComSenha) => void }) {
   const qc = useQueryClient();
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [pessoa, setPessoa] = useState("");
+  const [tipo, setTipo] = useState<Tipo>("contador");
   const [p, setP] = useState<FormPlano>(planoVazio());
   const erro = problemasPlano(p);
   const criar = useMutation({
-    mutationFn: () => api<ComSenha>("/api/admin/escritorios", { method: "POST", body: JSON.stringify({ nome, email, nome_usuario: pessoa, ...corpoDoForm(p) }) }),
+    mutationFn: () => api<ComSenha>("/api/admin/escritorios", { method: "POST", body: JSON.stringify({ nome, email, nome_usuario: pessoa, tipo, ...corpoDoForm(p) }) }),
     onSuccess: (r) => { qc.invalidateQueries({ queryKey: CHAVE }); fechar(); aoCriar(r); },
   });
-  const fechar = () => { setNome(""); setEmail(""); setPessoa(""); setP(planoVazio()); criar.reset(); aoFechar(); };
+  const fechar = () => { setNome(""); setEmail(""); setPessoa(""); setTipo("contador"); setP(planoVazio()); criar.reset(); aoFechar(); };
   const enviar = (ev: FormEvent) => { ev.preventDefault(); if (!erro) criar.mutate(); };
   return (
     <Dialog open={aberto} onOpenChange={(v) => !v && !criar.isPending && fechar()}>
-      <DialogContent titulo="Novo escritório" descricao="Cria o escritório e o primeiro usuário, com senha inicial de troca obrigatória.">
+      <DialogContent titulo="Nova conta" descricao="Cria a conta e o primeiro usuário, com senha inicial de troca obrigatória.">
         <form className="space-y-4" onSubmit={enviar}>
-          <Campo rotulo="Nome do escritório" obrigatorio>{(a) => <Input {...a} value={nome} onChange={(e) => setNome(e.target.value)} autoFocus required />}</Campo>
+          <CampoTipo tipo={tipo} setTipo={setTipo} />
+          <Campo rotulo={tipo === "empresa" ? "Nome da empresa" : "Nome do escritório"} obrigatorio>{(a) => <Input {...a} value={nome} onChange={(e) => setNome(e.target.value)} autoFocus required />}</Campo>
           <div className="grid grid-cols-2 gap-3">
             <Campo rotulo="E-mail do primeiro usuário" obrigatorio>{(a) => <Input {...a} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />}</Campo>
             <Campo rotulo="Nome da pessoa">{(a) => <Input {...a} value={pessoa} onChange={(e) => setPessoa(e.target.value)} />}</Campo>
@@ -337,7 +358,7 @@ function NovoEscritorio({ aberto, aoFechar, aoCriar }: { aberto: boolean; aoFech
           <div className="flex justify-end gap-2">
             <Button type="button" variante="fantasma" onClick={fechar} disabled={criar.isPending}>Cancelar</Button>
             <Button type="submit" variante="primario" disabled={criar.isPending || nome.trim().length < 2 || !email || !!erro}>
-              {criar.isPending && <Loader2 className="animate-spin" />} Criar escritório
+              {criar.isPending && <Loader2 className="animate-spin" />} Criar conta
             </Button>
           </div>
         </form>
@@ -359,16 +380,21 @@ function PlanoDialog({ escritorio, aoFechar }: { escritorio: EscritorioAdm | nul
 function FormPlanoEdicao({ e, aoFechar }: { e: EscritorioAdm; aoFechar: () => void }) {
   const qc = useQueryClient();
   const [nome, setNome] = useState(e.nome);
+  const [tipo, setTipo] = useState<Tipo>(e.tipo);
   const [p, setP] = useState<FormPlano>(planoDe(e));
   const erro = problemasPlano(p);
   const temAdmin = e.usuarios.some((u) => u.admin_sistema);
   const salvar = useMutation({
-    mutationFn: () => api<EscritorioAdm>(`/api/admin/escritorios/${e.id}`, { method: "PUT", body: JSON.stringify({ nome, ...corpoDoForm(p) }) }),
+    mutationFn: () => api<EscritorioAdm>(`/api/admin/escritorios/${e.id}`, { method: "PUT", body: JSON.stringify({ nome, tipo, ...corpoDoForm(p) }) }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: CHAVE }); toast.success("Plano salvo."); aoFechar(); },
   });
   return (
     <form className="space-y-4" onSubmit={(ev) => { ev.preventDefault(); if (!erro) salvar.mutate(); }}>
-      <Campo rotulo="Nome do escritório" obrigatorio>{(a) => <Input {...a} value={nome} onChange={(ev) => setNome(ev.target.value)} required />}</Campo>
+      <CampoTipo tipo={tipo} setTipo={setTipo} />
+      {tipo === "empresa" && e.tipo !== "empresa" && e.empresas > 1 && (
+        <Aviso tom="alerta">Esta conta tem {e.empresas} empresas. A conta de empresa tem um CNPJ só: exclua as outras antes de mudar.</Aviso>
+      )}
+      <Campo rotulo="Nome" obrigatorio>{(a) => <Input {...a} value={nome} onChange={(ev) => setNome(ev.target.value)} required />}</Campo>
       <CamposPlano p={p} setP={setP} comSuspenso={!temAdmin} />
       {p.situacao === "suspenso" && e.situacao !== "suspenso" && (
         <Aviso tom="alerta">Ao suspender, ninguém do escritório entra e as buscas e notas recorrentes param. Nada é apagado: ao reativar, tudo volta de onde parou.</Aviso>

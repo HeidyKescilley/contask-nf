@@ -15,6 +15,7 @@ from app.core.certificados import (
     situacao_validade, validar_para_uso,
 )
 from app.core.config import config
+from app.core.escritorios import conta_empresa, exigir_conta_contador
 from app.core.uso import LimiteTeste, exigir_vaga_empresa
 from app.core.db import sessao
 from app.fiscal.documentos import cnpj_valido, formatar_cnpj, limpar_cnpj, raiz_cnpj
@@ -208,13 +209,15 @@ async def salvar_contabilidade(
     c = _cnpj_ou_erro(cnpj)
     if not razao_social.strip():
         raise HTTPException(422, "Informe a razão social.")
+    propria = conta_empresa(db, esc)  # conta de empresa: a empresa principal é a própria empresa
+    nome = "a empresa" if propria else "a contabilidade"
     atual = _contabilidade(db, esc)
     if atual and atual.cnpj != c:
-        raise HTTPException(409, f"A contabilidade já é {atual.razao_social} ({formatar_cnpj(atual.cnpj)}).")
+        raise HTTPException(409, f"{nome.capitalize()} já é {atual.razao_social} ({formatar_cnpj(atual.cnpj)}).")
     pfx, senha_ok, info = await _ler_certificado(arquivo, senha)
     if info.tipo == "e-CNPJ" and raiz_cnpj(info.titular_doc) != raiz_cnpj(c):
         raise HTTPException(422, f"O certificado é de {info.titular_nome} ({formatar_cnpj(info.titular_doc)}), "
-                                 f"não da contabilidade informada ({formatar_cnpj(c)}).")
+                                 f"não d{nome} informada ({formatar_cnpj(c)}).")
 
     e = atual or db.scalar(select(Empresa).where(Empresa.escritorio_id == esc, Empresa.cnpj == c))
     if e is None:
@@ -231,6 +234,10 @@ async def salvar_contabilidade(
     db.flush()
     if antigo_cert != cert.id:
         _remover_cert_orfao(db, antigo_cert)
+    if propria and not e.emite_nfse:  # a conta de empresa existe para emitir: já nasce emissora
+        from app.api.emissor import config_prestador
+        e.emite_nfse = True
+        config_prestador(db, e)
     _agendar_busca_inicial(db, e)
     db.commit()
     acordar_fila()
@@ -280,6 +287,7 @@ async def criar_empresa(
     c = _cnpj_ou_erro(cnpj)
     if not razao_social.strip():
         raise HTTPException(422, "Informe a razão social.")
+    exigir_conta_contador(db, esc)
     if db.scalar(select(Empresa).where(Empresa.escritorio_id == esc, Empresa.cnpj == c)):
         raise HTTPException(409, f"O CNPJ {formatar_cnpj(c)} já está cadastrado.")
     try:

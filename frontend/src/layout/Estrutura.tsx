@@ -3,7 +3,7 @@ import { Outlet } from "react-router-dom";
 import { CentralBuscas } from "@/features/buscas/CentralBuscas";
 import { CentralProvider, useEventosTempoReal } from "@/lib/buscas";
 import { Aviso } from "@/components/ui/campos";
-import { CONTRATE, useUso } from "@/lib/sessao";
+import { CONTRATE, useContaEmpresa, useUso } from "@/lib/sessao";
 import { gravarLocal, lerLocal } from "@/lib/utils";
 import { BarraLateral } from "./BarraLateral";
 import { Topo } from "./Topo";
@@ -13,12 +13,14 @@ const CHAVE = "contask-menu-recolhido";
 /** Aviso do limite mensal de XMLs do plano (a partir de 80%). */
 function AvisoUso() {
   const { data } = useUso();
+  const contaEmpresa = useContaEmpresa();
   const n = (v: number) => v.toLocaleString("pt-BR");
   if (data?.teste)
     return (
       <div className="mb-5">
         <Aviso tom="info">
-          <strong>Teste grátis:</strong> o escritório e mais {data.teste.max_empresas} empresa, com todas as notas buscadas
+          <strong>Teste grátis:</strong>{" "}
+          {contaEmpresa ? "sua empresa" : <>o escritório e mais {data.teste.max_empresas} empresa</>}, com todas as notas buscadas
           ({n(data.usados)} até agora). Dá para ver cada nota e abrir o PDF, fazer{" "}
           {Math.max(data.teste.max_exportacoes - data.teste.exportacoes, 0)} exportação de até {data.teste.max_dias_exportacao} dias
           e {Math.max(data.teste.max_emissoes - data.teste.emissoes, 0)} emissão de nota. <strong>{CONTRATE}</strong>

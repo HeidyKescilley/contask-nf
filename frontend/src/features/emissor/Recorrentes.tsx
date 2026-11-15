@@ -14,6 +14,7 @@ import {
 } from "@/lib/emissor";
 import { nomeExibicao, useEmpresaSelecionada } from "@/lib/empresas";
 import { CONTRATE, useTesteGratis } from "@/lib/sessao";
+import { EstadoSemEmpresa } from "@/pages/paginas";
 import { formatarDoc } from "@/lib/formato";
 import { moeda } from "@/lib/notas";
 import { cn } from "@/lib/utils";
@@ -36,7 +37,7 @@ function SemEmissora({ selecionada }: { selecionada: { id: number } | null }) {
       acao={<Button variante="primario" asChild><Link to={`/emissor/empresas/${selecionada.id}?empresa=${selecionada.id}`}>Configurar emissão</Link></Button>}>
       Escolha outra empresa no topo da página ou marque esta como emissora.
     </EstadoVazio>
-  ) : <EstadoVazio icone={Building2} titulo="Escolha uma empresa">Selecione a empresa no topo da página.</EstadoVazio>;
+  ) : <EstadoSemEmpresa icone={Building2} />;
 }
 
 export function Recorrentes() {

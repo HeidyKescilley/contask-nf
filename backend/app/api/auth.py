@@ -22,6 +22,8 @@ class Cadastro(BaseModel):
     email: str
     senha: str
     convite: str | None = None
+    # contador (escritório de contabilidade) | empresa (a própria empresa, um CNPJ só)
+    tipo: str = "contador"
 
 
 class TrocaSenha(BaseModel):
@@ -46,7 +48,7 @@ def _eu(db: Session, u) -> dict:
     tem = db.scalar(select(Empresa.id).where(Empresa.escritorio_id == u.escritorio_id, Empresa.is_contabilidade))
     return {
         "usuario": _usuario_json(u),
-        "escritorio": {"id": esc.id, "nome": esc.nome} if esc else None,
+        "escritorio": {"id": esc.id, "nome": esc.nome, "tipo": esc.tipo} if esc else None,
         "tem_contabilidade": tem is not None,
         "empresas": empresas,
     }
@@ -80,7 +82,7 @@ def cadastrar(dados: Cadastro, request: Request, response: Response, db: Session
         if convite is None:
             raise HTTPException(400, "Código de convite inválido ou já usado.")
     try:
-        u = auth.criar_usuario(db, dados.email, dados.nome, dados.senha, trocar_senha=False)
+        u = auth.criar_usuario(db, dados.email, dados.nome, dados.senha, trocar_senha=False, tipo=dados.tipo)
         if convite is not None:
             convites.marcar_usado(convite, u.escritorio_id)
         db.commit()

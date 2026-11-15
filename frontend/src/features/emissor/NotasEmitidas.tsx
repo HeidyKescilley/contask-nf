@@ -21,6 +21,7 @@ import {
 } from "@/lib/emissor";
 import { nomeExibicao, useEmpresaSelecionada } from "@/lib/empresas";
 import { CONTRATE, useTesteGratis } from "@/lib/sessao";
+import { EstadoSemEmpresa } from "@/pages/paginas";
 import { formatarData, formatarDataHora, formatarDoc } from "@/lib/formato";
 import { moeda } from "@/lib/notas";
 import { cn } from "@/lib/utils";
@@ -134,7 +135,7 @@ export function NotasEmitidas() {
       {(carregando || empresas.isLoading) && <Esqueleto className="h-64 w-full" />}
       {empresas.isError && <EstadoErro mensagem={(empresas.error as Error).message} tentarDeNovo={() => empresas.refetch()} />}
       {!carregando && empresas.data && !selecionada && (
-        <EstadoVazio icone={Building2} titulo="Escolha uma empresa">Selecione a empresa no topo da página para ver as notas dela.</EstadoVazio>
+        <EstadoSemEmpresa icone={Building2} />
       )}
       {empresas.data && selecionada && !pronta && (
         <EstadoVazio icone={Building2} titulo={`${nomeExibicao(selecionada)} não emite NFS-e pelo Contask`}

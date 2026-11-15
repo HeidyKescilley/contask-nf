@@ -36,6 +36,8 @@ class Escritorio(Base):
     __tablename__ = "escritorio"
     id: Mapped[int] = mapped_column(primary_key=True)
     nome: Mapped[str] = mapped_column(String(200))
+    # contador: contabilidade com várias empresas clientes | empresa: a própria empresa, um CNPJ só (foco no emissor)
+    tipo: Mapped[str] = mapped_column(String(10), default="contador", server_default="contador")
     # teste (teste grátis, até teste_ate) | ativo | suspenso (ninguém entra; buscas e recorrências param)
     situacao: Mapped[str] = mapped_column(String(10), default="ativo", server_default="ativo")
     teste_ate: Mapped[date | None] = mapped_column(Date)

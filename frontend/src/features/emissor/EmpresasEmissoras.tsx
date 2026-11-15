@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, BadgeCheck, Building2, ChevronRight, FlaskConical, Handshake, Landmark, Loader2, Search, ShieldCheck, ShieldX } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Cabecalho, EstadoErro, EstadoVazio, Esqueleto } from "@/components/estados";
 import { Selo } from "@/components/selos";
@@ -12,6 +12,7 @@ import { api } from "@/lib/api";
 import { useAtualizarEmissor, useEmpresasEmissoras, type EmpresaEmissora } from "@/lib/emissor";
 import { nomeExibicao } from "@/lib/empresas";
 import { formatarData, formatarDoc, limparCnpj } from "@/lib/formato";
+import { useContaEmpresa } from "@/lib/sessao";
 import { cn } from "@/lib/utils";
 import { AbasEmissor } from "./Abas";
 
@@ -56,6 +57,7 @@ export function EmpresasEmissoras() {
   const qc = useQueryClient();
   const [q, setQ] = useState("");
   const [filtro, setFiltro] = useState<Filtro>("todas");
+  const contaEmpresa = useContaEmpresa();
 
   const marcar = useMutation({
     mutationFn: (v: { ids: number[]; emite: boolean }) =>
@@ -88,6 +90,12 @@ export function EmpresasEmissoras() {
   const todasMarcadas = visiveis.length > 0 && visiveis.every((e) => e.emite_nfse);
   const algumaMarcada = visiveis.some((e) => e.emite_nfse);
 
+  // Conta de empresa: um CNPJ só, então vai direto para os dados de emissão dele
+  if (contaEmpresa && lista.data?.length === 1) {
+    const id = lista.data[0].id;
+    return <Navigate to={`/emissor/empresas/${id}?empresa=${id}`} replace />;
+  }
+
   return (
     <>
       <Cabecalho titulo="Emissor de NFS-e" descricao="Escolha quais empresas emitem nota pelo Contask e configure cada uma." />
@@ -97,8 +105,11 @@ export function EmpresasEmissoras() {
       {lista.isError && <EstadoErro mensagem={(lista.error as Error).message} tentarDeNovo={() => lista.refetch()} />}
       {lista.data && total === 0 && (
         <EstadoVazio icone={Building2} titulo="Nenhuma empresa cadastrada"
-          acao={<Button variante="primario" asChild><Link to="/empresas/nova">Cadastrar empresa</Link></Button>}>
-          As empresas do cadastro aparecem aqui para você marcar quais emitem NFS-e.
+          acao={<Button variante="primario" asChild>
+            <Link to={contaEmpresa ? "/contabilidade" : "/empresas/nova"}>{contaEmpresa ? "Cadastrar minha empresa" : "Cadastrar empresa"}</Link>
+          </Button>}>
+          {contaEmpresa ? "Cadastre sua empresa e o certificado digital dela para começar a emitir."
+            : "As empresas do cadastro aparecem aqui para você marcar quais emitem NFS-e."}
         </EstadoVazio>
       )}
 

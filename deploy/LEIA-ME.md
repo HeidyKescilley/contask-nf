@@ -91,7 +91,9 @@ Se o ADN ou a Sefin recusarem a conexão vinda da VPS, pare aqui.
 
 ## 7. Escritórios do teste
 
-Para cada escritório: **Administração > Novo escritório** (ou `bash contask.sh escritorio novo "Contábil Silva" ana@silva.com "Ana Silva"`).
+Para cada escritório: **Administração > Nova conta**, tipo Contador (ou `bash contask.sh escritorio novo "Contábil Silva" ana@silva.com "Ana Silva"`).
+
+Para uma empresa que só quer emitir as próprias notas: **Administração > Nova conta**, tipo Empresa (ou `bash contask.sh empresa nova "Clínica X" bia@clinicax.com "Bia"`). A conta tem um CNPJ só.
 
 Envie o endereço `https://app.<dominio>`, o e-mail e a senha inicial por um canal privado (WhatsApp direto, nunca em grupo). Antes, combine com o escritório um termo simples de teste: os certificados A1 dos clientes dele ficam guardados (cifrados) no servidor.
 
@@ -115,6 +117,7 @@ O painel destaca quem está em atraso, mas a suspensão é sempre manual. Um tes
 | Tarefa | Comando |
 |---|---|
 | Novo escritório | `bash contask.sh escritorio novo "<nome>" <email> "<pessoa>"` |
+| Nova conta de empresa | `bash contask.sh empresa nova "<nome>" <email> "<pessoa>"` |
 | Listar escritórios (com id) | `bash contask.sh escritorio lista` |
 | Mais um usuário num escritório | `bash contask.sh usuario novo <email> "<nome>" <id do escritório>` |
 | Listar usuários | `bash contask.sh usuario lista` |

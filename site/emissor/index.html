@@ -1,0 +1,554 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Emissor de NFS-e para a sua empresa | Contask NF</title>
+<meta name="description" content="Emita a nota fiscal de serviço (NFS-e) da sua empresa pelo Sistema Nacional em poucos cliques: cliente pelo CNPJ, serviços salvos, retenções calculadas e notas recorrentes. Teste grátis.">
+<meta property="og:title" content="Emissor de NFS-e para a sua empresa | Contask NF">
+<meta property="og:description" content="NFS-e do Padrão Nacional sem abrir o portal: cliente pelo CNPJ, serviço salvo, notas recorrentes e todas as notas da empresa num lugar só.">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="pt_BR">
+<link rel="canonical" href="https://contasknf.com.br/emissor/">
+<meta property="og:url" content="https://contasknf.com.br/emissor/">
+<meta property="og:site_name" content="Contask NF">
+<meta property="og:image" content="https://contasknf.com.br/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Contask NF para empresas",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "Web",
+  "url": "https://contasknf.com.br/emissor/",
+  "description": "Emissor de NFS-e do Padrão Nacional para empresas, com notas recorrentes e busca automática das notas emitidas e recebidas.",
+  "publisher": {"@id": "https://contasknf.com.br/#org"},
+  "offers": {"@type": "Offer", "price": "79.90", "priceCurrency": "BRL"}
+}
+</script>
+<meta name="color-scheme" content="light">
+<link rel="icon" href="/icone.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --fundo: #f6f7f7; --superficie: #ffffff; --superficie-2: #eef0f0; --borda: #e3e6e6; --borda-forte: #cdd3d3;
+    --texto: #15191a; --texto-2: #5f6a6c; --destaque: #0e7490; --destaque-forte: #0b5f76; --destaque-texto: #ffffff;
+    --destaque-suave: #e2f1f4; --ok: #15803d; --ok-suave: #e6f4ea; --erro: #b91c1c; --erro-suave: #fbe9e9;
+    --alerta: #b45309; --alerta-suave: #fbf0e1; --sombra: 0 24px 60px -30px rgb(14 40 48 / 0.35);
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--fundo); color: var(--texto);
+    font: 16px/1.6 "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased; overflow-x: hidden;
+  }
+  a { color: inherit; }
+  [hidden] { display: none !important; }
+  img, svg { display: block; max-width: 100%; }
+  :focus-visible { outline: 2px solid var(--destaque); outline-offset: 3px; border-radius: 6px; }
+  .mono { font-family: "Geist Mono", ui-monospace, monospace; font-feature-settings: "tnum" 1; }
+  .container { width: 100%; max-width: 1120px; margin: 0 auto; padding: 0 20px; }
+  .pular { position: absolute; left: -9999px; }
+  .pular:focus { left: 16px; top: 12px; z-index: 100; background: var(--superficie); padding: 8px 12px; border-radius: 8px; }
+
+  /* Topo */
+  header.topo { position: sticky; top: 0; z-index: 50; background: color-mix(in srgb, var(--fundo) 88%, transparent);
+    backdrop-filter: blur(10px); border-bottom: 1px solid var(--borda); }
+  .topo .container { display: flex; align-items: center; gap: 24px; height: 64px; }
+  .marca { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 17px; text-decoration: none; letter-spacing: -0.01em; }
+  .marca span { color: var(--destaque); }
+  .acoes-topo { display: flex; gap: 10px; align-items: center; }
+  .marca div { white-space: nowrap; }
+  .marca svg { width: 28px; height: 28px; }
+  nav.links { display: flex; gap: 22px; margin-left: auto; font-size: 14px; }
+  nav.links a { text-decoration: none; color: var(--texto-2); }
+  nav.links a:hover { color: var(--texto); }
+
+  .botao { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 44px; padding: 0 20px;
+    border-radius: 12px; font-weight: 500; font-size: 15px; text-decoration: none; border: 1px solid transparent;
+    transition: background .15s, border-color .15s, transform .15s; white-space: nowrap; cursor: pointer; }
+  .botao svg { width: 18px; height: 18px; flex-shrink: 0; }
+  .botao.primario { background: var(--destaque); color: var(--destaque-texto); }
+  .botao.primario:hover { background: var(--destaque-forte); }
+  .botao.secundario { background: var(--superficie); border-color: var(--borda-forte); }
+  .botao.secundario:hover { background: var(--superficie-2); }
+  .botao.pequeno { height: 38px; padding: 0 14px; font-size: 14px; border-radius: 10px; }
+
+  /* Hero */
+  .hero { padding: 72px 0 40px; }
+  .hero .container { display: grid; grid-template-columns: 1.02fr 1fr; gap: 56px; align-items: center; }
+  .selo { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; color: var(--destaque);
+    background: var(--destaque-suave); padding: 5px 12px; border-radius: 999px; }
+  h1 { font-size: clamp(34px, 5vw, 52px); line-height: 1.08; letter-spacing: -0.03em; margin: 18px 0 18px; font-weight: 650; text-wrap: balance; }
+  h1 em { font-style: normal; color: var(--destaque); }
+  .hero p.lead { font-size: 18px; color: var(--texto-2); margin: 0 0 28px; max-width: 34em; text-wrap: pretty; }
+  .acoes { display: flex; flex-wrap: wrap; gap: 12px; }
+  .garantias { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 22px; font-size: 14px; color: var(--texto-2); list-style: none; padding: 0; }
+  .garantias li { display: flex; align-items: center; gap: 7px; }
+  .garantias svg { width: 16px; height: 16px; color: var(--ok); }
+
+  /* Ilustração do sistema (fictícia) */
+  .tela { background: var(--superficie); border: 1px solid var(--borda); border-radius: 18px; box-shadow: var(--sombra); overflow: hidden; }
+  .tela-barra { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--borda); font-size: 13px; color: var(--texto-2); }
+  .tela-barra i { width: 9px; height: 9px; border-radius: 50%; background: var(--borda-forte); }
+  .tela-barra b { margin-left: 8px; font-weight: 500; color: var(--texto); }
+  .tela-corpo { padding: 16px; display: grid; gap: 12px; }
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .card-mini { background: var(--fundo); border-radius: 12px; padding: 12px; }
+  .card-mini small { display: block; font-size: 11.5px; color: var(--texto-2); }
+  .card-mini strong { font-size: 19px; font-weight: 600; letter-spacing: -0.02em; }
+  .lista { border: 1px solid var(--borda); border-radius: 12px; overflow: hidden; }
+  .linha { display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: center; padding: 10px 12px; font-size: 13px; border-bottom: 1px solid var(--borda); }
+  .linha:last-child { border-bottom: 0; }
+  .linha .nome { min-width: 0; }
+  .linha .nome b { display: block; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .linha .nome small { color: var(--texto-2); font-size: 11.5px; }
+  .tag { font-size: 11.5px; font-weight: 500; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .tag.ok { color: var(--ok); background: var(--ok-suave); }
+  .tag.erro { color: var(--erro); background: var(--erro-suave); }
+  .tag.busca { color: var(--destaque); background: var(--destaque-suave); }
+  .tela-rodape { font-size: 11.5px; color: var(--texto-2); text-align: center; }
+
+  /* Seções */
+  section.bloco { padding: 80px 0; }
+  section.bloco.alt { background: var(--superficie); border-top: 1px solid var(--borda); border-bottom: 1px solid var(--borda); }
+  .titulo-secao { max-width: 680px; margin-bottom: 44px; }
+  .titulo-secao .sobre { font-size: 13px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--destaque); }
+  h2 { font-size: clamp(27px, 3.4vw, 36px); line-height: 1.15; letter-spacing: -0.025em; margin: 10px 0 12px; font-weight: 650; text-wrap: balance; }
+  .titulo-secao p { color: var(--texto-2); margin: 0; font-size: 17px; }
+  h3 { font-size: 17px; margin: 0 0 6px; font-weight: 600; letter-spacing: -0.01em; }
+
+  .comparacao { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .coluna { border-radius: 16px; padding: 26px; border: 1px solid var(--borda); background: var(--fundo); }
+  .coluna.depois { border-color: color-mix(in srgb, var(--destaque) 35%, var(--borda)); background: var(--destaque-suave); }
+  .coluna h3 { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+  .coluna ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 11px; }
+  .coluna li { display: grid; grid-template-columns: 20px 1fr; gap: 10px; font-size: 15px; }
+  .coluna li svg { width: 18px; height: 18px; margin-top: 3px; }
+  .antes li svg { color: var(--erro); }
+  .depois li svg { color: var(--destaque); }
+
+  .passos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; counter-reset: passo; }
+  .passo { background: var(--superficie); border: 1px solid var(--borda); border-radius: 16px; padding: 24px; }
+  .alt .passo { background: var(--fundo); }
+  .passo .num { display: inline-flex; width: 34px; height: 34px; align-items: center; justify-content: center; border-radius: 10px;
+    background: var(--destaque); color: var(--destaque-texto); font-weight: 600; margin-bottom: 16px; }
+  .passo p { margin: 0; color: var(--texto-2); font-size: 15px; }
+
+  .recursos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .recurso { padding: 22px; border-radius: 16px; border: 1px solid var(--borda); background: var(--superficie); }
+  .recurso .icone { width: 40px; height: 40px; border-radius: 11px; background: var(--destaque-suave); color: var(--destaque);
+    display: flex; align-items: center; justify-content: center; margin-bottom: 14px; }
+  .recurso .icone svg { width: 20px; height: 20px; }
+  .alt .recurso { background: var(--fundo); }
+  .recurso p { margin: 0; color: var(--texto-2); font-size: 15px; }
+
+  .emissor { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; margin-bottom: 36px; }
+  .lista-check { list-style: none; padding: 0; margin: 22px 0 0; display: grid; gap: 11px; }
+  .lista-check li { display: grid; grid-template-columns: 20px 1fr; gap: 10px; font-size: 15px; }
+  .lista-check li svg { width: 18px; height: 18px; color: var(--destaque); margin-top: 3px; }
+  .campo-mock { display: grid; gap: 2px; background: var(--fundo); border-radius: 10px; padding: 9px 12px; font-size: 13px; }
+  .campo-mock small { color: var(--texto-2); font-size: 11.5px; }
+  .campo-mock b { font-weight: 500; }
+  .duas { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .alt .item-seg { background: var(--fundo); }
+  .seguranca { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 48px; align-items: start; }
+  .itens-seg { display: grid; gap: 14px; }
+  .item-seg { display: grid; grid-template-columns: 40px 1fr; gap: 14px; padding: 18px; border-radius: 14px; background: var(--superficie); border: 1px solid var(--borda); }
+  .item-seg .icone { width: 40px; height: 40px; border-radius: 11px; background: var(--ok-suave); color: var(--ok); display: flex; align-items: center; justify-content: center; }
+  .item-seg .icone svg { width: 20px; height: 20px; }
+  .item-seg p { margin: 0; color: var(--texto-2); font-size: 15px; }
+
+  .preco-grade { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
+  .plano { background: var(--superficie); border: 2px solid var(--destaque); border-radius: 22px; padding: 32px; box-shadow: var(--sombra); }
+  .plano .nome { font-weight: 600; color: var(--destaque); font-size: 15px; }
+  .valor { display: flex; align-items: baseline; gap: 6px; margin: 8px 0 4px; }
+  .valor strong { font-size: 52px; letter-spacing: -0.04em; line-height: 1; font-weight: 650; }
+  .valor span { color: var(--texto-2); }
+  .plano .obs { color: var(--texto-2); font-size: 14px; margin: 0 0 22px; }
+  .plano ul { list-style: none; padding: 0; margin: 0 0 26px; display: grid; gap: 11px; }
+  .plano li { display: grid; grid-template-columns: 20px 1fr; gap: 10px; font-size: 15px; }
+  .plano li svg { width: 18px; height: 18px; color: var(--ok); margin-top: 3px; }
+  .plano .botao { width: 100%; }
+  .conta { font-size: 15px; color: var(--texto-2); }
+  .conta p { margin: 0 0 14px; }
+  .conta .destaque-num { color: var(--texto); font-weight: 600; }
+
+  .faq { display: grid; gap: 10px; }
+  details { background: var(--superficie); border: 1px solid var(--borda); border-radius: 14px; padding: 0 20px; }
+  .alt details { background: var(--fundo); }
+  summary { cursor: pointer; list-style: none; padding: 18px 0; font-weight: 500; display: flex; justify-content: space-between; gap: 16px; }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: "+"; color: var(--texto-2); font-size: 22px; line-height: 1; transition: transform .2s; }
+  details[open] summary::after { transform: rotate(45deg); }
+  details p { margin: 0 0 18px; color: var(--texto-2); font-size: 15px; }
+
+  .final { text-align: center; padding: 88px 0; }
+  .final h2 { max-width: 640px; margin: 0 auto 12px; }
+  .final p { color: var(--texto-2); margin: 0 auto 28px; max-width: 520px; font-size: 17px; }
+  .final .acoes { justify-content: center; }
+
+  footer { border-top: 1px solid var(--borda); padding: 32px 0; font-size: 14px; color: var(--texto-2); }
+  footer .container { display: flex; flex-wrap: wrap; gap: 12px 28px; align-items: center; justify-content: space-between; }
+  footer nav { display: flex; gap: 20px; flex-wrap: wrap; }
+  footer a { text-decoration: none; }
+  footer a:hover { color: var(--texto); }
+
+  @media (max-width: 900px) {
+    .hero .container, .seguranca, .preco-grade, .emissor { grid-template-columns: 1fr; gap: 40px; }
+    .recursos { grid-template-columns: 1fr 1fr; }
+    .passos { grid-template-columns: 1fr; }
+    nav.links { display: none; }
+    .acoes-topo { margin-left: auto; }
+    .hero { padding-top: 48px; }
+    section.bloco { padding: 60px 0; }
+  }
+  @media (max-width: 640px) {
+    .comparacao, .recursos { grid-template-columns: 1fr; }
+    .cards { grid-template-columns: 1fr 1fr; }
+    .cards .card-mini:last-child { display: none; }
+    .acoes .botao { flex: 1 1 100%; }
+    .linha { grid-template-columns: 1fr auto; }
+    .linha .mono { display: none; }
+    .topo .botao span.longo { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; } }
+</style>
+</head>
+<body>
+<a class="pular" href="#conteudo">Pular para o conteúdo</a>
+
+<!-- Ícones (sprite) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-zap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></symbol>
+  <symbol id="i-whats" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.4.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.2.6.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.3-.2-.5-.3z"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5M3 21v-5h5"/></symbol>
+  <symbol id="i-badge" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 3 6v6c0 5 3.8 9.4 9 10 5.2-.6 9-5 9-10V6l-9-4z"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></symbol>
+  <symbol id="i-zip" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1zM10 12h4"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M8 17v-5M13 17V8M18 17v-9"/></symbol>
+  <symbol id="i-table" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/></symbol>
+  <symbol id="i-repeat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.3-9.3M17 6l3 3M14 9l2 2"/></symbol>
+</svg>
+
+<header class="topo">
+  <div class="container">
+    <a class="marca" href="/emissor/" aria-label="Contask NF para empresas, início">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#0E7490"/><path d="M10 8h8l5 5v11a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2z" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"/><path d="M12 17l3 3 5-6" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div>Contask <span>NF</span></div>
+    </a>
+    <nav class="links" aria-label="Seções">
+      <a href="#como-funciona">Como funciona</a>
+      <a href="#recursos">Recursos</a>
+      <a href="#suas-notas">Suas notas</a>
+      <a href="#preco">Preço</a>
+      <a href="#duvidas">Dúvidas</a>
+      <a href="/">Para contadores</a>
+    </nav>
+    <div class="acoes-topo">
+      <a class="botao secundario pequeno" href="https://app.contasknf.com.br/entrar?perfil=empresa">Entrar</a>
+      <a class="botao primario pequeno" data-whats="Olá! Quero testar o emissor de notas do Contask NF para a minha empresa." href="#contato">Teste grátis</a>
+    </div>
+  </div>
+</header>
+
+<main id="conteudo">
+  <section class="hero">
+    <div class="container">
+      <div>
+        <span class="selo"><svg width="14" height="14" aria-hidden="true"><use href="#i-zap"/></svg> Emissor de NFS-e do Padrão Nacional</span>
+        <h1>Emita a nota fiscal de serviço da sua empresa <em>em poucos cliques.</em></h1>
+        <p class="lead">O Contask NF envia a sua NFS-e direto para o Sistema Nacional, sem abrir o portal. O cliente é preenchido pelo CNPJ, o serviço já fica cadastrado e as notas que se repetem todo mês saem sozinhas.</p>
+        <div class="acoes">
+          <a class="botao primario" data-whats="Olá! Quero testar o emissor de notas do Contask NF para a minha empresa." href="#contato">
+            <svg aria-hidden="true"><use href="#i-whats"/></svg> Testar de graça
+          </a>
+          <a class="botao secundario" href="#como-funciona">Ver como funciona</a>
+        </div>
+        <ul class="garantias">
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg> Teste grátis com uma nota de verdade</li>
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg> Sem instalar nada</li>
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg> Sem fidelidade</li>
+        </ul>
+      </div>
+
+      <figure class="tela" aria-label="Ilustração da tela de emissão com dados fictícios" style="margin:0">
+        <div class="tela-barra"><i></i><i></i><i></i><b>Emitir nota · Studio Criativo ME</b></div>
+        <div class="tela-corpo">
+          <div class="campo-mock"><small>Tomador (preenchido pelo CNPJ)</small><b>Alfa Engenharia e Obras Ltda</b></div>
+          <div class="campo-mock"><small>Serviço · 17.06.01</small><b>Criação de identidade visual</b></div>
+          <div class="duas">
+            <div class="campo-mock"><small>Valor do serviço</small><b class="mono">R$ 2.400,00</b></div>
+            <div class="campo-mock"><small>Valor líquido</small><b class="mono">R$ 2.400,00</b></div>
+          </div>
+          <div class="lista" role="list">
+            <div class="linha" role="listitem"><div class="nome"><b>NFS-e nº 57 autorizada</b><small>PDF e XML prontos para enviar</small></div><span class="mono" style="color:var(--texto-2)">10:41</span><span class="tag ok">Autorizada</span></div>
+            <div class="linha" role="listitem"><div class="nome"><b>Mensalidade de manutenção</b><small>Todo dia 10 · próxima em 10/12</small></div><span class="mono" style="color:var(--texto-2)">dia 10</span><span class="tag busca">Recorrente</span></div>
+          </div>
+          <figcaption class="tela-rodape">Ilustração com dados fictícios</figcaption>
+        </div>
+      </figure>
+    </div>
+  </section>
+
+  <section class="bloco alt" aria-labelledby="t-dor">
+    <div class="container">
+      <div class="titulo-secao">
+        <span class="sobre">O problema</span>
+        <h2 id="t-dor">Emitir nota não deveria tomar o seu tempo</h2>
+        <p>Com a NFS-e no padrão nacional, a nota da sua empresa sai pelo mesmo sistema em todo o país. O portal oficial funciona, mas cada nota é um formulário inteiro de novo.</p>
+      </div>
+      <div class="comparacao">
+        <div class="coluna antes">
+          <h3>No portal, nota por nota</h3>
+          <ul>
+            <li><svg aria-hidden="true"><use href="#i-x"/></svg> Digitar de novo os dados do cliente e do serviço a cada nota</li>
+            <li><svg aria-hidden="true"><use href="#i-x"/></svg> Procurar o código do serviço e conferir as retenções na mão</li>
+            <li><svg aria-hidden="true"><use href="#i-x"/></svg> Lembrar de emitir as notas do mês, todo mês</li>
+            <li><svg aria-hidden="true"><use href="#i-x"/></svg> Juntar XML e PDF para mandar ao contador</li>
+          </ul>
+        </div>
+        <div class="coluna depois">
+          <h3>Com o Contask NF</h3>
+          <ul>
+            <li><svg aria-hidden="true"><use href="#i-check"/></svg> Cliente e serviço cadastrados uma vez, escolhidos numa lista</li>
+            <li><svg aria-hidden="true"><use href="#i-check"/></svg> Valor líquido, ISS retido e retenções federais calculados na hora</li>
+            <li><svg aria-hidden="true"><use href="#i-check"/></svg> Notas recorrentes saem sozinhas no dia que você escolher</li>
+            <li><svg aria-hidden="true"><use href="#i-check"/></svg> Todas as notas num lugar só, prontas para o contador</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="bloco" id="como-funciona" aria-labelledby="t-como">
+    <div class="container">
+      <div class="titulo-secao">
+        <span class="sobre">Como funciona</span>
+        <h2 id="t-como">Três passos e a primeira nota sai</h2>
+        <p>Você usa o certificado digital da sua própria empresa. Nada a instalar.</p>
+      </div>
+      <div class="passos">
+        <div class="passo">
+          <div class="num">1</div>
+          <h3>Cadastre a sua empresa</h3>
+          <p>Informe o CNPJ: razão social, município e regime vêm sozinhos. Depois, envie o certificado e-CNPJ A1.</p>
+        </div>
+        <div class="passo">
+          <div class="num">2</div>
+          <h3>Cadastre o seu serviço</h3>
+          <p>Digite o que você faz e escolha o código oficial na lista. Fica salvo para todas as próximas notas.</p>
+        </div>
+        <div class="passo">
+          <div class="num">3</div>
+          <h3>Emita</h3>
+          <p>Escolha o cliente pelo CNPJ, informe o valor, confira o resumo e envie. O PDF e o XML ficam prontos na hora.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="bloco alt" id="recursos" aria-labelledby="t-rec">
+    <div class="container">
+      <div class="titulo-secao">
+        <span class="sobre">Recursos do emissor</span>
+        <h2 id="t-rec">Tudo o que a nota de serviço pede, sem complicação</h2>
+        <p>Feito por um escritório contábil que emite e confere NFS-e todos os dias.</p>
+      </div>
+      <div class="recursos">
+        <div class="recurso"><div class="icone"><svg aria-hidden="true"><use href="#i-search"/></svg></div><h3>Cliente pelo CNPJ</h3><p>Digite o CNPJ do tomador e os dados vêm sozinhos. Ele fica salvo para as próximas notas.</p></div>
+        <div class="recurso"><div class="icone"><svg aria-hidden="true"><use href="#i-table"/></svg></div><h3>Códigos oficiais</h3><p>Serviços cadastrados com o código da LC 116 e a NBS. É só procurar por uma palavra.</p></div>
+        <div class="recurso"><div class="icone"><svg aria-hidden="true"><use href="#i-chart"/></svg></div><h3>Retenções calculadas</h3><p>ISS retido e retenções federais, com o valor líquido mostrado antes de enviar.</p></div>
+        <div class="recurso"><div class="icone"><svg aria-hidden="true"><use href="#i-badge"/></svg></div><h3>Textos obrigatórios</h3><p>A mensagem do Simples Nacional e a do PROCON entram na nota automaticamente quando se aplicam.</p></div>
+        <div class="recurso"><div class="icone"><svg aria-hidden="true"><use href="#i-repeat"/></svg></div><h3>Notas recorrentes</h3><p>Mensalidades e contratos saem sozinhos no dia escolhido. A descrição se ajusta ao mês: "Manutenção {mês anterior}" vira "Manutenção 10/2026".</p></div>
+        <div class="recurso"><div class="icone"><svg aria-hidden="true"><use href="#i-copy"/></svg></div><h3>Duplicar e rascunho</h3><p>Duplique uma nota parecida ou deixe uma preenchida para emitir depois.</p></div>
+        <div class="recurso"><div class="icone"><svg aria-hidden="true"><use href="#i-send"/></svg></div><h3>Sem nota em dobro</h3><p>O número é reservado antes do envio. Se a internet cair, o sistema confere no Sistema Nacional antes de tentar de novo.</p></div>
+        <div class="recurso"><div class="icone"><svg aria-hidden="true"><use href="#i-file"/></svg></div><h3>PDF no modelo oficial</h3><p>O DANFSe sai pronto para mandar ao cliente, com marca d&#39;água quando a nota é cancelada.</p></div>
+        <div class="recurso"><div class="icone"><svg aria-hidden="true"><use href="#i-x"/></svg></div><h3>Cancelamento na mesma tela</h3><p>Errou? Cancele a nota pelo próprio sistema, informando o motivo.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="bloco" id="suas-notas" aria-labelledby="t-notas">
+    <div class="container">
+      <div class="emissor">
+        <div>
+          <div class="titulo-secao" style="margin-bottom:0">
+            <span class="sobre">E mais</span>
+            <h2 id="t-notas">Todas as notas da sua empresa num lugar só</h2>
+            <p>Além de emitir, o Contask NF traz do Ambiente Nacional as notas que a sua empresa já emitiu, inclusive fora do sistema, e as notas de serviço que ela recebeu de fornecedores.</p>
+          </div>
+          <ul class="lista-check">
+            <li><svg aria-hidden="true"><use href="#i-check"/></svg> Notas emitidas e recebidas atualizadas sozinhas, várias vezes ao dia</li>
+            <li><svg aria-hidden="true"><use href="#i-check"/></svg> Situação de cada nota pelos eventos oficiais: autorizada, cancelada ou substituída</li>
+            <li><svg aria-hidden="true"><use href="#i-check"/></svg> Dashboard do mês com o que foi emitido, cancelado e tomado</li>
+            <li><svg aria-hidden="true"><use href="#i-check"/></svg> Exportação por período em ZIP, com XMLs e relatório para o seu contador</li>
+          </ul>
+        </div>
+        <figure class="tela" aria-label="Ilustração do dashboard com dados fictícios" style="margin:0">
+          <div class="tela-barra"><i></i><i></i><i></i><b>Dashboard · outubro/2026</b></div>
+          <div class="tela-corpo">
+            <div class="cards">
+              <div class="card-mini"><small>Notas emitidas</small><strong class="mono">38</strong></div>
+              <div class="card-mini"><small>Valor emitido</small><strong class="mono">R$ 61,2 mil</strong></div>
+              <div class="card-mini"><small>Serviços tomados</small><strong class="mono">12</strong></div>
+            </div>
+            <div class="lista" role="list">
+              <div class="linha" role="listitem"><div class="nome"><b>NFS-e 57 · Alfa Engenharia</b><small>Emitida pelo Contask NF</small></div><span class="mono" style="color:var(--texto-2)">R$ 2.400</span><span class="tag ok">Autorizada</span></div>
+              <div class="linha" role="listitem"><div class="nome"><b>NFS-e 9.114 · Nuvem Hospedagem</b><small>Serviço tomado</small></div><span class="mono" style="color:var(--texto-2)">R$ 189</span><span class="tag ok">Autorizada</span></div>
+              <div class="linha" role="listitem"><div class="nome"><b>NFS-e 52 · Beta Comércio</b><small>Cancelada pelo emitente</small></div><span class="mono" style="color:var(--texto-2)">R$ 750</span><span class="tag erro">Cancelada</span></div>
+            </div>
+            <figcaption class="tela-rodape">Ilustração com dados fictícios</figcaption>
+          </div>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="bloco alt" id="seguranca" aria-labelledby="t-seg">
+    <div class="container seguranca">
+      <div class="titulo-secao" style="margin-bottom:0">
+        <span class="sobre">Segurança</span>
+        <h2 id="t-seg">O certificado da sua empresa fica protegido</h2>
+        <p>Ele é usado só para o que você pede: emitir as suas notas e consultar as notas da sua empresa.</p>
+      </div>
+      <div class="itens-seg">
+        <div class="item-seg"><div class="icone"><svg aria-hidden="true"><use href="#i-lock"/></svg></div><div><h3>Cifrado do começo ao fim</h3><p>O arquivo e a senha do certificado ficam cifrados. A senha nunca aparece na tela nem em registros.</p></div></div>
+        <div class="item-seg"><div class="icone"><svg aria-hidden="true"><use href="#i-eye"/></svg></div><div><h3>Nada é emitido sem você</h3><p>Uma nota só sai quando você confirma o resumo, ou por uma recorrência que você mesmo programou.</p></div></div>
+        <div class="item-seg"><div class="icone"><svg aria-hidden="true"><use href="#i-box"/></svg></div><div><h3>Seus dados só seus</h3><p>Cada conta enxerga só a própria empresa, notas e certificado. Ninguém mais vê os seus dados.</p></div></div>
+        <div class="item-seg"><div class="icone"><svg aria-hidden="true"><use href="#i-key"/></svg></div><div><h3>Login e HTTPS</h3><p>Conexão sempre criptografada, senha individual e bloqueio após tentativas erradas.</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="bloco" id="preco" aria-labelledby="t-preco">
+    <div class="container preco-grade">
+      <div>
+        <div class="titulo-secao" style="margin-bottom:24px">
+          <span class="sobre">Preço</span>
+          <h2 id="t-preco">Um plano, sem surpresa</h2>
+          <p>Mensalidade fixa, sem cobrança por nota emitida.</p>
+        </div>
+        <div class="conta">
+          <p>No teste grátis você cadastra a sua empresa, vê <span class="destaque-num">todas as notas</span> que ela já emitiu e recebeu e emite <span class="destaque-num">uma nota de verdade</span>.</p>
+          <p>Gostou, assina o plano e as emissões ficam liberadas. Se não quiser continuar, não paga nada.</p>
+        </div>
+      </div>
+      <div class="plano">
+        <div class="nome">Plano Contask NF</div>
+        <div class="valor"><strong>R$&nbsp;79,90</strong><span>/mês</span></div>
+        <p class="obs">Sem fidelidade: cancele quando quiser.</p>
+        <ul>
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg> Emissão de NFS-e no Padrão Nacional</li>
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg> Notas recorrentes, rascunhos e duplicar</li>
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg> Clientes e serviços salvos</li>
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg> Notas emitidas e recebidas buscadas sozinhas</li>
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg> PDF, XML e exportação para o contador</li>
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg> Backup diário e suporte por WhatsApp</li>
+        </ul>
+        <a class="botao primario" data-whats="Olá! Quero testar o emissor de notas do Contask NF para a minha empresa." href="#contato">
+          <svg aria-hidden="true"><use href="#i-whats"/></svg> Começar o teste grátis
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="bloco alt" id="duvidas" aria-labelledby="t-faq">
+    <div class="container">
+      <div class="titulo-secao">
+        <span class="sobre">Dúvidas</span>
+        <h2 id="t-faq">Perguntas frequentes</h2>
+      </div>
+      <div class="faq">
+        <details>
+          <summary>Preciso instalar alguma coisa?</summary>
+          <p>Não. O Contask NF funciona no navegador, em app.contasknf.com.br. Basta entrar com e-mail e senha.</p>
+        </details>
+        <details>
+          <summary>Que certificado eu preciso?</summary>
+          <p>O certificado digital A1 (arquivo .pfx) do CNPJ da sua empresa, o e-CNPJ. É ele que assina as notas. O sistema avisa com antecedência quando estiver perto de vencer.</p>
+        </details>
+        <details>
+          <summary>Serve para a minha empresa?</summary>
+          <p>Serve para empresas que emitem a NFS-e pelo Sistema Nacional (o Emissor Nacional, em nfse.gov.br). Alguns municípios ainda usam emissor próprio para parte das empresas: no Distrito Federal, por exemplo, só as empresas do Simples Nacional e os MEI emitem pelo Nacional. Na dúvida, fale com a gente e conferimos o seu caso antes do teste.</p>
+        </details>
+        <details>
+          <summary>Posso cadastrar mais de uma empresa?</summary>
+          <p>A conta para empresas é de um CNPJ: o da sua empresa. Se você é contador e cuida de vários clientes, conheça o <a href="/">Contask NF para escritórios contábeis</a>.</p>
+        </details>
+        <details>
+          <summary>O meu contador continua recebendo as notas?</summary>
+          <p>Sim. Você exporta as notas de qualquer período num ZIP com os XMLs e um relatório, pronto para mandar a ele.</p>
+        </details>
+        <details>
+          <summary>Como funciona o teste grátis?</summary>
+          <p>Você fala com a gente pelo WhatsApp e recebe o acesso. Cadastra a sua empresa e o certificado, e o sistema busca todas as notas que ela já emitiu e recebeu, que você confere e abre em PDF. Você também pode emitir uma nota para conhecer o emissor: ela é uma nota real, com valor fiscal. Gostou, assina o plano e as emissões ficam liberadas.</p>
+        </details>
+        <details>
+          <summary>E se eu cancelar, perco as notas?</summary>
+          <p>Não. Antes de encerrar, você pode exportar todos os XMLs num único ZIP.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section class="final bloco" id="contato" aria-labelledby="t-final" style="border-bottom:0">
+    <div class="container">
+      <h2 id="t-final">Emita a próxima nota da sua empresa pelo Contask NF</h2>
+      <p>Em poucos minutos a sua empresa está cadastrada e pronta para emitir. O teste é grátis.</p>
+      <div class="acoes">
+        <a class="botao primario" data-whats="Olá! Quero testar o emissor de notas do Contask NF para a minha empresa." href="#contato">
+          <svg aria-hidden="true"><use href="#i-whats"/></svg> Falar no WhatsApp
+        </a>
+        <a class="botao secundario" data-email href="#contato">Enviar e-mail</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="container">
+    <div>© <span id="ano">2026</span> Contask NF</div>
+    <nav aria-label="Rodapé">
+      <a href="#como-funciona">Como funciona</a>
+      <a href="#recursos">Recursos</a>
+      <a href="#preco">Preço</a>
+      <a href="/">Para contadores</a>
+      <a data-email href="#contato">Contato</a>
+      <a href="https://app.contasknf.com.br/entrar?perfil=empresa">Entrar no sistema</a>
+    </nav>
+  </div>
+</footer>
+
+<script>
+  // Contato: troque aqui o número de WhatsApp (só dígitos, com 55 e DDD) e o e-mail.
+  const CONTATO = { whatsapp: "5561994260795", email: "" };
+
+  document.getElementById("ano").textContent = new Date().getFullYear();
+  document.querySelectorAll("[data-whats]").forEach((a) => {
+    if (!CONTATO.whatsapp) return;
+    a.href = "https://wa.me/" + CONTATO.whatsapp + "?text=" + encodeURIComponent(a.dataset.whats);
+    a.target = "_blank";
+    a.rel = "noopener";
+  });
+  document.querySelectorAll("[data-email]").forEach((a) => {
+    if (CONTATO.email) a.href = "mailto:" + CONTATO.email + "?subject=" + encodeURIComponent("Emissor do Contask NF para a minha empresa");
+    else a.hidden = true;
+  });
+</script>
+</body>
+</html>

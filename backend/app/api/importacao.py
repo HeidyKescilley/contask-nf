@@ -152,6 +152,8 @@ async def previa(arquivo: UploadFile | None = File(None), db: Session = Depends(
     conteudo = await arquivo.read()
     if len(conteudo) > MAX_BYTES:
         raise HTTPException(422, "Arquivo grande demais (máximo 5 MB).")
+    from app.core.escritorios import exigir_conta_contador
+    exigir_conta_contador(db, esc)
     _exigir_contabilidade(db, esc)
     return interpretar(arquivo.filename or "", conteudo, db, esc)
 
@@ -168,6 +170,8 @@ class PedidoImportar(BaseModel):
 
 @router.post("/empresas")
 def importar(pedido: PedidoImportar, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
+    from app.core.escritorios import exigir_conta_contador
+    exigir_conta_contador(db, esc)
     _exigir_contabilidade(db, esc)
     if len(pedido.linhas) > MAX_LINHAS:
         raise HTTPException(422, f"No máximo {MAX_LINHAS} empresas por importação.")

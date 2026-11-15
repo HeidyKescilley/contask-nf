@@ -13,9 +13,12 @@ export interface Usuario {
   admin_sistema?: boolean;
 }
 
+export type TipoConta = "contador" | "empresa";
+
 export interface Sessao {
   usuario: Usuario | null;
-  escritorio: { id: number; nome: string } | null;
+  /** tipo: contador (escritório com várias empresas) | empresa (a própria empresa, um CNPJ só) */
+  escritorio: { id: number; nome: string; tipo: TipoConta } | null;
   tem_contabilidade: boolean;
   empresas: number;
   /** só sem login: aberto (local) | convite | fechado (servidor: contas criadas pelo suporte) */
@@ -49,6 +52,11 @@ export function useTesteGratis() {
     exportacoesRestantes: t ? Math.max(t.max_exportacoes - t.exportacoes, 0) : null,
     maxDiasExportacao: t?.max_dias_exportacao ?? null,
   };
+}
+
+/** Conta da própria empresa: um CNPJ só e foco no emissor. */
+export function useContaEmpresa() {
+  return useSessao().data?.escritorio?.tipo === "empresa";
 }
 
 /** Disparado pelo cliente da API quando o servidor responde 401/403 de sessão. */

@@ -2,6 +2,7 @@
 
     python -m app.tools.usuarios escritorios                                   # lista os escritórios
     python -m app.tools.usuarios novo-escritorio "Contábil Silva" EMAIL "NOME"  # escritório + 1º usuário
+    python -m app.tools.usuarios novo-escritorio "Clínica X" EMAIL "NOME" --tipo empresa  # conta de empresa
     python -m app.tools.usuarios criar EMAIL "NOME" --escritorio ID             # mais um usuário no escritório
     python -m app.tools.usuarios redefinir EMAIL                                # nova senha inicial
     python -m app.tools.usuarios desativar EMAIL | reativar EMAIL
@@ -53,6 +54,7 @@ def main(argv=None) -> None:
     n.add_argument("escritorio")
     n.add_argument("email")
     n.add_argument("nome", nargs="?", default="")
+    n.add_argument("--tipo", choices=("contador", "empresa"), default="contador")
     c = sub.add_parser("criar")
     c.add_argument("email")
     c.add_argument("nome", nargs="?", default="")
@@ -74,9 +76,9 @@ def main(argv=None) -> None:
             for e in db.scalars(select(Escritorio).order_by(Escritorio.id)):
                 nu = db.scalar(select(func.count()).select_from(Usuario).where(Usuario.escritorio_id == e.id)) or 0
                 ne = db.scalar(select(func.count()).select_from(Empresa).where(Empresa.escritorio_id == e.id)) or 0
-                print(f"{e.id:>4}  {e.nome[:50]:50} {nu} usuário(s)  {ne} empresa(s)")
+                print(f"{e.id:>4}  {e.nome[:50]:50} {e.tipo:9} {nu} usuário(s)  {ne} empresa(s)")
         elif a.cmd == "novo-escritorio":
-            _criar(db, a.email, a.nome, novo_escritorio=a.escritorio)
+            _criar(db, a.email, a.nome, novo_escritorio=a.escritorio, tipo=a.tipo)
         elif a.cmd == "criar":
             esc_id = a.escritorio
             if esc_id is None:  # só um escritório (instalação local): é nele

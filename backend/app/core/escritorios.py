@@ -19,6 +19,11 @@ from app.models import Escritorio
 
 BRASILIA = timezone(timedelta(hours=-3))
 SITUACOES = {"teste", "ativo", "suspenso"}
+TIPOS = {"contador", "empresa"}
+TIPO_ROTULO = {"contador": "Contador", "empresa": "Empresa"}
+# Conta de empresa: um CNPJ só (o da própria empresa, cadastrado como empresa principal da conta)
+MSG_CONTA_EMPRESA = ("Sua conta é da sua empresa e tem um CNPJ só. Para cuidar de vários CNPJs, "
+                     "fale com o suporte do Contask NF sobre a conta de contador.")
 # Frase única de todo recurso fechado no teste grátis
 CONTRATE = "Contrate um plano para ter acesso completo ao sistema."
 
@@ -43,6 +48,19 @@ def bloqueado(db: Session, escritorio_id: int) -> bool:
 
 def ids_bloqueados(db: Session) -> set[int]:
     return {e.id for e in db.scalars(select(Escritorio)) if motivo_bloqueio(e)}
+
+
+def conta_empresa(db: Session, escritorio_id: int) -> bool:
+    """Conta da própria empresa (não de um escritório de contabilidade)."""
+    esc = db.get(Escritorio, escritorio_id)
+    return esc is not None and esc.tipo == "empresa"
+
+
+def exigir_conta_contador(db: Session, escritorio_id: int) -> None:
+    """403 na conta de empresa para tudo que cadastra outro CNPJ."""
+    if conta_empresa(db, escritorio_id):
+        from fastapi import HTTPException
+        raise HTTPException(403, MSG_CONTA_EMPRESA)
 
 
 def em_teste(db: Session, escritorio_id: int) -> bool:

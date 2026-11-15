@@ -20,6 +20,7 @@ import {
 } from "@/lib/emissor";
 import { nomeExibicao, useEmpresaSelecionada } from "@/lib/empresas";
 import { CONTRATE, useTesteGratis } from "@/lib/sessao";
+import { EstadoSemEmpresa } from "@/pages/paginas";
 import { formatarDoc, mascararCnpj, UFS } from "@/lib/formato";
 import { moeda } from "@/lib/notas";
 import { cn } from "@/lib/utils";
@@ -163,6 +164,7 @@ export function EmitirNota() {
 }
 
 function SemEmpresa({ id }: { id: number | null }) {
+  if (!id) return <EstadoSemEmpresa icone={ReceiptText} />;
   return (
     <EstadoVazio icone={ReceiptText} titulo={id ? "A empresa selecionada não emite NFS-e pelo Contask" : "Escolha uma empresa"}
       acao={<Button variante="primario" asChild><Link to={id ? `/emissor/empresas/${id}?empresa=${id}` : "/emissor/empresas"}>{id ? "Configurar emissão" : "Escolher empresas emissoras"}</Link></Button>}>

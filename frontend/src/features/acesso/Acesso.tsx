@@ -1,12 +1,12 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Eye, EyeOff, Loader2, LogIn, ShieldCheck } from "lucide-react";
 import { useState, type FormEvent, type ReactNode } from "react";
-import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Esqueleto } from "@/components/estados";
 import { Button } from "@/components/ui/button";
 import { Aviso, Campo, Input } from "@/components/ui/campos";
 import { api } from "@/lib/api";
-import { type Usuario, useSessao } from "@/lib/sessao";
+import { type TipoConta, type Usuario, useSessao } from "@/lib/sessao";
 import { MenuTema } from "@/layout/MenuTema";
 
 function Moldura({ titulo, descricao, children }: { titulo: string; descricao: string; children: ReactNode }) {
@@ -29,6 +29,12 @@ function Moldura({ titulo, descricao, children }: { titulo: string; descricao: s
       </main>
     </div>
   );
+}
+
+/** Perfil vindo do link da página de vendas: /entrar?perfil=empresa ou /cadastrar?perfil=empresa. */
+function usePerfil(): TipoConta {
+  const [params] = useSearchParams();
+  return params.get("perfil") === "empresa" ? "empresa" : "contador";
 }
 
 function CampoSenha({ rotulo, valor, mudar, autoComplete, ajuda, autoFocus }: {
@@ -62,7 +68,9 @@ export function Entrar() {
   const qc = useQueryClient();
   const navegar = useNavigate();
   const local = useLocation();
-  const voltar = (local.state as { voltar?: string } | null)?.voltar || "/dashboard";
+  // "/" leva cada conta à sua tela inicial (emissor na conta de empresa, dashboard na de contador)
+  const voltar = (local.state as { voltar?: string } | null)?.voltar || "/";
+  const perfil = usePerfil();
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const entrar = useMutation({
@@ -84,7 +92,9 @@ export function Entrar() {
     entrar.mutate();
   };
   return (
-    <Moldura titulo="Entrar" descricao="Acesse as notas fiscais das empresas do seu escritório.">
+    <Moldura titulo="Entrar" descricao={perfil === "empresa"
+      ? "Emita as notas fiscais de serviço da sua empresa e acompanhe as que você emitiu e recebeu."
+      : "Acesse as notas fiscais das empresas do seu escritório."}>
       <form onSubmit={enviar} className="space-y-4" noValidate={false}>
         {sessao.isError && <Aviso tom="erro">{(sessao.error as Error).message}</Aviso>}
         {entrar.isError && <Aviso tom="erro">{(entrar.error as Error).message}</Aviso>}
@@ -101,7 +111,10 @@ export function Entrar() {
           <p className="text-center text-sm text-texto-2">Não tem conta? Peça o acesso ao suporte do Contask NF.</p>
         ) : (
           <p className="text-center text-sm text-texto-2">
-            Não tem conta? <Link to="/cadastrar" className="text-destaque hover:underline">Cadastre o escritório</Link>
+            Não tem conta?{" "}
+            <Link to={perfil === "empresa" ? "/cadastrar?perfil=empresa" : "/cadastrar"} className="text-destaque hover:underline">
+              {perfil === "empresa" ? "Cadastre sua empresa" : "Cadastre o escritório"}
+            </Link>
           </p>
         )}
       </form>
@@ -118,25 +131,26 @@ export function Cadastrar() {
   const [senha, setSenha] = useState("");
   const [confirma, setConfirma] = useState("");
   const [convite, setConvite] = useState("");
+  const [tipo, setTipo] = useState<TipoConta>(usePerfil());
   const pedeConvite = sessao.data?.cadastro === "convite";
   const diferentes = confirma.length > 0 && confirma !== senha;
   const cadastrar = useMutation({
     mutationFn: () => api<{ usuario: Usuario }>("/api/auth/cadastrar", {
-      method: "POST", body: JSON.stringify({ nome, email, senha, convite: pedeConvite ? convite : null }),
+      method: "POST", body: JSON.stringify({ nome, email, senha, convite: pedeConvite ? convite : null, tipo }),
     }),
     onSuccess: async () => {
       qc.removeQueries({ predicate: (q) => q.queryKey[0] !== "sessao" });
       await qc.invalidateQueries({ queryKey: ["sessao"] });
-      navegar("/dashboard", { replace: true });
+      navegar("/", { replace: true });
     },
     onSettled: () => setSenha(""),
   });
 
   if (sessao.isLoading) return <Moldura titulo="Cadastrar" descricao="Carregando..."><Esqueleto className="h-40 w-full" /></Moldura>;
-  if (sessao.data?.usuario) return <Navigate to="/dashboard" replace />;
+  if (sessao.data?.usuario) return <Navigate to="/" replace />;
   if (sessao.data?.cadastro === "fechado") {
     return (
-      <Moldura titulo="Cadastrar" descricao="O cadastro de novos escritórios é feito pelo suporte do Contask NF.">
+      <Moldura titulo="Cadastrar" descricao="O cadastro de novas contas é feito pelo suporte do Contask NF.">
         <p className="text-sm text-texto-2">Peça o acesso ao suporte: você recebe o e-mail de entrada e uma senha inicial, que é trocada no primeiro acesso.</p>
         <p className="mt-4 text-center text-sm"><Link to="/entrar" className="text-destaque hover:underline">Voltar para entrar</Link></p>
       </Moldura>
@@ -148,8 +162,19 @@ export function Cadastrar() {
     if (!diferentes) cadastrar.mutate();
   };
   return (
-    <Moldura titulo="Cadastrar" descricao="Crie o escritório e o primeiro acesso. Você vê todas as empresas dele.">
+    <Moldura titulo="Cadastrar" descricao={tipo === "empresa"
+      ? "Crie o acesso da sua empresa para emitir as notas fiscais de serviço. A conta tem um CNPJ: o da sua empresa."
+      : "Crie o escritório e o primeiro acesso. Você vê todas as empresas dele."}>
       <form onSubmit={enviar} className="space-y-4">
+        <div role="radiogroup" aria-label="Tipo de conta" className="grid grid-cols-2 gap-1 rounded-xl border border-borda bg-fundo p-1">
+          {([["contador", "Sou contador"], ["empresa", "Sou empresa"]] as const).map(([v, r]) => (
+            <button key={v} type="button" role="radio" aria-checked={tipo === v} onClick={() => setTipo(v)}
+              className={tipo === v ? "rounded-lg bg-superficie px-3 py-1.5 text-sm font-medium text-destaque shadow-sm"
+                : "rounded-lg px-3 py-1.5 text-sm text-texto-2 hover:text-texto"}>
+              {r}
+            </button>
+          ))}
+        </div>
         {sessao.isError && <Aviso tom="erro">{(sessao.error as Error).message}</Aviso>}
         {cadastrar.isError && <Aviso tom="erro">{(cadastrar.error as Error).message}</Aviso>}
         {pedeConvite && (
@@ -172,7 +197,7 @@ export function Cadastrar() {
         </Campo>
         <Button type="submit" variante="primario" className="w-full"
           disabled={cadastrar.isPending || !nome.trim() || !email || !senha || !confirma || diferentes || (pedeConvite && !convite.trim())}>
-          {cadastrar.isPending ? <Loader2 className="animate-spin" /> : <ShieldCheck />} Criar escritório
+          {cadastrar.isPending ? <Loader2 className="animate-spin" /> : <ShieldCheck />} {tipo === "empresa" ? "Criar conta da empresa" : "Criar escritório"}
         </Button>
         <p className="text-center text-sm text-texto-2">
           Já tem conta? <Link to="/entrar" className="text-destaque hover:underline">Entrar</Link>
@@ -195,7 +220,7 @@ export function TrocarSenha() {
     }),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["sessao"] });
-      navegar("/dashboard", { replace: true });
+      navegar("/", { replace: true });
     },
   });
 

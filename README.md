@@ -76,6 +76,11 @@ Vários escritórios usam o mesmo banco. O cadastro público cria o escritório 
   - o XML de cada nota fica fechado (o PDF abre para ver);
   - permite 1 exportação, de um período de até 30 dias, e 1 emissão de NFS-e.
 
+- **Tipo de conta** (`escritorio.tipo`), escolhido ao criar a conta (Administração > Nova conta, `contask.sh empresa nova` ou `/cadastrar?perfil=empresa`):
+  - `contador`: escritório de contabilidade, com a contabilidade e as empresas clientes;
+  - `empresa`: a própria empresa que emite as notas. Tem um CNPJ só, cadastrado como empresa principal da conta, que já nasce emissora. Cadastrar ou importar outro CNPJ devolve 403. O menu abre no emissor e troca "Empresas" por "Minha empresa".
+  - Página de venda: `site/index.html` (contadores) e `site/emissor/index.html` (empresas, em `/emissor/`).
+
 No uso local (`iniciar.bat`) o login e a chave-mestra valem do mesmo jeito. Limite mensal e teste grátis só entram se as variáveis correspondentes estiverem ligadas; a contagem é por escritório.
 
 ## Backup

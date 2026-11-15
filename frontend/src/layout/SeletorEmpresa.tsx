@@ -6,6 +6,7 @@ import { Esqueleto } from "@/components/estados";
 import type { Empresa } from "@/lib/api";
 import { nomeExibicao, useEmpresaSelecionada } from "@/lib/empresas";
 import { formatarDoc, limparCnpj } from "@/lib/formato";
+import { useContaEmpresa } from "@/lib/sessao";
 import { cn } from "@/lib/utils";
 
 const normalizar = (s: string) => s.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
@@ -36,6 +37,7 @@ export function SeletorEmpresa() {
   const [aberto, setAberto] = useState(false);
   const busca = useRef<HTMLInputElement>(null);
   const navegar = useNavigate();
+  const contaEmpresa = useContaEmpresa();
 
   // O Radix foca o menu ao abrir; depois disso, o foco vai para a busca (digitar já filtra)
   useEffect(() => {
@@ -60,7 +62,7 @@ export function SeletorEmpresa() {
         <Building2 className="size-4 shrink-0 text-texto-2" aria-hidden />
         <div className="min-w-0 leading-tight">
           <div className="truncate text-sm font-medium">Nenhuma empresa cadastrada</div>
-          <div className="truncate text-xs text-texto-2">Cadastre a contabilidade para começar</div>
+          <div className="truncate text-xs text-texto-2">{contaEmpresa ? "Cadastre sua empresa para começar" : "Cadastre a contabilidade para começar"}</div>
         </div>
       </Link>
     );
@@ -116,7 +118,7 @@ export function SeletorEmpresa() {
                 <div className="min-w-0 flex-1">
                   <div className={cn("truncate text-sm", e.id === empresa?.id && "font-medium")}>
                     {nomeExibicao(e)}
-                    {e.is_contabilidade && <span className="ml-1.5 text-[11px] text-destaque">Contabilidade</span>}
+                    {e.is_contabilidade && !contaEmpresa && <span className="ml-1.5 text-[11px] text-destaque">Contabilidade</span>}
                     {!e.ativa && <span className="ml-1.5 text-[11px] text-texto-2">inativa</span>}
                   </div>
                   <div className="flex items-center gap-2">
@@ -129,12 +131,18 @@ export function SeletorEmpresa() {
             ))}
           </div>
           <DM.Separator className="my-1.5 h-px bg-borda" />
+          {contaEmpresa ? (
+            <DM.Item onSelect={() => navegar("/minha-empresa")} className="flex cursor-default items-center gap-2 rounded-lg px-2.5 py-2 text-sm outline-none data-[highlighted]:bg-superficie-2">
+              <Settings2 className="size-4 text-texto-2" aria-hidden /> Minha empresa
+            </DM.Item>
+          ) : (<>
           <DM.Item onSelect={() => navegar("/empresas/nova")} className="flex cursor-default items-center gap-2 rounded-lg px-2.5 py-2 text-sm outline-none data-[highlighted]:bg-superficie-2">
             <Plus className="size-4 text-texto-2" aria-hidden /> Nova empresa
           </DM.Item>
           <DM.Item onSelect={() => navegar("/empresas")} className="flex cursor-default items-center gap-2 rounded-lg px-2.5 py-2 text-sm outline-none data-[highlighted]:bg-superficie-2">
             <Settings2 className="size-4 text-texto-2" aria-hidden /> Gerenciar empresas
           </DM.Item>
+          </>)}
         </DM.Content>
       </DM.Portal>
     </DM.Root>

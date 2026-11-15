@@ -4,17 +4,18 @@ import { Link } from "react-router-dom";
 import { Cabecalho, EstadoErro, EstadoVazio, Esqueleto } from "@/components/estados";
 import { Button } from "@/components/ui/button";
 import { api, type Saude } from "@/lib/api";
-import { useSessao, useUso } from "@/lib/sessao";
+import { useContaEmpresa, useSessao, useUso } from "@/lib/sessao";
 
 function useSaude() {
   return useQuery({ queryKey: ["saude"], queryFn: () => api<Saude>("/api/saude") });
 }
 
 function IrParaContabilidade() {
+  const contaEmpresa = useContaEmpresa();
   return (
     <Button variante="primario" asChild>
       <Link to="/contabilidade">
-        <KeyRound /> Cadastrar a contabilidade
+        <KeyRound /> {contaEmpresa ? "Cadastrar minha empresa" : "Cadastrar a contabilidade"}
       </Link>
     </Button>
   );
@@ -23,8 +24,16 @@ function IrParaContabilidade() {
 /** Sem contabilidade ou sem empresa selecionada (usado pelas páginas que dependem de empresa). */
 export function EstadoSemEmpresa({ icone }: { icone: typeof LayoutDashboard }) {
   const sessao = useSessao();
+  const contaEmpresa = sessao.data?.escritorio?.tipo === "empresa";
   if (sessao.isLoading) return <Esqueleto className="h-64 w-full" />;
   if (sessao.isError) return <EstadoErro mensagem={(sessao.error as Error).message} tentarDeNovo={() => sessao.refetch()} />;
+  if (!sessao.data?.tem_contabilidade && contaEmpresa)
+    return (
+      <EstadoVazio icone={icone} titulo="Sua empresa ainda não foi cadastrada" acao={<IrParaContabilidade />}>
+        Primeiro uso: cadastre sua empresa pelo CNPJ e envie o certificado digital (e-CNPJ A1) dela. Depois é só
+        emitir as notas; as que você já emitiu e recebeu chegam sozinhas.
+      </EstadoVazio>
+    );
   if (!sessao.data?.tem_contabilidade)
     return (
       <EstadoVazio icone={icone} titulo="Nenhuma empresa cadastrada" acao={<IrParaContabilidade />}>
@@ -32,6 +41,8 @@ export function EstadoSemEmpresa({ icone }: { icone: typeof LayoutDashboard }) {
         busca das notas começa sozinha.
       </EstadoVazio>
     );
+  if (contaEmpresa)
+    return <EstadoVazio icone={icone} titulo="Carregando sua empresa">Selecione sua empresa no seletor do topo.</EstadoVazio>;
   return (
     <EstadoVazio icone={icone} titulo="Nenhuma empresa selecionada"
       acao={<Button variante="primario" asChild><Link to="/empresas/nova"><Plus /> Nova empresa</Link></Button>}>

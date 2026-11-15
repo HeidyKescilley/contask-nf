@@ -197,7 +197,7 @@ def encerrar_sessoes(db: Session, usuario_id: int, exceto_token: str | None = No
     db.execute(q)
 
 
-def _escritorio_do_cadastro(db: Session, nome: str) -> Escritorio:
+def _escritorio_do_cadastro(db: Session, nome: str, tipo: str = "contador") -> Escritorio:
     """Sem usuário e com um escritório já no banco: o primeiro cadastro assume esse escritório.
     Banco vazio, ou que já tem usuário, cria outro."""
     n_usuarios = int(db.scalar(select(func.count()).select_from(Usuario)) or 0)
@@ -205,16 +205,21 @@ def _escritorio_do_cadastro(db: Session, nome: str) -> Escritorio:
         escritorios = list(db.scalars(select(Escritorio).order_by(Escritorio.id)))
         if len(escritorios) == 1:
             escritorios[0].nome = nome
+            escritorios[0].tipo = tipo
             return escritorios[0]
-    esc = Escritorio(nome=nome)
+    esc = Escritorio(nome=nome, tipo=tipo)
     db.add(esc)
     db.flush()
     return esc
 
 
 def criar_usuario(db: Session, email: str, nome: str, senha: str, *, trocar_senha: bool = True,
-                  escritorio_id: int | None = None, novo_escritorio: str | None = None) -> Usuario:
-    """Sem escritorio_id/novo_escritorio: regra do cadastro pela tela (_escritorio_do_cadastro)."""
+                  escritorio_id: int | None = None, novo_escritorio: str | None = None,
+                  tipo: str = "contador") -> Usuario:
+    """Sem escritorio_id/novo_escritorio: regra do cadastro pela tela (_escritorio_do_cadastro).
+    `tipo` (contador | empresa) só vale para escritório novo."""
+    if tipo not in ("contador", "empresa"):
+        raise ErroLogin("Tipo de conta inválido: use contador ou empresa.")
     email = normalizar_email(email)
     if "@" not in email or len(email) > 200:
         raise ErroLogin("E-mail inválido.")
@@ -229,11 +234,11 @@ def criar_usuario(db: Session, email: str, nome: str, senha: str, *, trocar_senh
     elif novo_escritorio is not None:
         if not novo_escritorio.strip():
             raise ErroLogin("Informe o nome do escritório.")
-        esc = Escritorio(nome=novo_escritorio.strip()[:200])
+        esc = Escritorio(nome=novo_escritorio.strip()[:200], tipo=tipo)
         db.add(esc)
         db.flush()
     else:
-        esc = _escritorio_do_cadastro(db, nome_limpo)
+        esc = _escritorio_do_cadastro(db, nome_limpo, tipo)
     u = Usuario(email=email, nome=nome_limpo, senha_hash=gerar_hash(senha), ativo=True,
                 trocar_senha=trocar_senha, criado_em=agora(), escritorio_id=esc.id)
     db.add(u)

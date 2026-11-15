@@ -52,12 +52,14 @@ class Plano(BaseModel):
 
 class NovoEscritorio(Plano):
     nome: str = Field(min_length=2, max_length=200)
+    tipo: str = "contador"
     email: str
     nome_usuario: str = ""
 
 
 class EdicaoEscritorio(Plano):
     nome: str = Field(min_length=2, max_length=200)
+    tipo: str | None = None  # vazio = não muda
 
 
 class Pagamento(BaseModel):
@@ -97,7 +99,7 @@ def _escritorio_out(db: Session, e: Escritorio, n_emp: int, usuarios: list) -> d
     venc = e.proximo_vencimento
     atraso = (hoje - venc).days if venc is not None and venc < hoje and e.situacao == "ativo" else 0
     return {
-        "id": e.id, "nome": e.nome, "empresas": n_emp, "usuarios": usuarios,
+        "id": e.id, "nome": e.nome, "tipo": e.tipo, "empresas": n_emp, "usuarios": usuarios,
         "situacao": e.situacao, "teste_ate": e.teste_ate, "bloqueio": regras.motivo_bloqueio(e),
         "limite_xmls_mes": e.limite_xmls_mes, "limite_efetivo": regras.limite_xmls(db, e.id),
         "xmls_no_mes": xmls_no_mes(db, e.id),
@@ -162,6 +164,15 @@ def editar_escritorio(escritorio_id: int, d: EdicaoEscritorio, db: Session = Dep
     if e.nome != d.nome.strip():
         _evento(db, e.id, adm, "plano", f"Nome: {e.nome} para {d.nome.strip()}")
         e.nome = d.nome.strip()
+    if d.tipo is not None and d.tipo != e.tipo:
+        if d.tipo not in regras.TIPOS:
+            raise HTTPException(422, "Tipo de conta inválido: use contador ou empresa.")
+        n = db.scalar(select(func.count()).select_from(Empresa).where(Empresa.escritorio_id == e.id)) or 0
+        if d.tipo == "empresa" and n > 1:
+            raise HTTPException(409, f"Esta conta tem {n} empresas. A conta de empresa tem um CNPJ só: "
+                                     "exclua as outras antes de mudar o tipo.")
+        _evento(db, e.id, adm, "plano", f"Tipo de conta: {regras.TIPO_ROTULO[e.tipo]} para {regras.TIPO_ROTULO[d.tipo]}")
+        e.tipo = d.tipo
     _aplicar_plano(db, e, d, adm)
     db.commit()
     return _detalhe(db, e)
@@ -212,14 +223,16 @@ def _criar(db: Session, email: str, nome: str, **kw) -> dict:
 def criar_escritorio(d: NovoEscritorio, db: Session = Depends(sessao), adm: Usuario = Depends(exigir_admin)):
     senha = auth.senha_aleatoria()
     try:
-        u = auth.criar_usuario(db, d.email, d.nome_usuario, senha, trocar_senha=True, novo_escritorio=d.nome)
+        u = auth.criar_usuario(db, d.email, d.nome_usuario, senha, trocar_senha=True, novo_escritorio=d.nome,
+                               tipo=d.tipo)
     except auth.ErroLogin as ex:
         db.rollback()
         raise HTTPException(409 if "Já existe" in str(ex) else 422, str(ex)) from None
     e = db.get(Escritorio, u.escritorio_id)
     e.situacao = d.situacao if d.situacao in regras.SITUACOES else "ativo"  # sem evento de "mudança" na criação
     _aplicar_plano(db, e, d, adm)
-    _evento(db, e.id, adm, "criado", f"Escritório criado ({ROTULOS[e.situacao]}), primeiro usuário {u.email}")
+    _evento(db, e.id, adm, "criado", f"Conta de {regras.TIPO_ROTULO[e.tipo].lower()} criada ({ROTULOS[e.situacao]}), "
+                                     f"primeiro usuário {u.email}")
     db.commit()
     # A senha inicial só aparece nesta resposta (não é gravada nem vai para log)
     return {"usuario": _usuario_out(u), "senha_inicial": senha}

@@ -13,6 +13,7 @@ import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/
 import { api, apiForm, type Empresa, type EmpresaCriada } from "@/lib/api";
 import { nomeExibicao, useAtualizarEmpresas, useContabilidade } from "@/lib/empresas";
 import { formatarData, formatarDataHora, formatarDoc, limparCnpj, UFS } from "@/lib/formato";
+import { useContaEmpresa } from "@/lib/sessao";
 import { type CertificadoEscolhido } from "./CertificadoUpload";
 import { EscolhaCertificado, type Modo } from "./NovaEmpresa";
 import { LinhaResumo, Painel } from "./Passos";
@@ -27,15 +28,20 @@ export function DetalheEmpresa() {
 
 function Detalhe({ e }: { e: Empresa }) {
   const atualizar = useAtualizarEmpresas();
+  const contaEmpresa = useContaEmpresa();
   return (
     <div className="max-w-4xl space-y-5">
       <div>
-        <Link to="/empresas" className="mb-3 inline-flex items-center gap-1.5 text-sm text-texto-2 hover:text-texto">
-          <ArrowLeft className="size-4" aria-hidden /> Empresas
-        </Link>
+        {contaEmpresa ? (
+          <p className="mb-3 text-sm text-texto-2">Minha empresa</p>
+        ) : (
+          <Link to="/empresas" className="mb-3 inline-flex items-center gap-1.5 text-sm text-texto-2 hover:text-texto">
+            <ArrowLeft className="size-4" aria-hidden /> Empresas
+          </Link>
+        )}
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-xl font-semibold tracking-tight">{nomeExibicao(e)}</h1>
-          {e.is_contabilidade && <span className="rounded bg-destaque-suave px-1.5 py-0.5 text-xs font-medium text-destaque">Contabilidade</span>}
+          {e.is_contabilidade && !contaEmpresa && <span className="rounded bg-destaque-suave px-1.5 py-0.5 text-xs font-medium text-destaque">Contabilidade</span>}
           {!e.ativa && <span className="rounded bg-superficie-2 px-1.5 py-0.5 text-xs text-texto-2">Inativa</span>}
         </div>
         <div className="mt-1 flex items-center gap-3 text-sm text-texto-2">
@@ -109,8 +115,11 @@ function FormDados({ e, aoSalvar }: { e: Empresa; aoSalvar: () => void }) {
 
 function CertContabilidade({ e }: { e: Empresa }) {
   const c = e.certificado;
+  const contaEmpresa = useContaEmpresa();
   return (
-    <Painel titulo="Certificado da contabilidade" descricao="Usado nas buscas por procuração de todas as empresas.">
+    <Painel titulo={contaEmpresa ? "Certificado digital da empresa" : "Certificado da contabilidade"}
+      descricao={contaEmpresa ? "Usado para emitir as notas e para buscar as que a empresa emitiu e recebeu."
+        : "Usado nas buscas por procuração de todas as empresas."}>
       {c && (
         <dl>
           <LinhaResumo rotulo="Titular">{c.titular_nome} <span className="font-mono text-texto-2">· {formatarDoc(c.titular_doc)}</span></LinhaResumo>

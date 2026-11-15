@@ -11,7 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import config
-from app.core.escritorios import em_teste, emissoes_do_escritorio, exportacoes_do_escritorio, limite_xmls
+from app.core.escritorios import conta_empresa, em_teste, emissoes_do_escritorio, exportacoes_do_escritorio, limite_xmls
 from app.models import BuscaJob, DocumentoDfe, Empresa
 
 BRASILIA = timezone(timedelta(hours=-3))  # sem horário de verão desde 2019
@@ -67,7 +67,7 @@ def resumo(db: Session, escritorio_id: int) -> dict:
     if em_teste(db, escritorio_id):
         return {"mes": inicio_do_mes().strftime("%Y-%m"), "usados": xmls_baixados(db, escritorio_id), "limite": None,
                 "percentual": None, "situacao": "teste",
-                "teste": {"max_empresas": cfg.teste_max_empresas,
+                "teste": {"max_empresas": 0 if conta_empresa(db, escritorio_id) else cfg.teste_max_empresas,
                           "max_emissoes": cfg.teste_max_emissoes, "emissoes": emissoes_do_escritorio(db, escritorio_id),
                           "max_exportacoes": cfg.teste_max_exportacoes,
                           "exportacoes": exportacoes_do_escritorio(db, escritorio_id),
