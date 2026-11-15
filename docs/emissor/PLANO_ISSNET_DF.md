@@ -2,13 +2,27 @@
 
 Plano aprovado em 15/11/2026.
 
-**Andamento (15/11/2026):** fases 1 e 2 prontas na parte que não depende do acesso à homologação, com testes contra o ISSNet simulado:
-- assinatura no perfil do ISSNet (`assinatura.ISSNET`);
-- cliente SOAP (`app/emissor/issnet/soap.py`);
-- montagem e leitura das mensagens (`mensagens.py`);
-- monitoramento dos RPS (`rps.py`, tabelas `rps_disponivel` e `sincronizacao_rps`);
-- canal da empresa (`motor.canal`);
-- comando de leitura `python -m app.tools.issnet wsdl|cadastro|rps EMPRESA_ID`.
+**Andamento (15/11/2026): emissão em produção funcionando.** Primeira nota real: VCS TRANSPORTES (Lucro
+Presumido), NFS-e nº 179, R$ 1,00, RPS série 3 nº 1, emitida pela API do Contask com os dados confirmados.
+
+Pronto: canal por empresa, DPS no leiaute do ISSNet (`dps.montar_issnet`), envio/recuperação/cancelamento no
+motor, monitoramento dos RPS (tabelas, sincronização, reserva, "usado fora", alertas), tela de RPS, cTribMun do
+DF (`issnet/ctribmun_df.json`, da planilha de correlação) e testes com o ISSNet simulado.
+
+O que a produção mostrou e o manual não diz (ver `issnet/soap.py`, `motor.py` e `dps.py`):
+- envelope: XML de dados e cabeçalho EMBUTIDOS (não escapados), `nfseDadosMsg` antes de `nfseCabecMsg`, prefixo
+  `ws` declarado no Envelope; a resposta vem direto em `{Metodo}Response`; métodos `ConsultarNfseDps` e
+  `ConsultarNfsePorFaixa` (nomes do WSDL);
+- assinatura: o perfil do manual (C14N inclusiva + RSA-SHA1) volta E0714; vale o da Sefin (C14N exclusiva +
+  RSA-SHA256). O motor tenta o outro perfil uma vez se vier E0714 (não gera nota);
+- acentos vão como referência numérica (`&#231;`);
+- `dhEmi` 2 minutos no passado (E0008), `pTotTrib` para não optante (E0713), endereço obrigatório para tomador
+  com CNPJ (E0235);
+- `ConsultarDpsDisponivel` além da última página responde E319 (fim da lista);
+- `ValidarXml` valida só o schema, não a assinatura.
+
+Pendente: a homologação da Nota Control (precisa de acesso pedido ao suporte) e confirmar se as notas do ISSNet
+chegam ao ADN (fase 6).
 
 A emissão continua barrada (E0084) até a fase 3 ser testada na homologação.
 

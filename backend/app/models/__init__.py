@@ -154,6 +154,8 @@ class NotaEmitida(Base):
     ctribnac: Mapped[str] = mapped_column(String(6))
     cnbs: Mapped[str] = mapped_column(String(9))
     ctribmun: Mapped[str | None] = mapped_column(String(10))  # no ISSNet DF: código municipal de até 10 dígitos
+    cindop: Mapped[str | None] = mapped_column(String(6))     # IBS/CBS (obrigatório no ISSNet DF)
+    cclasstrib: Mapped[str | None] = mapped_column(String(6))
     cod_municipio_prestacao: Mapped[str] = mapped_column(String(7))
     valor_servico: Mapped[Decimal] = mapped_column(Numeric(15, 2))
     desconto: Mapped[Decimal] = mapped_column(Numeric(15, 2), default=Decimal("0"))

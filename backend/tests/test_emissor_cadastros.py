@@ -99,7 +99,7 @@ def test_servicos_da_empresa(cliente):
     assert cliente.post(base, json={**s, "ctribnac": "999999"}).status_code == 422
     assert cliente.post(base, json={**s, "cnbs": "123"}).status_code == 422
     assert cliente.post(base, json={**s, "descricao": "  "}).status_code == 422
-    assert cliente.post(base, json={**s, "ctribmun": "12"}).status_code == 422
+    assert cliente.post(base, json={**s, "ctribmun": "12345678901"}).status_code == 422
 
     item = {e["id"]: e for e in cliente.get("/api/emissor/empresas").json()}[prop["id"]]
     assert item["servicos"] == 1

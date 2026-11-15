@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Aviso, Campo, Input } from "@/components/ui/campos";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
-import { apenasDigitos, useAtualizarEmissor, type CodigoNbs, type CodigoServico, type Servico, type Sugestao } from "@/lib/emissor";
+import {
+  apenasDigitos, useAtualizarEmissor, type CanalEmissao, type CodigoMunicipalDf, type CodigoNbs, type CodigoServico, type Servico, type Sugestao,
+} from "@/lib/emissor";
 import { cn } from "@/lib/utils";
 
 function useAtraso<T>(valor: T, ms = 250) {
@@ -64,9 +66,12 @@ function Escolhido({ codigo, descricao, limpar }: { codigo: string; descricao: s
 const VAZIO = { descricao: "", ctribnac: "", ctribnac_formatado: "", ctribnac_descricao: null as string | null,
   cnbs: "", cnbs_formatado: "", cnbs_descricao: null as string | null, ctribmun: "", cindop: "", cclasstrib: "", ativo: true };
 
-export function ServicoDialog({ empresaId, servico, aberto, aoFechar, aoSalvar }: {
+export function ServicoDialog({ empresaId, servico, aberto, aoFechar, aoSalvar, canal = "nacional" }: {
   empresaId: number; servico: Servico | null; aberto: boolean; aoFechar: () => void; aoSalvar?: (s: Servico) => void;
+  /** issnet_df: cTribMun do DF (até 10 dígitos), cIndOp e cClassTrib são obrigatórios */
+  canal?: CanalEmissao;
 }) {
+  const issnet = canal === "issnet_df";
   const atualizar = useAtualizarEmissor();
   const [f, setF] = useState(VAZIO);
   useEffect(() => {
@@ -94,8 +99,10 @@ export function ServicoDialog({ empresaId, servico, aberto, aoFechar, aoSalvar }
     setF((a) => ({ ...a, cnbs: s.nbs, cnbs_formatado: s.nbs_formatado, cnbs_descricao: s.nbs_descricao,
       cindop: s.cindop ?? a.cindop, cclasstrib: s.cclasstrib ?? a.cclasstrib }));
 
-  const valido = f.descricao.trim().length > 0 && f.ctribnac.length === 6 && f.cnbs.length === 9 &&
-    [0, 3].includes(apenasDigitos(f.ctribmun).length);
+  const tamMun = apenasDigitos(f.ctribmun).length;
+  const valido = f.descricao.trim().length > 0 && f.ctribnac.length === 6 && f.cnbs.length === 9 && (issnet
+    ? tamMun >= 1 && tamMun <= 10 && f.cindop.length === 6 && f.cclasstrib.length === 6
+    : [0, 3].includes(tamMun));
 
   return (
     <Dialog open={aberto} onOpenChange={(v) => !v && aoFechar()}>
@@ -147,20 +154,26 @@ export function ServicoDialog({ empresaId, servico, aberto, aoFechar, aoSalvar }
             </Campo>
           )}
 
-          <div className="grid grid-cols-3 gap-3">
-            <Campo rotulo="Código municipal" ajuda="Complementar, se o município usar (3 dígitos).">
-              {(p) => <Input {...p} value={f.ctribmun} inputMode="numeric" maxLength={3}
-                onChange={(e) => setF({ ...f, ctribmun: apenasDigitos(e.target.value) })} placeholder="Opcional" />}
-            </Campo>
-            <Campo rotulo="cIndOp (IBS/CBS)" ajuda="Sugerido pela NBS.">
+          {issnet && f.ctribnac && (
+            <CodigoMunicipalDf ctribnac={f.ctribnac} valor={f.ctribmun} aoMudar={(v) => setF({ ...f, ctribmun: v })} />
+          )}
+          <div className={cn("grid gap-3", issnet ? "grid-cols-2" : "grid-cols-3")}>
+            {!issnet && (
+              <Campo rotulo="Código municipal" ajuda="Complementar, se o município usar (3 dígitos).">
+                {(p) => <Input {...p} value={f.ctribmun} inputMode="numeric" maxLength={3}
+                  onChange={(e) => setF({ ...f, ctribmun: apenasDigitos(e.target.value) })} placeholder="Opcional" />}
+              </Campo>
+            )}
+            <Campo rotulo="cIndOp (IBS/CBS)" obrigatorio={issnet} ajuda="Sugerido pela NBS.">
               {(p) => <Input {...p} value={f.cindop} inputMode="numeric" maxLength={6}
-                onChange={(e) => setF({ ...f, cindop: apenasDigitos(e.target.value) })} placeholder="Opcional" />}
+                onChange={(e) => setF({ ...f, cindop: apenasDigitos(e.target.value) })} placeholder={issnet ? "6 dígitos" : "Opcional"} />}
             </Campo>
-            <Campo rotulo="cClassTrib (IBS/CBS)" ajuda="Sugerido pela NBS.">
+            <Campo rotulo="cClassTrib (IBS/CBS)" obrigatorio={issnet} ajuda="Sugerido pela NBS.">
               {(p) => <Input {...p} value={f.cclasstrib} inputMode="numeric" maxLength={6}
-                onChange={(e) => setF({ ...f, cclasstrib: apenasDigitos(e.target.value) })} placeholder="Opcional" />}
+                onChange={(e) => setF({ ...f, cclasstrib: apenasDigitos(e.target.value) })} placeholder={issnet ? "6 dígitos" : "Opcional"} />}
             </Campo>
           </div>
+          {issnet && <Aviso tom="info">No ISSNet do DF, o código municipal e o grupo IBS/CBS (cIndOp e cClassTrib) são obrigatórios. A alíquota do ISS vem do cadastro da empresa no ISSNet.</Aviso>}
 
           {servico && (
             <label className="flex items-center gap-2 text-sm">
@@ -179,5 +192,43 @@ export function ServicoDialog({ empresaId, servico, aberto, aoFechar, aoSalvar }
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** cTribMun do DF: os códigos ligados ao item nacional (planilha de correlação do ISSNet) ou outro de até 10 dígitos. */
+function CodigoMunicipalDf({ ctribnac, valor, aoMudar }: { ctribnac: string; valor: string; aoMudar: (v: string) => void }) {
+  const lista = useQuery({
+    queryKey: ["emissor", "ctribmun-df", ctribnac],
+    queryFn: () => api<CodigoMunicipalDf[]>(`/api/emissor/codigos/ctribmun-df?${new URLSearchParams({ ctribnac })}`),
+  });
+  return (
+    <Campo rotulo="Código de tributação municipal do DF (cTribMun)" obrigatorio
+      ajuda="Da tabela de correlação do ISSNet do DF. Se a atividade do cadastro da empresa no ISSNet tiver outro código, digite-o (até 10 dígitos).">
+      {(p) => (
+        <div className="space-y-2">
+          {lista.isLoading && <p className="flex items-center gap-2 text-sm text-texto-2"><Loader2 className="size-4 animate-spin" /> Carregando os códigos do DF…</p>}
+          {lista.isError && <Aviso tom="erro">{(lista.error as Error).message}</Aviso>}
+          {lista.data?.length === 0 && <p className="text-sm text-texto-2">Nenhum código do DF ligado a este item na tabela de correlação. Digite o código abaixo.</p>}
+          {lista.data && lista.data.length > 0 && (
+            <div className="flex flex-col gap-1.5" role="radiogroup" aria-label="Códigos do DF para este item">
+              {lista.data.map((c) => {
+                const marcado = valor === c.codigo;
+                return (
+                  <button key={c.codigo} type="button" role="radio" aria-checked={marcado} onClick={() => aoMudar(c.codigo)}
+                    className={cn("flex gap-3 rounded-xl border px-3 py-2 text-left text-sm",
+                      marcado ? "border-destaque bg-destaque-suave" : "border-borda hover:border-destaque hover:bg-destaque-suave/40")}>
+                    <span className="shrink-0 font-mono text-texto-2">{c.codigo}</span>
+                    <span className="flex-1">{c.descricao}</span>
+                    {c.aliquota && <span className="shrink-0 text-texto-2">{c.aliquota.replace(".", ",")}%</span>}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <Input {...p} value={valor} inputMode="numeric" maxLength={10} placeholder="Código (até 10 dígitos)"
+            onChange={(e) => aoMudar(apenasDigitos(e.target.value))} />
+        </div>
+      )}
+    </Campo>
   );
 }

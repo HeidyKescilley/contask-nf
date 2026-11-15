@@ -1,18 +1,17 @@
 """Cliente SOAP (mTLS) do webservice do ISSNet do DF.
 
-- SOAP 1.1, document/literal wrapped (manual 7.3.1). Cada método recebe o cabeçalho e o XML de dados
-  como TEXTO e devolve o XML de resposta como texto dentro de <{Metodo}Result>.
+- SOAP 1.1, document/literal wrapped (manual 7.3.1). O XML de dados e o cabeçalho vão embutidos no corpo
+  (ver envelope); a resposta vem direto em <{Metodo}Response>.
 - Em produção só é chamado com CONTASK_EMISSOR_PRODUCAO=true e a empresa liberada (mesma regra da Sefin).
-- GerarNfse NUNCA é repetido às cegas: depois de falha de rede, quem chama consulta ConsultarNfsePorDps.
+- GerarNfse NUNCA é repetido às cegas: depois de falha de rede, quem chama consulta ConsultarNfseDps.
 
-A CONFIRMAR com o WSDL (só abre com certificado; sem ele responde 403): o namespace do serviço e o nome
-dos parâmetros. Os valores abaixo seguem o padrão dos webservices .asmx do ISSNet; o comando
-`python -m app.tools.issnet wsdl <empresa_id>` baixa o WSDL para conferência antes da primeira emissão.
+Conferido no WSDL de produção (15/11/2026, só abre com certificado): o namespace do serviço é o da NFS-e
+nacional, os parâmetros são nfseCabecMsg/nfseDadosMsg (sem namespace) e a resposta vem em
+<{Metodo}Response><outputXML>. A consulta por DPS chama ConsultarNfseDps e a por faixa ConsultarNfsePorFaixa.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from xml.sax.saxutils import escape
 
 import httpx
 from lxml import etree
@@ -25,13 +24,13 @@ URLS = {
 }
 NS_NFSE = "http://www.sped.fazenda.gov.br/nfse"
 NS_SOAP = "http://schemas.xmlsoap.org/soap/envelope/"
-NS_SERVICO = "http://nfse.abrasf.org.br"                      # a confirmar com o WSDL
-PARAM_CABECALHO, PARAM_DADOS = "nfseCabecMsg", "nfseDadosMsg"  # a confirmar com o WSDL
+NS_SERVICO = NS_NFSE
+PARAM_CABECALHO, PARAM_DADOS = "nfseCabecMsg", "nfseDadosMsg"
 
 METODOS = {
     "GerarNfse", "RecepcionarLoteDps", "RecepcionarLoteDpsSincrono", "CancelarNfse", "ConsultarLoteDps",
-    "ConsultarNfsePorDps", "ConsultarNfseServicoPrestado", "ConsultarNfseServicoTomado", "ConsultarNfseFaixa",
-    "ConsultarDadosCadastrais", "ConsultarDpsDisponivel", "ConsultarUrlNfse",
+    "ConsultarNfseDps", "ConsultarNfseServicoPrestado", "ConsultarNfseServicoTomado", "ConsultarNfsePorFaixa",
+    "ConsultarDadosCadastrais", "ConsultarDpsDisponivel", "ConsultarUrlNfse", "ValidarXml",
 }
 _PARSER = etree.XMLParser(resolve_entities=False, no_network=True)
 
@@ -58,17 +57,36 @@ def cabecalho(ibscbs: bool = True) -> str:
     return f'<cabecalho versao="{v}" xmlns="{NS_NFSE}"><versaoDados>{v}</versaoDados></cabecalho>'
 
 
+def _sem_declaracao(xml: str) -> str:
+    xml = xml.strip()
+    if xml.startswith("<?xml"):
+        xml = xml[xml.index("?>") + 2:].lstrip()
+    return xml
+
+
 def envelope(metodo: str, dados: str, cab: str) -> bytes:
+    """Testado na produção em 15/11/2026: o ISSNet só aceita o XML de dados e o cabeçalho EMBUTIDOS como XML
+    (escapados como texto dão E183), com nfseDadosMsg ANTES de nfseCabecMsg e com o prefixo ws declarado no
+    Envelope (declarado no elemento do método dá E160)."""
     if metodo not in METODOS:
         raise ValueError(f"Método desconhecido do ISSNet: {metodo}")
+    dados, cab = _sem_declaracao(dados), _sem_declaracao(cab)
+    for parte in (dados, cab):
+        etree.fromstring(parte.encode("utf-8"), parser=_PARSER)  # XML malformado não sai daqui
     return (
         '<?xml version="1.0" encoding="utf-8"?>'
-        f'<soap:Envelope xmlns:soap="{NS_SOAP}"><soap:Body>'
-        f'<{metodo} xmlns="{NS_SERVICO}">'
-        f'<{PARAM_CABECALHO}>{escape(cab)}</{PARAM_CABECALHO}>'
-        f'<{PARAM_DADOS}>{escape(dados)}</{PARAM_DADOS}>'
-        f'</{metodo}></soap:Body></soap:Envelope>'
+        f'<soap:Envelope xmlns:soap="{NS_SOAP}" xmlns:ws="{NS_SERVICO}"><soap:Body>'
+        f'<ws:{metodo}>'
+        f'<{PARAM_DADOS}>{dados}</{PARAM_DADOS}>'
+        f'<{PARAM_CABECALHO}>{cab}</{PARAM_CABECALHO}>'
+        f'</ws:{metodo}></soap:Body></soap:Envelope>'
     ).encode("utf-8")
+
+
+def dados_do_envelope(env) -> etree._Element:
+    """Raiz do XML de dados (ex.: GerarNfseEnvio) dentro de nfseDadosMsg."""
+    corpo = next(e for e in env.iter() if local(e) == "Body")
+    return filhos(next(e for e in corpo[0] if local(e) == PARAM_DADOS))[0]
 
 
 def local(el) -> str:
@@ -92,7 +110,7 @@ def mensagens(raiz, grupo: str) -> list[dict]:
 
 
 def _dados_do_envelope(metodo: str, env) -> etree._Element:
-    res = next((e for e in env.iter() if local(e) == f"{metodo}Result"), None)
+    res = next((e for e in env.iter() if local(e) in ("outputXML", f"{metodo}Result")), None)
     if res is not None:
         if filhos(res):
             return filhos(res)[0]
@@ -124,9 +142,11 @@ def ler_resposta(metodo: str, corpo: bytes) -> Retorno:
         texto = next((e.text for e in falha.iter() if local(e) in ("faultstring", "Text") and e.text), "SOAP Fault")
         raise ErroIssnet(f"O ISSNet recusou a chamada: {texto.strip()}")
     dados = _dados_do_envelope(metodo, env)
-    return Retorno(xml=dados,
-                   erros=mensagens(dados, "ListaMensagemRetorno") + mensagens(dados, "ListaMensagemRetornoLote"),
-                   alertas=mensagens(dados, "ListaMensagemAlertaRetorno"))
+    lista = mensagens(dados, "ListaMensagemRetorno") + mensagens(dados, "ListaMensagemRetornoLote")
+    # Códigos S (ex.: S000 "XML válido" do ValidarXml) vêm na mesma lista, mas não são erro
+    sucesso = [m for m in lista if (m.get("codigo") or "").startswith("S")]
+    return Retorno(xml=dados, erros=[m for m in lista if m not in sucesso],
+                   alertas=mensagens(dados, "ListaMensagemAlertaRetorno") + sucesso)
 
 
 class ClienteIssnet:
@@ -156,8 +176,16 @@ class ClienteIssnet:
             raise ErroIssnet(f"O ISSNet não entregou o WSDL (HTTP {r.status_code}).")
         return r.content
 
-    def chamar(self, metodo: str, dados: str, *, ibscbs: bool = True) -> Retorno:
-        corpo = envelope(metodo, dados, cabecalho(ibscbs))
+    def chamar(self, metodo: str, dados: str, *, ibscbs: bool = True, assinar=None) -> Retorno:
+        """`assinar(elemento_de_dados)`, quando dado, assina o XML de dados JÁ DENTRO do envelope e o envelope
+        sai como ficou (a C14N inclusiva leva em conta os namespaces do envelope)."""
+        env = etree.fromstring(envelope(metodo, dados, cabecalho(ibscbs)), parser=_PARSER)
+        if assinar is not None:
+            assinar(dados_do_envelope(env))
+        # Acentos saem como referência numérica (&#231;): o texto é o mesmo, mas os bytes não dependem de como
+        # o servidor decodifica o corpo (acento alterado no caminho invalida a assinatura: E0714)
+        corpo = b'<?xml version="1.0" encoding="utf-8"?>' + etree.tostring(env, encoding="ascii", xml_declaration=False)
+        self.ultimo_envio = corpo
         headers = {"Content-Type": "text/xml; charset=utf-8", "SOAPAction": f'"{NS_SERVICO}/{metodo}"'}
         try:
             r = self._http.post(URLS[self.ambiente], content=corpo, headers=headers)

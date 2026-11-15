@@ -218,19 +218,20 @@ def test_editar_e_pausar_recorrente(cliente, sefin):
     assert cliente.get(f"/api/emissor/empresas/{e['id']}/recorrentes").json() == []
 
 
-def test_df_fora_do_simples_e_barrado_antes_da_sefin(cliente, sefin):
+def test_df_fora_do_simples_vai_para_o_issnet_e_nunca_para_a_sefin(cliente, sefin):
     e, s = _pronta(cliente)
     cfg = cliente.get(f"/api/emissor/empresas/{e['id']}").json()["config"]
     base = {k: cfg[k] for k in ("inscricao_municipal", "op_simples", "reg_ap_trib_sn", "reg_esp_trib", "serie", "proximo_numero")}
-    r = cliente.put(f"/api/emissor/empresas/{e['id']}/config", json={**base, "regime_tributario": "presumido"})
+    r = cliente.put(f"/api/emissor/empresas/{e['id']}/config",
+                    json={**base, "inscricao_municipal": None, "regime_tributario": "presumido"})
     item = r.json()
-    assert item["config"]["cod_municipio"] == "5300108"
-    assert any("E0084" in p for p in item["pendencias"]) and not item["pronta"]
+    assert item["config"]["cod_municipio"] == "5300108" and item["canal"] == "issnet_df"
+    assert any("ISSNet" in p for p in item["pendencias"]) and not item["pronta"]
     enviadas = len(sefin.recebidas)
     r = cliente.post("/api/emissor/notas", json=_emissao(e, s))
     assert r.status_code == 422 and "ISSNet" in r.json()["detail"]
     assert len(sefin.recebidas) == enviadas  # nada foi à Sefin
     assert cliente.get(f"/api/emissor/empresas/{e['id']}").json()["config"]["proximo_numero"] == cfg["proximo_numero"]
-    # Do Simples, no DF: emite normalmente
+    # Do Simples, no DF: emite normalmente pela Sefin
     r = cliente.put(f"/api/emissor/empresas/{e['id']}/config", json={**base, "regime_tributario": "simples"})
-    assert not any("E0084" in p for p in r.json()["pendencias"])
+    assert r.json()["canal"] == "nacional" and not any("ISSNet" in p for p in r.json()["pendencias"])

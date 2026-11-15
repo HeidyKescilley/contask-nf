@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { ArrowLeft, FileText, FlaskConical, KeyRound, Landmark, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, FileText, FlaskConical, Hash, KeyRound, Landmark, Loader2, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
@@ -10,11 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Aviso, Campo, Input, Select } from "@/components/ui/campos";
 import { api } from "@/lib/api";
 import {
-  REGIMES, REG_AP_TRIB_SN, REG_ESP_TRIB, apenasDigitos, useAmbienteEmissor, useAtualizarEmissor, useEmpresaEmissora, useServicos,
-  type ConfigPrestador, type EmpresaEmissora, type RegimeTributario, type Servico,
+  REGIMES, REG_AP_TRIB_SN, REG_ESP_TRIB, apenasDigitos, useAmbienteEmissor, useAtualizarEmissor, useEmpresaEmissora, useRps, useServicos,
+  type CanalEmissao, type ConfigPrestador, type EmpresaEmissora, type RegimeTributario, type ResumoRps, type Servico,
 } from "@/lib/emissor";
 import { nomeExibicao } from "@/lib/empresas";
-import { formatarDoc } from "@/lib/formato";
+import { formatarDataHora, formatarDoc } from "@/lib/formato";
 import { Painel } from "@/features/empresas/Passos";
 import { AbasEmissor } from "./Abas";
 import { cn } from "@/lib/utils";
@@ -93,8 +93,9 @@ function Detalhe({ e }: { e: EmpresaEmissora }) {
       </Painel>
 
       {e.emite_nfse && e.config && <PainelAmbiente e={e} />}
+      {e.emite_nfse && e.canal === "issnet_df" && <PainelRps e={e} />}
       {e.config && <FormPrestador e={e} cfg={e.config} />}
-      <ListaServicos empresaId={e.id} />
+      <ListaServicos empresaId={e.id} canal={e.canal} />
     </div>
   );
 }
@@ -135,16 +136,18 @@ function PainelAmbiente({ e }: { e: EmpresaEmissora }) {
   });
 
   return (
-    <Painel titulo="Ambiente de emissão" descricao="Escolha onde as notas desta empresa são emitidas. Toda empresa começa em produção; use a homologação para testar sem valor fiscal.">
+    <Painel titulo="Ambiente de emissão" descricao={e.canal === "issnet_df"
+      ? "Empresa do DF fora do Simples: as notas saem pelo webservice do ISSNet do DF. Toda empresa começa em produção."
+      : "Escolha onde as notas desta empresa são emitidas. Toda empresa começa em produção; use a homologação para testar sem valor fiscal."}>
       {sistema.isLoading && <Esqueleto className="h-10 w-full" />}
       {sistema.isError && <EstadoErro mensagem={(sistema.error as Error).message} tentarDeNovo={() => sistema.refetch()} />}
       {sistema.data && (
         <div role="radiogroup" aria-label="Ambiente de emissão" className="grid gap-3 sm:grid-cols-2">
           <OpcaoAmbiente marcada={!liberada} icone={FlaskConical} titulo="Homologação"
-            descricao="Produção restrita da Sefin. As notas não têm valor fiscal: serve para testar."
+            descricao={e.canal === "issnet_df" ? "Homologação do ISSNet (Nota Control). Exige acesso liberado pelo suporte da Nota Control." : "Produção restrita da Sefin. As notas não têm valor fiscal: serve para testar."}
             desabilitada={mudar.isPending} aoEscolher={() => liberada && mudar.mutate(false)} />
           <OpcaoAmbiente marcada={liberada} icone={Landmark} titulo="Produção"
-            descricao={disponivel ? "Sefin de produção. As notas têm valor fiscal." : "Desligada neste sistema (CONTASK_EMISSOR_PRODUCAO)."}
+            descricao={!disponivel ? "Desligada neste sistema (CONTASK_EMISSOR_PRODUCAO)." : e.canal === "issnet_df" ? "ISSNet do DF de produção. As notas têm valor fiscal." : "Sefin de produção. As notas têm valor fiscal."}
             desabilitada={mudar.isPending || (!disponivel && !liberada)} aoEscolher={() => !liberada && setConfirmar(true)} />
         </div>
       )}
@@ -155,9 +158,9 @@ function PainelAmbiente({ e }: { e: EmpresaEmissora }) {
 
       <Dialog open={confirmar} onOpenChange={(v) => !mudar.isPending && setConfirmar(v)}>
         <DialogContent titulo="Emitir em produção?"
-          descricao={<>As próximas notas de <strong>{nomeExibicao(e)}</strong> irão para a Sefin de produção e terão valor fiscal.</>}>
+          descricao={<>As próximas notas de <strong>{nomeExibicao(e)}</strong> irão para {e.canal === "issnet_df" ? "o ISSNet do DF" : "a Sefin"} de produção e terão valor fiscal.</>}>
           <div className="space-y-4">
-            <Aviso tom="alerta">Mude só depois de conferir os dados do prestador e os serviços. A numeração da DPS continua de onde está (próximo nº {e.config?.proximo_numero}).</Aviso>
+            <Aviso tom="alerta">Mude só depois de conferir os dados do prestador e os serviços. {e.canal === "issnet_df" ? "A numeração vem dos RPS liberados no ISSNet." : `A numeração da DPS continua de onde está (próximo nº ${e.config?.proximo_numero}).`}</Aviso>
             {mudar.isError && <Aviso tom="erro">{(mudar.error as Error).message}</Aviso>}
             <div className="flex justify-end gap-2">
               <Button type="button" variante="fantasma" onClick={() => setConfirmar(false)} disabled={mudar.isPending}>Voltar</Button>
@@ -235,19 +238,24 @@ function FormPrestador({ e, cfg }: { e: EmpresaEmissora; cfg: ConfigPrestador })
             </Select>
           )}
         </Campo>
-        <Campo rotulo="Inscrição municipal" ajuda="Só preencha se o município tiver a inscrição no cadastro nacional (CNC). Informar sem ter gera recusa (E0120).">
+        <Campo rotulo="Inscrição municipal" obrigatorio={e.canal === "issnet_df"}
+          ajuda={e.canal === "issnet_df" ? "Obrigatória no ISSNet do DF (a do cadastro da empresa no ISSNet)." : "Só preencha se o município tiver a inscrição no cadastro nacional (CNC). Informar sem ter gera recusa (E0120)."}>
           {(p) => <Input {...p} value={d.inscricao_municipal} maxLength={15} onChange={(ev) => setD({ ...d, inscricao_municipal: ev.target.value })} />}
         </Campo>
         <Campo rotulo="Código IBGE do município"
           ajuda={cfg.cod_municipio ? "Preenchido sozinho pelo município e UF da empresa." : "Não foi possível descobrir pelo município da empresa: informe os 7 dígitos (ex.: Brasília 5300108)."}>
           {(p) => <Input {...p} value={d.cod_municipio} inputMode="numeric" maxLength={7} onChange={(ev) => setD({ ...d, cod_municipio: apenasDigitos(ev.target.value) })} />}
         </Campo>
-        <Campo rotulo="Série da DPS" ajuda="De 1 a 49999. Use outra série se a empresa já emite por outro sistema.">
-          {(p) => <Input {...p} value={d.serie} inputMode="numeric" maxLength={5} onChange={(ev) => setD({ ...d, serie: apenasDigitos(ev.target.value) })} />}
-        </Campo>
-        <Campo rotulo="Próximo número da DPS" ajuda="Só mude se souber o último número usado nesta série.">
-          {(p) => <Input {...p} value={d.proximo_numero} inputMode="numeric" onChange={(ev) => setD({ ...d, proximo_numero: apenasDigitos(ev.target.value) })} />}
-        </Campo>
+        {e.canal !== "issnet_df" && (
+          <>
+            <Campo rotulo="Série da DPS" ajuda="De 1 a 49999. Use outra série se a empresa já emite por outro sistema.">
+              {(p) => <Input {...p} value={d.serie} inputMode="numeric" maxLength={5} onChange={(ev) => setD({ ...d, serie: apenasDigitos(ev.target.value) })} />}
+            </Campo>
+            <Campo rotulo="Próximo número da DPS" ajuda="Só mude se souber o último número usado nesta série.">
+              {(p) => <Input {...p} value={d.proximo_numero} inputMode="numeric" onChange={(ev) => setD({ ...d, proximo_numero: apenasDigitos(ev.target.value) })} />}
+            </Campo>
+          </>
+        )}
         {salvar.isError && <div className="sm:col-span-2"><Aviso tom="erro">{(salvar.error as Error).message}</Aviso></div>}
         <div className="flex justify-end gap-2 sm:col-span-2">
           {mudou && <Button type="button" variante="fantasma" onClick={() => setD(inicial)}>Desfazer</Button>}
@@ -260,7 +268,7 @@ function FormPrestador({ e, cfg }: { e: EmpresaEmissora; cfg: ConfigPrestador })
   );
 }
 
-function ListaServicos({ empresaId }: { empresaId: number }) {
+function ListaServicos({ empresaId, canal }: { empresaId: number; canal: CanalEmissao }) {
   const [inativos, setInativos] = useState(false);
   const lista = useServicos(empresaId, inativos);
   const atualizar = useAtualizarEmissor();
@@ -316,7 +324,68 @@ function ListaServicos({ empresaId }: { empresaId: number }) {
           ))}
         </ul>
       )}
-      <ServicoDialog empresaId={empresaId} servico={dialogo.servico} aberto={dialogo.aberto} aoFechar={() => setDialogo({ aberto: false, servico: null })} />
+      <ServicoDialog empresaId={empresaId} servico={dialogo.servico} aberto={dialogo.aberto} canal={canal} aoFechar={() => setDialogo({ aberto: false, servico: null })} />
+    </Painel>
+  );
+}
+
+const NIVEL_RPS: Record<ResumoRps["nivel"], { tom: "info" | "alerta" | "erro"; texto: string } | null> = {
+  ok: null,
+  baixo: { tom: "alerta", texto: "Os RPS estão acabando. Peça uma nova faixa no portal do ISSNet (Solicitação de Documentos Fiscais) e depois clique em Atualizar RPS." },
+  zerado: { tom: "erro", texto: "Não há RPS disponível: a emissão fica bloqueada até o ISSNet liberar uma nova faixa. Peça no portal do ISSNet (Solicitação de Documentos Fiscais)." },
+  sem_dados: { tom: "info", texto: "A lista de RPS ainda não foi lida. Clique em Atualizar RPS (ela também é lida sozinha na primeira emissão)." },
+};
+
+/** RPS liberados no ISSNet do DF: o número da nota vem daqui, não da série/número do Contask. */
+function PainelRps({ e }: { e: EmpresaEmissora }) {
+  const q = useRps(e.id);
+  const atualizar = useAtualizarEmissor();
+  const ler = useMutation({
+    mutationFn: () => api<ResumoRps>(`/api/emissor/empresas/${e.id}/rps/atualizar`, { method: "POST" }),
+    onSuccess: (r) => { atualizar(); toast.success(`${r.disponiveis} RPS disponíve${r.disponiveis === 1 ? "l" : "is"} no ISSNet.`); },
+    onError: (err) => toast.error((err as Error).message),
+  });
+  const r = q.data;
+  const nivel = r ? NIVEL_RPS[r.nivel] : null;
+  return (
+    <Painel>
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="flex items-center gap-1.5 text-[15px] font-semibold"><Hash className="size-4" aria-hidden /> RPS do ISSNet</h2>
+          <p className="mt-1 text-sm text-texto-2">Números liberados pelo ISSNet do DF para esta empresa. Cada nota usa o menor número livre.</p>
+        </div>
+        <Button variante="secundario" disabled={ler.isPending || e.pendencias.length > 0} onClick={() => ler.mutate()}>
+          {ler.isPending ? <Loader2 className="animate-spin" /> : <RefreshCw />} Atualizar RPS
+        </Button>
+      </div>
+      {q.isLoading && <Esqueleto className="h-20 w-full" />}
+      {q.isError && <EstadoErro mensagem={(q.error as Error).message} tentarDeNovo={() => q.refetch()} />}
+      {r && (
+        <div className="space-y-3">
+          <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {([["Disponíveis", r.disponiveis], ["Em uso agora", r.reservados], ["Usados fora do Contask", r.usados_fora], ["Usados em 30 dias", r.consumo_30_dias]] as const).map(([rot, v]) => (
+              <div key={rot} className="rounded-xl border border-borda px-3 py-2">
+                <dt className="text-xs text-texto-2">{rot}</dt>
+                <dd className={cn("mt-0.5 font-mono text-lg tabular-nums", rot === "Disponíveis" && r.nivel === "zerado" && "text-cancelada")}>{v}</dd>
+              </div>
+            ))}
+          </dl>
+          {r.faixas.length > 0 && (
+            <p className="text-sm text-texto-2">
+              Faixas livres: {r.faixas.map((f) => `série ${f.serie}, ${f.de === f.ate ? `nº ${f.de}` : `nº ${f.de} a ${f.ate}`}`).join("; ")}
+            </p>
+          )}
+          {r.usados_fora > 0 && (
+            <Aviso tom="info">{r.usados_fora} número{r.usados_fora > 1 ? "s sumiram" : " sumiu"} da lista sem nota do Contask: foram usados no portal do ISSNet ou em outro sistema.</Aviso>
+          )}
+          {nivel && <Aviso tom={nivel.tom}>{nivel.texto}</Aviso>}
+          {r.erro && <Aviso tom="erro">A última leitura falhou: {r.erro}</Aviso>}
+          <p className="text-xs text-texto-2">
+            {r.sincronizado_em ? `Lido no ISSNet em ${formatarDataHora(r.sincronizado_em)}. ` : ""}
+            Alerta quando restarem {r.limite_alerta} ou menos.
+          </p>
+        </div>
+      )}
     </Painel>
   );
 }

@@ -1,0 +1,3183 @@
+{
+"fonte": "ISSNet DF - Correlação Tributação Municipal x Tributação Nacional (baixada em 15/11/2026)",
+"itens": [
+{
+"codigo": "101",
+"descricao": "(2%) 1.01 - Análise e desenvolvimento de sistemas.",
+"aliquota": "2",
+"ctribnac": [
+"010101"
+]
+},
+{
+"codigo": "102",
+"descricao": "(2%) 1.02 - Programação.",
+"aliquota": "2",
+"ctribnac": [
+"010201"
+]
+},
+{
+"codigo": "103",
+"descricao": "(2%) 1.03 - Serviços de projeto, planejamento, implantação, gerenciamento e manutenção da operação de redes de comunicação de dados.",
+"aliquota": "2",
+"ctribnac": [
+"010301",
+"010302"
+]
+},
+{
+"codigo": "104",
+"descricao": "(2%) 1.04 - Elaboração de programas de computadores, inclusive de jogos eletrônicos, independentemente da arquitetura construtiva da máquina em que o programa é executado, incluindo tablets, smartphones e congêneres.",
+"aliquota": "2",
+"ctribnac": [
+"010401"
+]
+},
+{
+"codigo": "105",
+"descricao": "(2%) 1.05 - Licenciamento ou cessão de direito de uso de programas de computação.",
+"aliquota": "2",
+"ctribnac": [
+"010501"
+]
+},
+{
+"codigo": "106",
+"descricao": "(2%) 1.06 - Assessoria e consultoria em informática.",
+"aliquota": "2",
+"ctribnac": [
+"010601"
+]
+},
+{
+"codigo": "107",
+"descricao": "(2%) 1.07 - Serviços de manutenção de programas de computação e bancos de dados.",
+"aliquota": "2",
+"ctribnac": [
+"010701"
+]
+},
+{
+"codigo": "108",
+"descricao": "(2%) 1.08 - Planejamento, confecção, manutenção e atualização de páginas eletrônicas.",
+"aliquota": "2",
+"ctribnac": [
+"010801"
+]
+},
+{
+"codigo": "109",
+"descricao": "(2%) 1.09 - Disponibilização, sem cessão definitiva, de conteúdo de áudio, vídeo, imagem e texto por meio da internet, respeitada a imunidade de livros, jornais e periódicos (exceto a distribuição de conteúdos pelas prestadoras de Serviço de Acesso Condicionado, de que trata a Lei federal nº 12.485, de 12 de setembro de 2011, sujeita ao ICMS).",
+"aliquota": "2",
+"ctribnac": [
+"010901",
+"010902"
+]
+},
+{
+"codigo": "201",
+"descricao": "2.01 - Serviços de pesquisas e desenvolvimento de qualquer natureza.",
+"aliquota": "5",
+"ctribnac": [
+"020101"
+]
+},
+{
+"codigo": "302",
+"descricao": "3.02 - Cessão de direito de uso de marcas e de sinais de propaganda.",
+"aliquota": "5",
+"ctribnac": [
+"030201"
+]
+},
+{
+"codigo": "303",
+"descricao": "3.03 - Centro de convenções, escritórios virtuais, stands, quadras esportivas, estádios, ginásios, auditórios, casas de espetáculos, parques de diversões, canchas e congêneres, para realização de eventos ou negócios de qualquer natureza.",
+"aliquota": "5",
+"ctribnac": [
+"030301",
+"030302",
+"030303",
+"030304",
+"030305"
+]
+},
+{
+"codigo": "304",
+"descricao": "3.04 - Locação, sublocação, arrendamento, direito de passagem ou permissão de uso, compartilhado ou não, de ferrovia, rodovia, postes, cabos, dutos e condutos de qualquer natureza.",
+"aliquota": "5",
+"ctribnac": [
+"030401",
+"030402",
+"030403"
+]
+},
+{
+"codigo": "305",
+"descricao": "3.05 - Cessão de palcos, coberturas e outras estruturas de uso temporário.",
+"aliquota": "2",
+"ctribnac": [
+"030501"
+]
+},
+{
+"codigo": "401",
+"descricao": "4.01 - Medicina e biomedicina.",
+"aliquota": "2",
+"ctribnac": [
+"040101",
+"040102"
+]
+},
+{
+"codigo": "402",
+"descricao": "4.02 - Análises clínicas, patologia, eletricidade médica, radioterapia, quimioterapia, ultra-sonografia, ressonância magnética, radiologia, tomografia e congêneres.",
+"aliquota": "2",
+"ctribnac": [
+"040201",
+"040202",
+"040203",
+"040204",
+"040205"
+]
+},
+{
+"codigo": "403",
+"descricao": "4.03 - Hospitais, clínicas, laboratórios, sanatórios, manicômios, casas de saúde, prontos-socorros, ambulatórios e congêneres.",
+"aliquota": "2",
+"ctribnac": [
+"040301",
+"040302",
+"040303"
+]
+},
+{
+"codigo": "404",
+"descricao": "4.04 - Instrumentação cirúrgica.",
+"aliquota": "2",
+"ctribnac": [
+"040401"
+]
+},
+{
+"codigo": "405",
+"descricao": "4.05 - Acupuntura.",
+"aliquota": "2",
+"ctribnac": [
+"040501"
+]
+},
+{
+"codigo": "406",
+"descricao": "4.06 - Enfermagem, inclusive serviços auxiliares.",
+"aliquota": "2",
+"ctribnac": [
+"040601"
+]
+},
+{
+"codigo": "407",
+"descricao": "4.07 - Serviços farmacêuticos.",
+"aliquota": "2",
+"ctribnac": [
+"040701"
+]
+},
+{
+"codigo": "408",
+"descricao": "4.08 - Terapia ocupacional, fisioterapia e fonoaudiologia.",
+"aliquota": "2",
+"ctribnac": [
+"040801",
+"040802",
+"040803"
+]
+},
+{
+"codigo": "409",
+"descricao": "4.09 - Terapias de qualquer espécie destinadas ao tratamento físico, orgânico e mental",
+"aliquota": "2",
+"ctribnac": [
+"040901"
+]
+},
+{
+"codigo": "410",
+"descricao": "4.10 - Nutrição.",
+"aliquota": "2",
+"ctribnac": [
+"041001"
+]
+},
+{
+"codigo": "411",
+"descricao": "4.11 - Obstetrícia.",
+"aliquota": "2",
+"ctribnac": [
+"041101"
+]
+},
+{
+"codigo": "412",
+"descricao": "4.12 - Odontologia.",
+"aliquota": "2",
+"ctribnac": [
+"041201"
+]
+},
+{
+"codigo": "413",
+"descricao": "4.13 - Ortóptica.",
+"aliquota": "2",
+"ctribnac": [
+"041301"
+]
+},
+{
+"codigo": "414",
+"descricao": "4.14 - Próteses sob encomenda.",
+"aliquota": "2",
+"ctribnac": [
+"041401"
+]
+},
+{
+"codigo": "415",
+"descricao": "4.15 - Psicanálise.",
+"aliquota": "2",
+"ctribnac": [
+"041501"
+]
+},
+{
+"codigo": "416",
+"descricao": "4.16 - Psicologia.",
+"aliquota": "2",
+"ctribnac": [
+"041601"
+]
+},
+{
+"codigo": "417",
+"descricao": "4.17 - Casas de repouso e de recuperação, creches, asilos e congêneres.",
+"aliquota": "2",
+"ctribnac": [
+"041701",
+"041702",
+"041703",
+"041704"
+]
+},
+{
+"codigo": "418",
+"descricao": "4.18 - Inseminação artificial, fertilização in vitro e congêneres.",
+"aliquota": "2",
+"ctribnac": [
+"041801"
+]
+},
+{
+"codigo": "419",
+"descricao": "4.19 - Bancos de sangue, leite, pele, olhos, óvulos, sêmen e congêneres.",
+"aliquota": "2",
+"ctribnac": [
+"041901"
+]
+},
+{
+"codigo": "420",
+"descricao": "4.20 - Coleta de sangue, leite, tecidos, sêmen, órgãos e materiais biológicos de qualquer espécie.",
+"aliquota": "2",
+"ctribnac": [
+"042001"
+]
+},
+{
+"codigo": "421",
+"descricao": "4.21 - Unidade de atendimento, assistência ou tratamento móvel e congêneres.",
+"aliquota": "2",
+"ctribnac": [
+"042101"
+]
+},
+{
+"codigo": "422",
+"descricao": "4.22 - Planos de medicina de grupo ou individual e convênios para prestação de assistência médica, hospitalar, odontológica e congêneres.",
+"aliquota": "2",
+"ctribnac": [
+"042201"
+]
+},
+{
+"codigo": "423",
+"descricao": "4.23 - Outros planos de saúde que se cumpram através de serviços de terceiros contratados, credenciados, cooperados ou apenas pagos pelo operador do plano mediante indicação do beneficiário.",
+"aliquota": "2",
+"ctribnac": [
+"042301"
+]
+},
+{
+"codigo": "501",
+"descricao": "5.01 - Medicina veterinária e zootecnia",
+"aliquota": "5",
+"ctribnac": [
+"050101",
+"050102"
+]
+},
+{
+"codigo": "502",
+"descricao": "5.02 - Hospitais, clínicas, ambulatórios, prontos-socorros e congêneres, na área veterinária.",
+"aliquota": "5",
+"ctribnac": [
+"050201",
+"050202"
+]
+},
+{
+"codigo": "503",
+"descricao": "5.03 - Laboratórios de análise na área veterinária.",
+"aliquota": "5",
+"ctribnac": [
+"050301"
+]
+},
+{
+"codigo": "504",
+"descricao": "5.04 - Inseminação artificial, fertilização in vitro e congêneres.",
+"aliquota": "5",
+"ctribnac": [
+"050401"
+]
+},
+{
+"codigo": "505",
+"descricao": "5.05 - Bancos de sangue e de órgãos e congêneres.",
+"aliquota": "5",
+"ctribnac": [
+"050501"
+]
+},
+{
+"codigo": "506",
+"descricao": "5.06 - Coleta de sangue, leite, tecidos, sêmen, órgãos e materiais biológicos de qualquer espécie.",
+"aliquota": "5",
+"ctribnac": [
+"050601"
+]
+},
+{
+"codigo": "507",
+"descricao": "5.07 - Unidade de atendimento, assistência ou tratamento móvel e congêneres.",
+"aliquota": "5",
+"ctribnac": [
+"050701"
+]
+},
+{
+"codigo": "508",
+"descricao": "5.08 - Guarda, tratamento, amestramento, embelezamento, alojamento e congêneres.",
+"aliquota": "5",
+"ctribnac": [
+"050801"
+]
+},
+{
+"codigo": "509",
+"descricao": "5.09 - Planos de atendimento e assistência médico-veterinária.",
+"aliquota": "5",
+"ctribnac": [
+"050901"
+]
+},
+{
+"codigo": "601",
+"descricao": "6.01 - Barbearia, cabeleireiros, manicuros, pedicuros e congêneres.",
+"aliquota": "2",
+"ctribnac": [
+"060101"
+]
+},
+{
+"codigo": "602",
+"descricao": "6.02 - Esteticistas, tratamento de pele, depilação e congêneres.",
+"aliquota": "2",
+"ctribnac": [
+"060201"
+]
+},
+{
+"codigo": "603",
+"descricao": "6.03 - Banhos, duchas, sauna e congêneres.",
+"aliquota": "5",
+"ctribnac": [
+"060301"
+]
+},
+{
+"codigo": "604",
+"descricao": "6.04 - Ginástica, dança, esportes, natação, artes marciais e demais atividades físicas",
+"aliquota": "2",
+"ctribnac": [
+"060401"
+]
+},
+{
+"codigo": "605",
+"descricao": "6.05 - Centros de emagrecimento, spa e congêneres.",
+"aliquota": "5",
+"ctribnac": [
+"060501"
+]
+},
+{
+"codigo": "606",
+"descricao": "6.06 - Aplicação de tatuagens, piercings e congêneres.",
+"aliquota": "5",
+"ctribnac": [
+"060601"
+]
+},
+{
+"codigo": "701",
+"descricao": "7.01 - Engenharia, agronomia, agrimensura, arquitetura, geologia, urbanismo, paisagismo e congêneres.",
+"aliquota": "5",
+"ctribnac": [
+"070101",
+"070102",
+"070103",
+"070104",
+"070105",
+"070106"
+]
+},
+{
+"codigo": "702",
+"descricao": "7.02 - Execução, por administração, empreitada ou subempreitada, de obras de construção civil, hidráulica ou elétrica e de outras obras semelhantes, inclusive sondagem, perfuração de poços, escavação, drenagem e irrigação, terraplanagem, pavimentação, concretagem e a instalação e montagem de produtos, peças e equipamentos (exceto o fornecimento de mercadorias produzidas pelo prestador de serviços fora do local da prestação dos serviços, que fica sujeito ao ICMS).",
+"aliquota": "2",
+"ctribnac": [
+"070201",
+"070202"
+]
+},
+{
+"codigo": "703",
+"descricao": "7.03 - Elaboração de planos diretores, estudos de viabilidade, estudos organizacionais e outros, relacionados com obras e serviços de engenharia; elaboração de anteprojetos, projetos básicos e projetos executivos para trabalhos de engenharia.",
+"aliquota": "2",
+"ctribnac": [
+"070301",
+"070302"
+]
+},
+{
+"codigo": "704",
+"descricao": "7.04 - Demolição.",
+"aliquota": "2",
+"ctribnac": [
+"070401"
+]
+},
+{
+"codigo": "705",
+"descricao": "7.05 - Reparação, conservação e reforma de edifícios, estradas, pontes, portos e congêneres (exceto o fornecimento de mercadorias produzidas pelo prestador dos serviços, fora do local da prestação dos serviços, que fica sujeito ao ICMS).",
+"aliquota": "2",
+"ctribnac": [
+"070501",
+"070502"
+]
+},
+{
+"codigo": "706",
+"descricao": "7.06 - Colocação e instalação de tapetes, carpetes, assoalhos, cortinas, revestimentos de parede, vidros, divisórias, placas de gesso e congêneres, com material fornecido pelo tomador do serviço.",
+"aliquota": "5",
+"ctribnac": [
+"070601",
+"070602"
+]
+},
+{
+"codigo": "707",
+"descricao": "7.07 - Recuperação, raspagem, polimento e lustração de pisos e congêneres",
+"aliquota": "5",
+"ctribnac": [
+"070701"
+]
+},
+{
+"codigo": "708",
+"descricao": "7.08 - Calafetação.",
+"aliquota": "5",
+"ctribnac": [
+"070801"
+]
+},
+{
+"codigo": "709",
+"descricao": "7.09 - Varrição, coleta, remoção, incineração, tratamento, reciclagem, separação e destinação final de lixo, rejeitos e outros resíduos quaisquer.",
+"aliquota": "5",
+"ctribnac": [
+"070901",
+"070902"
+]
+},
+{
+"codigo": "710",
+"descricao": "7.10 - Limpeza, manutenção e conservação de vias e logradouros públicos, imóveis, chaminés, piscinas, parques, jardins e congêneres.",
+"aliquota": "5",
+"ctribnac": [
+"071001",
+"071002"
+]
+},
+{
+"codigo": "711",
+"descricao": "7.11 - Decoração e jardinagem, inclusive corte e poda de árvores.",
+"aliquota": "5",
+"ctribnac": [
+"071101",
+"071102"
+]
+},
+{
+"codigo": "712",
+"descricao": "7.12 - Controle e tratamento de efluentes de qualquer natureza e de agentes físicos, químicos e biológicos.",
+"aliquota": "5",
+"ctribnac": [
+"071201"
+]
+},
+{
+"codigo": "713",
+"descricao": "7.13 - Dedetização, desinfecção, desinsetização, imunização, higienização, desratização, pulverização e congêneres.",
+"aliquota": "5",
+"ctribnac": [
+"071301"
+]
+},
+{
+"codigo": "716",
+"descricao": "7.16 - Florestamento, reflorestamento, semeadura, adubação, reparação de solo, plantio, silagem, colheita, corte e descascamento de árvores, silvicultura, exploração florestal e dos serviços congêneres indissociáveis da formação, manutenção e colheita de florestas, para quaisquer fins e por quaisquer meios.",
+"aliquota": "5",
+"ctribnac": [
+"071601"
+]
+},
+{
+"codigo": "717",
+"descricao": "7.17 - Escoramento, contenção de encostas e serviços congêneres",
+"aliquota": "2",
+"ctribnac": [
+"071701"
+]
+},
+{
+"codigo": "718",
+"descricao": "7.18 - Limpeza e dragagem de rios, portos, canais, baías, lagos, lagoas, represas, açudes e congêneres.",
+"aliquota": "5",
+"ctribnac": [
+"071801"
+]
+},
+{
+"codigo": "719",
+"descricao": "7.19 - Acompanhamento e fiscalização da execução de obras de engenharia, arquitetura e urbanismo.",
+"aliquota": "2",
+"ctribnac": [
+"071901"
+]
+},
+{
+"codigo": "720",
+"descricao": "7.20 - Aerofotogrametria (inclusive interpretação), cartografia, mapeamento, levantamentos topográficos, batimétricos, geográficos, geodésicos, geológicos, geofísicos e congêneres.",
+"aliquota": "5",
+"ctribnac": [
+"072001",
+"072002",
+"072003"
+]
+},
+{
+"codigo": "721",
+"descricao": "7.21 - Pesquisa, perfuração, cimentação, mergulho, perfilagem, concretação, testemunhagem, pescaria, estimulação e outros serviços relacionados com a exploração e explotação de petróleo, gás natural e de outros recursos minerais.",
+"aliquota": "5",
+"ctribnac": [
+"072101"
+]
+},
+{
+"codigo": "722",
+"descricao": "7.22 - Nucleação e bombardeamento de nuvens e congêneres.",
+"aliquota": "5",
+"ctribnac": [
+"072201"
+]
+},
+{
+"codigo": "801",
+"descricao": "8.01 - Ensino regular pré-escolar, fundamental, médio e superior.",
+"aliquota": "2",
+"ctribnac": [
+"080101",
+"080102"
+]
+},
+{
+"codigo": "802",
+"descricao": "8.02 - Instrução, treinamento, orientação pedagógica e educacional, avaliação de conhecimentos de qualquer natureza.",
+"aliquota": "2",
+"ctribnac": [
+"080201"
+]
+},
+{
+"codigo": "901",
+"descricao": "9.01 - Hospedagem de qualquer natureza em hotéis, apart-service condominiais, flat, aparthotéis, hotéis residência, residence-service, suite service, hotelaria marítima, motéis, pensões e congêneres; ocupação por temporada com fornecimento de serviço (o valor da alimentação e gorjeta, quando incluído no preço da diária, fica sujeito ao Imposto Sobre Serviços).",
+"aliquota": "5",
+"ctribnac": [
+"090101",
+"090102",
+"090103",
+"090104"
+]
+},
+{
+"codigo": "902",
+"descricao": "9.02 - Agenciamento, organização, promoção, intermediação e execução de programas de turismo, passeios, viagens, excursões, hospedagens e congêneres",
+"aliquota": "5",
+"ctribnac": [
+"090201",
+"090202"
+]
+},
+{
+"codigo": "903",
+"descricao": "9.03 - Guias de turismo.",
+"aliquota": "5",
+"ctribnac": [
+"090301"
+]
+},
+{
+"codigo": "1001",
+"descricao": "10.01 - Agenciamento, corretagem ou intermediação de câmbio, de cartões de crédito, de planos de saúde e de planos de previdência privada.",
+"aliquota": "5",
+"ctribnac": [
+"100101",
+"100102",
+"100103",
+"100104",
+"100105"
+]
+},
+{
+"codigo": "1002",
+"descricao": "10.02 - Agenciamento, corretagem ou intermediação de títulos em geral, valores mobiliários e contratos quaisquer.",
+"aliquota": "5",
+"ctribnac": [
+"100201",
+"100202"
+]
+},
+{
+"codigo": "1003",
+"descricao": "10.03 - Agenciamento, corretagem ou intermediação de direitos de propriedade industrial, artística ou literária.",
+"aliquota": "5",
+"ctribnac": [
+"100301"
+]
+},
+{
+"codigo": "1004",
+"descricao": "10.04 - Agenciamento, corretagem ou intermediação de contratos de arrendamento mercantil (leasing), de franquia (franchising) e de faturização (factoring).",
+"aliquota": "5",
+"ctribnac": [
+"100401",
+"100402",
+"100403"
+]
+},
+{
+"codigo": "1005",
+"descricao": "10.05 - Agenciamento, corretagem ou intermediação de bens móveis ou imóveis, não abrangidos em outros itens ou subitens, inclusive aqueles realizados no âmbito de Bolsas de Mercadorias e Futuros, por quaisquer meios.",
+"aliquota": "2",
+"ctribnac": [
+"100501",
+"100502"
+]
+},
+{
+"codigo": "1006",
+"descricao": "10.06 - Agenciamento marítimo.",
+"aliquota": "5",
+"ctribnac": [
+"100601"
+]
+},
+{
+"codigo": "1007",
+"descricao": "10.07 - Agenciamento de notícias.",
+"aliquota": "5",
+"ctribnac": [
+"100701"
+]
+},
+{
+"codigo": "1008",
+"descricao": "10.08 - Agenciamento de publicidade e propaganda, inclusive o agenciamento de veiculação por quaisquer meios.",
+"aliquota": "5",
+"ctribnac": [
+"100801"
+]
+},
+{
+"codigo": "1009",
+"descricao": "10.09 - Representação de qualquer natureza, inclusive comercial.",
+"aliquota": "2",
+"ctribnac": [
+"100901"
+]
+},
+{
+"codigo": "1010",
+"descricao": "10.10 - Distribuição de bens de terceiros.",
+"aliquota": "2",
+"ctribnac": [
+"101001"
+]
+},
+{
+"codigo": "1011",
+"descricao": "(5%) 1.01 - Análise e desenvolvimento de sistemas.",
+"aliquota": "5",
+"ctribnac": [
+"010101"
+]
+},
+{
+"codigo": "1021",
+"descricao": "(5%) 1.02 - Programação.",
+"aliquota": "5",
+"ctribnac": [
+"010201"
+]
+},
+{
+"codigo": "1031",
+"descricao": "(5%) 1.03 - Processamento, armazenamento ou hospedagem de dados, textos, imagens, vídeos, páginas eletrônicas, aplicativos e sistemas de informação, entre outros formatos, e congêneres.",
+"aliquota": "5",
+"ctribnac": [
+"010301",
+"010302"
+]
+},
+{
+"codigo": "1061",
+"descricao": "(5%) 1.06 - Assessoria e consultoria em informática.",
+"aliquota": "5",
+"ctribnac": [
+"010601"
+]
+},
+{
+"codigo": "1071",
+"descricao": "(5%) 1.07 - Suporte técnico em informática, inclusive instalação e configuração de programas de computação e bancos de dados.",
+"aliquota": "5",
+"ctribnac": [
+"010701"
+]
+},
+{
+"codigo": "1081",
+"descricao": "(5%) 1.08 - Planejamento, confecção, manutenção e atualização de páginas eletrônicas.",
+"aliquota": "5",
+"ctribnac": [
+"010801"
+]
+},
+{
+"codigo": "1091",
+"descricao": "(5%) 1.09 - Disponibilização, sem cessão definitiva, de conteúdo de áudio, vídeo, imagem e texto por meio da internet, respeitada a imunidade de livros, jornais e periódicos (exceto a distribuição de conteúdos pelas prestadoras de Serviço de Acesso Condicionado, de que trata a Lei federal nº 12.485, de 12 de setembro de 2011, sujeita ao ICMS).",
+"aliquota": "5",
+"ctribnac": [
+"010901",
+"010902"
+]
+},
+{
+"codigo": "1101",
+"descricao": "11.01 - Guarda e estacionamento de veículos terrestres automotores, de aeronaves e de embarcações",
+"aliquota": "5",
+"ctribnac": [
+"110101",
+"110102"
+]
+},
+{
+"codigo": "1102",
+"descricao": "11.02 - Vigilância, segurança ou monitoramento de bens, pessoas e semoventes.",
+"aliquota": "5",
+"ctribnac": [
+"110201"
+]
+},
+{
+"codigo": "1103",
+"descricao": "11.03 - Escolta, inclusive de veículos e cargas.",
+"aliquota": "5",
+"ctribnac": [
+"110301"
+]
+},
+{
+"codigo": "1104",
+"descricao": "11.04 - Armazenamento, depósito, carga, descarga, arrumação e guarda de bens de qualquer espécie",
+"aliquota": "5",
+"ctribnac": [
+"110401",
+"110402"
+]
+},
+{
+"codigo": "1105",
+"descricao": "11.05 - Serviços relacionados ao monitoramento e rastreamento a distância, em qualquer via ou local, de veículos, cargas, pessoas e semoventes em circulação ou movimento, realizados por meio de telefonia móvel, transmissão de satélites, rádio ou qualquer outro meio, inclusive pelas empresas de tecnologia da informação veicular, independentemente de o prestador de serviços ser proprietário ou não da infraestrutura de telecomunicações que utiliza.",
+"aliquota": "2",
+"ctribnac": [
+"110501"
+]
+},
+{
+"codigo": "1201",
+"descricao": "12.01 - Espetáculos teatrais.",
+"aliquota": "2",
+"ctribnac": [
+"120101"
+]
+},
+{
+"codigo": "1202",
+"descricao": "12.02 - Exibições cinematográficas.",
+"aliquota": "2",
+"ctribnac": [
+"120201"
+]
+},
+{
+"codigo": "1203",
+"descricao": "12.03 - Espetáculos circenses.",
+"aliquota": "2",
+"ctribnac": [
+"120301"
+]
+},
+{
+"codigo": "1204",
+"descricao": "12.04 - Programas de auditório.",
+"aliquota": "2",
+"ctribnac": [
+"120401"
+]
+},
+{
+"codigo": "1205",
+"descricao": "12.05 - Parques de diversões, centros de lazer e congêneres.",
+"aliquota": "2",
+"ctribnac": [
+"120501"
+]
+},
+{
+"codigo": "1206",
+"descricao": "12.06 - Boates, taxi-dancing e congêneres.",
+"aliquota": "2",
+"ctribnac": [
+"120601"
+]
+},
+{
+"codigo": "1207",
+"descricao": "12.07 - Shows, ballet, danças, desfiles, bailes, óperas, concertos, recitais, festivais e congêneres.",
+"aliquota": "2",
+"ctribnac": [
+"120701"
+]
+},
+{
+"codigo": "1208",
+"descricao": "12.08 - Feiras, exposições, congressos e congêneres.",
+"aliquota": "2",
+"ctribnac": [
+"120801"
+]
+},
+{
+"codigo": "1209",
+"descricao": "12.09 - Bilhares, boliches e diversões eletrônicas ou não.",
+"aliquota": "5",
+"ctribnac": [
+"120901",
+"120902",
+"120903"
+]
+},
+{
+"codigo": "1210",
+"descricao": "12.10 - Corridas e competições de animais.",
+"aliquota": "2",
+"ctribnac": [
+"121001"
+]
+},
+{
+"codigo": "1211",
+"descricao": "12.11 - Competições esportivas ou de destreza física ou intelectual, com ou sem a participação do espectador.",
+"aliquota": "2",
+"ctribnac": [
+"121101"
+]
+},
+{
+"codigo": "1212",
+"descricao": "12.12 - Execução de música.",
+"aliquota": "2",
+"ctribnac": [
+"121201"
+]
+},
+{
+"codigo": "1213",
+"descricao": "12.13 - Produção, mediante ou sem encomenda prévia, de eventos, espetáculos, entrevistas, shows, ballet, danças, desfiles, bailes, teatros, óperas, concertos, recitais, festivais e congêneres.",
+"aliquota": "2",
+"ctribnac": [
+"121301"
+]
+},
+{
+"codigo": "1214",
+"descricao": "12.14 - Fornecimento de música para ambientes fechados ou não, mediante transmissão por qualquer processo.",
+"aliquota": "2",
+"ctribnac": [
+"121401"
+]
+},
+{
+"codigo": "1215",
+"descricao": "12.15 - Desfiles de blocos carnavalescos ou folclóricos, trios elétricos e congêneres.",
+"aliquota": "2",
+"ctribnac": [
+"121501"
+]
+},
+{
+"codigo": "1216",
+"descricao": "12.16 - Exibição de filmes, entrevistas, musicais, espetáculos, shows, concertos, desfiles, óperas, competições esportivas, de destreza intelectual ou congêneres.",
+"aliquota": "2",
+"ctribnac": [
+"121601"
+]
+},
+{
+"codigo": "1217",
+"descricao": "12.17 - Recreação e animação, inclusive em festas e eventos de qualquer natureza.",
+"aliquota": "2",
+"ctribnac": [
+"121701"
+]
+},
+{
+"codigo": "1302",
+"descricao": "13.02 - Fonografia ou gravação de sons, inclusive trucagem, dublagem, mixagem e congêneres.",
+"aliquota": "5",
+"ctribnac": [
+"130201"
+]
+},
+{
+"codigo": "1303",
+"descricao": "13.03 - Fotografia e cinematografia, inclusive revelação, ampliação, cópia, reprodução, trucagem e congêneres.",
+"aliquota": "5",
+"ctribnac": [
+"130301"
+]
+},
+{
+"codigo": "1304",
+"descricao": "13.04 - Reprografia, microfilmagem e digitalização.",
+"aliquota": "5",
+"ctribnac": [
+"130401"
+]
+},
+{
+"codigo": "1305",
+"descricao": "13.05 - Composição gráfica, inclusive confecção de impressos gráficos, fotocomposição, clicheria, zincografia, litografia e fotolitografia, exceto se destinados a posterior operação de comercialização ou industrialização, ainda que incorporados, de qualquer forma, a outra mercadoria que deva ser objeto de posterior circulação, tais como bulas, rótulos, etiquetas, caixas, cartuchos, embalagens e manuais técnicos e de instrução, quando ficam sujeitos ao ICMS.",
+"aliquota": "2",
+"ctribnac": [
+"130501"
+]
+},
+{
+"codigo": "1401",
+"descricao": "14.01 - Lubrificação, limpeza, lustração, revisão, carga e recarga, conserto, restauração, blindagem, manutenção e conservação de máquinas, veículos, aparelhos, equipamentos, motores, elevadores ou de qualquer objeto (exceto peças e partes empregadas, que ficam sujeitas ao ICMS).",
+"aliquota": "5",
+"ctribnac": [
+"140101"
+]
+},
+{
+"codigo": "1402",
+"descricao": "14.02 - Assistência técnica.",
+"aliquota": "5",
+"ctribnac": [
+"140201"
+]
+},
+{
+"codigo": "1403",
+"descricao": "14.03 - Recondicionamento de motores (exceto peças e partes empregadas, que ficam sujeitas ao ICMS).",
+"aliquota": "5",
+"ctribnac": [
+"140301"
+]
+},
+{
+"codigo": "1404",
+"descricao": "14.04 - Recauchutagem ou regeneração de pneus.",
+"aliquota": "5",
+"ctribnac": [
+"140401"
+]
+},
+{
+"codigo": "1405",
+"descricao": "14.05 - Restauração, recondicionamento, acondicionamento, pintura, beneficiamento, lavagem, secagem, tingimento, galvanoplastia, anodização, corte, recorte, plastificação, costura, acabamento, polimento e congêneres de objetos quaisquer.",
+"aliquota": "5",
+"ctribnac": [
+"140501"
+]
+},
+{
+"codigo": "1406",
+"descricao": "14.06 - Instalação e montagem de aparelhos, máquinas e equipamentos, inclusive montagem industrial, prestados ao usuário final, exclusivamente com material por ele fornecido.",
+"aliquota": "5",
+"ctribnac": [
+"140601"
+]
+},
+{
+"codigo": "1407",
+"descricao": "14.07 - Colocação de molduras e congêneres.",
+"aliquota": "2",
+"ctribnac": [
+"140701"
+]
+},
+{
+"codigo": "1408",
+"descricao": "14.08 - Encadernação, gravação e douração de livros, revistas e congêneres.",
+"aliquota": "2",
+"ctribnac": [
+"140801"
+]
+},
+{
+"codigo": "1409",
+"descricao": "14.09 - Alfaiataria e costura, quando o material for fornecido pelo usuário final, exceto aviamento.",
+"aliquota": "5",
+"ctribnac": [
+"140901"
+]
+},
+{
+"codigo": "1410",
+"descricao": "14.10 - Tinturaria e lavanderia.",
+"aliquota": "5",
+"ctribnac": [
+"141001"
+]
+},
+{
+"codigo": "1411",
+"descricao": "14.11 - Tapeçaria e reforma de estofamentos em geral.",
+"aliquota": "5",
+"ctribnac": [
+"141101"
+]
+},
+{
+"codigo": "1412",
+"descricao": "14.12 - Funilaria e lanternagem.",
+"aliquota": "5",
+"ctribnac": [
+"141201"
+]
+},
+{
+"codigo": "1413",
+"descricao": "14.13 - Carpintaria e serralheria.",
+"aliquota": "5",
+"ctribnac": [
+"141301",
+"141302"
+]
+},
+{
+"codigo": "1414",
+"descricao": "14.14 - Guincho intramunicipal, guindaste e içamento.",
+"aliquota": "5",
+"ctribnac": [
+"141401",
+"141402",
+"141403",
+"141404"
+]
+},
+{
+"codigo": "1501",
+"descricao": "15.01 - Administração de fundos quaisquer, de consórcio, de carteira de clientes, de cheques pré-datados e congêneres.",
+"aliquota": "5",
+"ctribnac": [
+"150101",
+"150102",
+"150103",
+"150104",
+"150105"
+]
+},
+{
+"codigo": "1502",
+"descricao": "15.02 - Abertura de contas em geral, inclusive conta - corrente, conta de investimentos e aplicação e caderneta de poupança, no País e no exterior, bem como a manutenção das referidas contas ativas e inativas.",
+"aliquota": "5",
+"ctribnac": [
+"150201",
+"150202",
+"150203",
+"150204",
+"150205",
+"150206",
+"150207",
+"150208"
+]
+},
+{
+"codigo": "1503",
+"descricao": "15.03 - Locação e manutenção de cofres particulares, de terminais eletrônicos, de terminais de atendimento e de bens e equipamentos em geral.",
+"aliquota": "5",
+"ctribnac": [
+"150301",
+"150302",
+"150303",
+"150304",
+"150305",
+"150306",
+"150307",
+"150308"
+]
+},
+{
+"codigo": "1504",
+"descricao": "15.04 - Fornecimento ou emissão de atestados em geral, inclusive atestado de idoneidade, atestado de capacidade financeira e congêneres.",
+"aliquota": "5",
+"ctribnac": [
+"150401"
+]
+},
+{
+"codigo": "1505",
+"descricao": "15.05 - Cadastro, elaboração de ficha cadastral, renovação cadastral e congêneres, inclusão ou exclusão no Cadastro de Emitentes de Cheques sem Fundos - CCF ou em quaisquer outros bancos cadastrais.",
+"aliquota": "5",
+"ctribnac": [
+"150501",
+"150502",
+"150503",
+"150504",
+"150505"
+]
+},
+{
+"codigo": "1506",
+"descricao": "15.06 - Emissão, reemissão e fornecimento de avisos, comprovantes e documentos em geral; abono de firmas; coleta e entrega de documentos, bens e valores; comunicação com outra agência ou com a administração central; licenciamento eletrônico de veículos; transferência de veículos;agenciamento fiduciário ou depositário; devolução de bens em custódia.",
+"aliquota": "5",
+"ctribnac": [
+"150601",
+"150602",
+"150603",
+"150604",
+"150605",
+"150606",
+"150607",
+"150608"
+]
+},
+{
+"codigo": "1507",
+"descricao": "15.07 -  Acesso, movimentação, atendimento e consulta a contas em geral, por qualquer meio ou processo, inclusive por telefone, fac-símile, internet e telex, acesso a terminais de atendimento, inclusive vinte e quatro horas; acesso a outro banco e a rede compartilhada; fornecimento de saldo, extrato e demais informações relativas a contas em geral, por qualquer meio ou processo.",
+"aliquota": "5",
+"ctribnac": [
+"150701",
+"150702",
+"150703",
+"150704"
+]
+},
+{
+"codigo": "1508",
+"descricao": "15.08 - Emissão, reemissão, alteração, cessão, substituição, cancelamento e registro de contrato de crédito; estudo, análise e avaliação de operações de crédito; emissão, concessão, alteração ou contratação de aval, fiança, anuência e congêneres; serviços relativos a abertura de crédito, para quaisquer fins.",
+"aliquota": "5",
+"ctribnac": [
+"150801",
+"150802",
+"150803",
+"150804"
+]
+},
+{
+"codigo": "1509",
+"descricao": "15.09 - Arrendamento mercantil (leasing) de quaisquer bens, inclusive cessão de direitos e obrigações, substituição de garantia, alteração, cancelamento e registro de contrato, e demais serviços relacionados ao arrendamento mercantil (leasing).",
+"aliquota": "5",
+"ctribnac": [
+"150901"
+]
+},
+{
+"codigo": "1510",
+"descricao": "15.10 - Serviços relacionados a cobranças, recebimentos ou pagamentos em geral, de títulos quaisquer, de contas ou carnês, de câmbio, de tributos e por conta de terceiros, inclusive os efetuados por meio eletrônico, automático ou por máquinas de atendimento; fornecimento de posição de cobrança, recebimento ou pagamento; emissão de carnês, fichas de compensação, impressos e documentos em geral.",
+"aliquota": "5",
+"ctribnac": [
+"151001",
+"151002",
+"151003",
+"151004",
+"151005"
+]
+},
+{
+"codigo": "1511",
+"descricao": "15.11 - Devolução de títulos, protesto de títulos, sustação de protesto, manutenção de títulos, reapresentação de títulos, e demais serviços a eles relacionados.",
+"aliquota": "5",
+"ctribnac": [
+"151101"
+]
+},
+{
+"codigo": "1512",
+"descricao": "15.12 - Custódia em geral, inclusive de títulos e valores mobiliários.",
+"aliquota": "5",
+"ctribnac": [
+"151201"
+]
+},
+{
+"codigo": "1513",
+"descricao": "15.13 - Serviços relacionados a operações de câmbio em geral, edição, alteração, prorrogação, cancelamento e baixa de contrato de câmbio; emissão de registro de exportação ou de crédito; cobrança ou depósito no exterior; emissão, fornecimento e cancelamento de cheques de viagem;fornecimento, transferência, cancelamento e demais serviços relativos a carta de crédito de importação, exportação e garantias recebidas; envio e recebimento de mensagens em geral relacionadas a operações de câmbio.",
+"aliquota": "5",
+"ctribnac": [
+"151301",
+"151302",
+"151303",
+"151304",
+"151305",
+"151306"
+]
+},
+{
+"codigo": "1514",
+"descricao": "15.14 - Fornecimento, emissão, reemissão, renovação e manutenção de cartão magnético, cartão de crédito, cartão de débito, cartão salário e congêneres.",
+"aliquota": "5",
+"ctribnac": [
+"151401",
+"151402",
+"151403"
+]
+},
+{
+"codigo": "1515",
+"descricao": "15.15 - Compensação de cheques e títulos quaisquer; serviços relacionados a depósito, inclusive depósito identificado, a saque de contas quaisquer, por qualquer meio ou processo, inclusive em terminais eletrônicos e de atendimento.",
+"aliquota": "5",
+"ctribnac": [
+"151501",
+"151502"
+]
+},
+{
+"codigo": "1516",
+"descricao": "15.16 - Emissão, reemissão, liquidação, alteração, cancelamento e baixa de ordens de pagamento, ordens de crédito e similares, por qualquer meio ou processo; serviços relacionados à transferência de valores, dados, fundos, pagamentos e similares, inclusive entre contas em geral.",
+"aliquota": "5",
+"ctribnac": [
+"151601",
+"151602"
+]
+},
+{
+"codigo": "1517",
+"descricao": "15.17 - Emissão, fornecimento, devolução, sustação, cancelamento e oposição de cheques quaisquer, avulso ou por talão.",
+"aliquota": "5",
+"ctribnac": [
+"151701",
+"151702",
+"151703"
+]
+},
+{
+"codigo": "1518",
+"descricao": "15.18 - Serviços relacionados a crédito imobiliário, avaliação e vistoria de imóvel ou obra, análise técnica e jurídica, emissão, reemissão, alteração, transferência e renegociação de contrato, emissão e reemissão do termo de quitação e demais serviços relacionados a crédito imobiliário.",
+"aliquota": "5",
+"ctribnac": [
+"151801",
+"151802",
+"151803",
+"151804",
+"151805"
+]
+},
+{
+"codigo": "1601",
+"descricao": "16.01 - Serviços de transporte coletivo municipal rodoviário, metroviário, ferroviário e aquaviário de passageiros.",
+"aliquota": "5",
+"ctribnac": [
+"160101",
+"160102",
+"160103",
+"160104"
+]
+},
+{
+"codigo": "1602",
+"descricao": "16.02 - Outros serviços de transporte de natureza municipal.",
+"aliquota": "5",
+"ctribnac": [
+"160201",
+"990101"
+]
+},
+{
+"codigo": "1701",
+"descricao": "17.01 - Assessoria ou consultoria de qualquer natureza, não contida em outros itens desta lista; análise, exame, pesquisa, coleta, compilação e fornecimento de dados e informações de qualquer natureza, inclusive cadastro e similares.",
+"aliquota": "5",
+"ctribnac": [
+"170101",
+"170102"
+]
+},
+{
+"codigo": "1702",
+"descricao": "17.02 - Datilografia, digitação, estenografia, expediente, secretaria em geral, resposta audível, redação, edição, interpretação, revisão, tradução, apoio e infra-estrutura administrativa e congêneres.",
+"aliquota": "5",
+"ctribnac": [
+"170201",
+"170202",
+"170203",
+"170204",
+"170205"
+]
+},
+{
+"codigo": "1703",
+"descricao": "17.03 - Planejamento, coordenação, programação ou organização técnica, financeira ou administrativa.",
+"aliquota": "5",
+"ctribnac": [
+"170301",
+"170302",
+"170303"
+]
+},
+{
+"codigo": "1704",
+"descricao": "17.04 - Recrutamento, agenciamento, seleção e colocação de mão-de-obra.",
+"aliquota": "5",
+"ctribnac": [
+"170401"
+]
+},
+{
+"codigo": "1705",
+"descricao": "17.05 - Fornecimento de mão-de-obra, mesmo em caráter temporário, inclusive de empregados ou trabalhadores, avulsos ou temporários, contratados pelo prestador de serviço.",
+"aliquota": "5",
+"ctribnac": [
+"170501"
+]
+},
+{
+"codigo": "1706",
+"descricao": "17.06 - Propaganda e publicidade, inclusive promoção de vendas, planejamento de campanhas ou sistemas de publicidade, elaboração de desenhos, textos e demais materiais publicitários.",
+"aliquota": "5",
+"ctribnac": [
+"170601"
+]
+},
+{
+"codigo": "1708",
+"descricao": "17.08 - Franquia (franchising).",
+"aliquota": "2",
+"ctribnac": [
+"170801"
+]
+},
+{
+"codigo": "1709",
+"descricao": "17.09 - Perícias, laudos, exames técnicos e análises técnicas.",
+"aliquota": "5",
+"ctribnac": [
+"170901"
+]
+},
+{
+"codigo": "1710",
+"descricao": "17.10 - Planejamento, organização e administração de feiras, exposições, congressos e congêneres.",
+"aliquota": "2",
+"ctribnac": [
+"171001",
+"171002"
+]
+},
+{
+"codigo": "1711",
+"descricao": "17.11 - Organização de festas e recepções; bufê (exceto o fornecimento de alimentação e bebidas, que fica sujeito ao ICMS).",
+"aliquota": "5",
+"ctribnac": [
+"171101",
+"171102"
+]
+},
+{
+"codigo": "1712",
+"descricao": "17.12 - Administração em geral, inclusive de bens e negócios de terceiros.",
+"aliquota": "5",
+"ctribnac": [
+"171201"
+]
+},
+{
+"codigo": "1713",
+"descricao": "17.13 - Leilão e congêneres.",
+"aliquota": "5",
+"ctribnac": [
+"171301"
+]
+},
+{
+"codigo": "1714",
+"descricao": "17.14 - Advocacia.",
+"aliquota": "5",
+"ctribnac": [
+"171401"
+]
+},
+{
+"codigo": "1715",
+"descricao": "17.15 - Arbitragem de qualquer espécie, inclusive jurídica.",
+"aliquota": "5",
+"ctribnac": [
+"171501"
+]
+},
+{
+"codigo": "1716",
+"descricao": "17.16 - Auditoria.",
+"aliquota": "5",
+"ctribnac": [
+"171601"
+]
+},
+{
+"codigo": "1717",
+"descricao": "17.17 - Análise de Organização e Métodos.",
+"aliquota": "5",
+"ctribnac": [
+"171701"
+]
+},
+{
+"codigo": "1718",
+"descricao": "17.18 - Atuária e cálculos técnicos de qualquer natureza.",
+"aliquota": "5",
+"ctribnac": [
+"171801"
+]
+},
+{
+"codigo": "1719",
+"descricao": "17.19 - Contabilidade, inclusive serviços técnicos e auxiliares.",
+"aliquota": "5",
+"ctribnac": [
+"171901"
+]
+},
+{
+"codigo": "1720",
+"descricao": "17.20 - Consultoria e assessoria econômica ou financeira.",
+"aliquota": "5",
+"ctribnac": [
+"172001"
+]
+},
+{
+"codigo": "1721",
+"descricao": "17.21 - Estatística.",
+"aliquota": "5",
+"ctribnac": [
+"172101"
+]
+},
+{
+"codigo": "1722",
+"descricao": "17.22 - Cobrança em geral.",
+"aliquota": "5",
+"ctribnac": [
+"172201"
+]
+},
+{
+"codigo": "1723",
+"descricao": "17.23 - Assessoria, análise, avaliação, atendimento, consulta, cadastro, seleção, gerenciamento de informações, administração de contas a receber ou a pagar e em geral, relacionados a operações de faturização (factoring).",
+"aliquota": "5",
+"ctribnac": [
+"172301"
+]
+},
+{
+"codigo": "1724",
+"descricao": "17.24 - Apresentação de palestras, conferências, seminários e congêneres.",
+"aliquota": "2",
+"ctribnac": [
+"172401"
+]
+},
+{
+"codigo": "1725",
+"descricao": "17.25 - Inserção de textos, desenhos e outros materiais de propaganda e publicidade, em qualquer meio (exceto em livros, jornais, periódicos e nas modalidades de serviços de radiodifusão sonora e de sons e imagens de recepção livre e gratuita).",
+"aliquota": "5",
+"ctribnac": [
+"172501"
+]
+},
+{
+"codigo": "1801",
+"descricao": "18.01 - Serviços de regulação de sinistros vinculados a contratos de seguros; inspeção e avaliação de riscos para cobertura de contratos de seguros; prevenção e gerência de riscos seguráveis e congêneres.",
+"aliquota": "5",
+"ctribnac": [
+"180101",
+"180102",
+"180103"
+]
+},
+{
+"codigo": "1901",
+"descricao": "19.01 - Serviços de distribuição e venda de bilhetes e demais produtos de loteria, bingos, cartões, pules ou cupons de apostas, sorteios, prêmios, inclusive os decorrentes de títulos de capitalização e congêneres.",
+"aliquota": "5",
+"ctribnac": [
+"190101",
+"190102"
+]
+},
+{
+"codigo": "2001",
+"descricao": "20.01 - Serviços portuários, ferroportuários, utilização de porto, movimentação de passageiros, reboque de embarcações, rebocador escoteiro, atracação, desatracação, serviços de praticagem, capatazia, armazenagem de qualquer natureza, serviços acessórios, movimentação de mercadorias, serviços de apoio marítimo, de movimentação ao largo, serviços de armadores, estiva, conferência, logística e congêneres.",
+"aliquota": "5",
+"ctribnac": [
+"200101",
+"200102"
+]
+},
+{
+"codigo": "2002",
+"descricao": "20.02 - Serviços aeroportuários, utilização de aeroporto, movimentação de passageiros, armazenagem de qualquer natureza, capatazia, movimentação de aeronaves, serviços de apoio aeroportuários, serviços acessórios, movimentação de mercadorias, logística e congêneres.",
+"aliquota": "2",
+"ctribnac": [
+"200201"
+]
+},
+{
+"codigo": "2003",
+"descricao": "20.03 - Serviços de terminais rodoviários, ferroviários, metroviários, movimentação de passageiros, mercadorias, inclusive suas operações, logística e congêneres.",
+"aliquota": "5",
+"ctribnac": [
+"200301"
+]
+},
+{
+"codigo": "2101",
+"descricao": "21.01 - Serviços de registros públicos, cartorários e notariais.",
+"aliquota": "5",
+"ctribnac": [
+"210101"
+]
+},
+{
+"codigo": "2201",
+"descricao": "22.01 - Serviços de exploração de rodovia mediante cobrança de preço ou pedágio dos usuários, envolvendo execução de serviços de conservação, manutenção, melhoramentos para adequação de capacidade e segurança de trânsito, operação, monitoração, assistência aos usuários e outros serviços definidos em contratos, atos de concessão ou de permissão ou em normas oficiais.",
+"aliquota": "5",
+"ctribnac": [
+"220101"
+]
+},
+{
+"codigo": "2301",
+"descricao": "23.01 - Serviços de programação e comunicação visual, desenho industrial e congêneres.",
+"aliquota": "5",
+"ctribnac": [
+"230101",
+"230102"
+]
+},
+{
+"codigo": "2401",
+"descricao": "24.01 - Serviços de chaveiros, confecção de carimbos, placas, sinalização visual, banners, adesivos e congêneres.",
+"aliquota": "5",
+"ctribnac": [
+"240101",
+"240102"
+]
+},
+{
+"codigo": "2501",
+"descricao": "25.01 - Funerais, inclusive fornecimento de caixão, urna ou esquifes; aluguel de capela; transporte do corpo cadavérico; fornecimento de flores, coroas e outros paramentos; desembaraço de certidão de óbito; fornecimento de véu, essa e outros adornos; embalsamento, embelezamento, conservação ou restauração de cadáveres",
+"aliquota": "5",
+"ctribnac": [
+"250101"
+]
+},
+{
+"codigo": "2502",
+"descricao": "25.02 - Translado intramunicipal e cremação de corpos e partes de corpos cadavéricos.",
+"aliquota": "5",
+"ctribnac": [
+"250201",
+"250202"
+]
+},
+{
+"codigo": "2503",
+"descricao": "25.03 - Planos ou convênio funerários.",
+"aliquota": "5",
+"ctribnac": [
+"250301"
+]
+},
+{
+"codigo": "2504",
+"descricao": "25.04 - Manutenção e conservação de jazigos e cemitérios.",
+"aliquota": "5",
+"ctribnac": [
+"250401"
+]
+},
+{
+"codigo": "2505",
+"descricao": "25.05 - Cessão de uso de espaços em cemitérios para sepultamento.",
+"aliquota": "5",
+"ctribnac": [
+"250501"
+]
+},
+{
+"codigo": "2601",
+"descricao": "26.01 - Serviços de coleta, remessa ou entrega de correspondências, documentos, objetos, bens ou valores, inclusive pelos correios e suas agências franqueadas; courrier e congêneres.",
+"aliquota": "5",
+"ctribnac": [
+"260101",
+"260102"
+]
+},
+{
+"codigo": "2701",
+"descricao": "27.01 - Serviços de assistência social.",
+"aliquota": "5",
+"ctribnac": [
+"270101"
+]
+},
+{
+"codigo": "2801",
+"descricao": "28.01 - Serviços de avaliação de bens e serviços de qualquer natureza.",
+"aliquota": "5",
+"ctribnac": [
+"280101"
+]
+},
+{
+"codigo": "2901",
+"descricao": "29.01 - Serviços de biblioteconomia.",
+"aliquota": "5",
+"ctribnac": [
+"290101"
+]
+},
+{
+"codigo": "3001",
+"descricao": "30.01 - Serviços de biologia, biotecnologia e química.",
+"aliquota": "5",
+"ctribnac": [
+"300101",
+"300102"
+]
+},
+{
+"codigo": "3031",
+"descricao": "3.03 - Exploração de salões de festas",
+"aliquota": "2",
+"ctribnac": [
+"030301",
+"030302",
+"030303",
+"030304",
+"030305"
+]
+},
+{
+"codigo": "3051",
+"descricao": "3.05 - Cessão de andaimes",
+"aliquota": "5",
+"ctribnac": [
+"030501"
+]
+},
+{
+"codigo": "3101",
+"descricao": "31.01 - Serviços técnicos em edificações, eletrônica, eletrotécnica, mecânica, telecomunicações e congêneres.",
+"aliquota": "5",
+"ctribnac": [
+"310101",
+"310102",
+"310103",
+"310104"
+]
+},
+{
+"codigo": "3201",
+"descricao": "32.01 - Serviços de desenhos técnicos.",
+"aliquota": "5",
+"ctribnac": [
+"320101"
+]
+},
+{
+"codigo": "3301",
+"descricao": "33.01 - Serviços de desembaraço aduaneiro, comissários, despachantes e congêneres.",
+"aliquota": "5",
+"ctribnac": [
+"330101"
+]
+},
+{
+"codigo": "3401",
+"descricao": "34.01 - Serviços de investigações particulares, detetives e congêneres.",
+"aliquota": "5",
+"ctribnac": [
+"340101"
+]
+},
+{
+"codigo": "3501",
+"descricao": "35.01 - Serviços de reportagem, assessoria de imprensa, jornalismo e relações públicas.",
+"aliquota": "5",
+"ctribnac": [
+"350101",
+"350102",
+"350103"
+]
+},
+{
+"codigo": "3601",
+"descricao": "36.01 - Serviços de meteorologia.",
+"aliquota": "5",
+"ctribnac": [
+"360101"
+]
+},
+{
+"codigo": "3701",
+"descricao": "37.01 - Serviços de artistas, atletas, modelos e manequins",
+"aliquota": "5",
+"ctribnac": [
+"370101"
+]
+},
+{
+"codigo": "3801",
+"descricao": "38.01 - Serviços de museologia.",
+"aliquota": "5",
+"ctribnac": [
+"380101"
+]
+},
+{
+"codigo": "3901",
+"descricao": "39.01 - Serviços de ourivesaria e lapidação (quando o material for fornecido pelo tomador do serviço).",
+"aliquota": "5",
+"ctribnac": [
+"390101"
+]
+},
+{
+"codigo": "4001",
+"descricao": "40.01 - Obras de arte sob encomenda.",
+"aliquota": "5",
+"ctribnac": [
+"400101"
+]
+},
+{
+"codigo": "6031",
+"descricao": "6.03 - Massagens",
+"aliquota": "2",
+"ctribnac": [
+"060301"
+]
+},
+{
+"codigo": "7021",
+"descricao": "Concretagem (Dedução Livre)",
+"aliquota": "2",
+"ctribnac": [
+"070201",
+"070202"
+]
+},
+{
+"codigo": "9011",
+"descricao": "9.01 - Hotéis com CNAE 5510-8/00",
+"aliquota": "3",
+"ctribnac": [
+"090101",
+"090102",
+"090103",
+"090104"
+]
+},
+{
+"codigo": "15011",
+"descricao": "15.01 - Administração cartão de crédito ou débito e congêneres.",
+"aliquota": "5",
+"ctribnac": [
+"150101",
+"150102",
+"150103",
+"150104",
+"150105"
+]
+},
+{
+"codigo": "17251",
+"descricao": "Inserção de textos, desenhos e outros materiais de propaganda e publicidade - Veiculação (0%)",
+"aliquota": "0",
+"ctribnac": [
+"172501"
+]
+},
+{
+"codigo": "5911102",
+"descricao": "Produção de filmes para publicidade",
+"aliquota": "0",
+"ctribnac": [
+"990101"
+]
+},
+{
+"codigo": "5911199",
+"descricao": "Atividades de produção cinematográfica, de vídeos e de programas de televisão não especificadas anteriormente",
+"aliquota": "0",
+"ctribnac": [
+"990101"
+]
+},
+{
+"codigo": "9999999",
+"descricao": "Operações de saída ou retorno de bens do estabelecimento prestador",
+"aliquota": "0",
+"ctribnac": [
+"990101"
+]
+},
+{
+"codigo": "610260000",
+"descricao": "PROFISSIONAL DE NIVEL SUPERIOR OU LEGALMENTE EQUIPARADO",
+"aliquota": "0",
+"ctribnac": [
+"010101",
+"010201",
+"010301",
+"370101",
+"380101",
+"390101",
+"400101",
+"990101",
+"330101",
+"340101",
+"350101",
+"350102",
+"350103",
+"360101",
+"300102",
+"310101",
+"310102",
+"310103",
+"310104",
+"320101",
+"260101",
+"260102",
+"270101",
+"280101",
+"290101",
+"300101",
+"250101",
+"250201",
+"250202",
+"250301",
+"250401",
+"250501",
+"210101",
+"220101",
+"230101",
+"230102",
+"240101",
+"240102",
+"190101",
+"190102",
+"200101",
+"200102",
+"200201",
+"200301",
+"172301",
+"172401",
+"172501",
+"180101",
+"180102",
+"180103",
+"171701",
+"171801",
+"171901",
+"172001",
+"172101",
+"172201",
+"171102",
+"171201",
+"171301",
+"171401",
+"171501",
+"171601",
+"170601",
+"170801",
+"170901",
+"171001",
+"171002",
+"171101",
+"170205",
+"170301",
+"170302",
+"170303",
+"170401",
+"170501",
+"170101",
+"170102",
+"170201",
+"170202",
+"170203",
+"170204",
+"151805",
+"160101",
+"160102",
+"160103",
+"160104",
+"160201",
+"151702",
+"151703",
+"151801",
+"151802",
+"151803",
+"151804",
+"151403",
+"151501",
+"151502",
+"151601",
+"151602",
+"151701",
+"151303",
+"151304",
+"151305",
+"151306",
+"151401",
+"151402",
+"151004",
+"151005",
+"151101",
+"151201",
+"151301",
+"151302",
+"150803",
+"150804",
+"150901",
+"151001",
+"151002",
+"151003",
+"150701",
+"150702",
+"150703",
+"150704",
+"150801",
+"150802",
+"150603",
+"150604",
+"150605",
+"150606",
+"150607",
+"150608",
+"150502",
+"150503",
+"150504",
+"150505",
+"150601",
+"150602",
+"150305",
+"150306",
+"150307",
+"150308",
+"150401",
+"150501",
+"150207",
+"150208",
+"150301",
+"150302",
+"150303",
+"150304",
+"150201",
+"150202",
+"150203",
+"150204",
+"150205",
+"150206",
+"141404",
+"150101",
+"150102",
+"150103",
+"150104",
+"150105",
+"141201",
+"141301",
+"141302",
+"141401",
+"141402",
+"141403",
+"140601",
+"140701",
+"140801",
+"140901",
+"141001",
+"141101",
+"130501",
+"140101",
+"140201",
+"140301",
+"140401",
+"140501",
+"121501",
+"121601",
+"121701",
+"130201",
+"130301",
+"130401",
+"120903",
+"121001",
+"121101",
+"121201",
+"121301",
+"121401",
+"120501",
+"120601",
+"120701",
+"120801",
+"120901",
+"120902",
+"110402",
+"110501",
+"120101",
+"120201",
+"120301",
+"120401",
+"101001",
+"110101",
+"110102",
+"110201",
+"110301",
+"110401",
+"100501",
+"100502",
+"100601",
+"100701",
+"100801",
+"100901",
+"100201",
+"100202",
+"100301",
+"100401",
+"100402",
+"100403",
+"090301",
+"100101",
+"100102",
+"100103",
+"100104",
+"100105",
+"090101",
+"090102",
+"090103",
+"090104",
+"090201",
+"090202",
+"072003",
+"072101",
+"072201",
+"080101",
+"080102",
+"080201",
+"071601",
+"071701",
+"071801",
+"071901",
+"072001",
+"072002",
+"071001",
+"071002",
+"071101",
+"071102",
+"071201",
+"071301",
+"070601",
+"070602",
+"070701",
+"070801",
+"070901",
+"070902",
+"070202",
+"070301",
+"070302",
+"070401",
+"070501",
+"070502",
+"070102",
+"070103",
+"070104",
+"070105",
+"070106",
+"070201",
+"060201",
+"060301",
+"060401",
+"060501",
+"060601",
+"070101",
+"050501",
+"050601",
+"050701",
+"050801",
+"050901",
+"060101",
+"050101",
+"050102",
+"050201",
+"050202",
+"050301",
+"050401",
+"041801",
+"041901",
+"042001",
+"042101",
+"042201",
+"042301",
+"041501",
+"041601",
+"041701",
+"041702",
+"041703",
+"041704",
+"040901",
+"041001",
+"041101",
+"041201",
+"041301",
+"041401",
+"040501",
+"040601",
+"040701",
+"040801",
+"040802",
+"040803",
+"040204",
+"040205",
+"040301",
+"040302",
+"040303",
+"040401",
+"030501",
+"040101",
+"040102",
+"040201",
+"040202",
+"040203",
+"030303",
+"030304",
+"030305",
+"030401",
+"030402",
+"030403",
+"010901",
+"010902",
+"020101",
+"030201",
+"030301",
+"030302",
+"010302",
+"010401",
+"010501",
+"010601",
+"010701",
+"010801"
+]
+},
+{
+"codigo": "610340000",
+"descricao": "PROFISSIONAL DE NIVEL MEDIO OU LEGALMENTE EQUIPARADO",
+"aliquota": "0",
+"ctribnac": [
+"010101",
+"010201",
+"010301",
+"010302",
+"010401",
+"010501",
+"400101",
+"990101",
+"350102",
+"350103",
+"360101",
+"370101",
+"380101",
+"390101",
+"310103",
+"310104",
+"320101",
+"330101",
+"340101",
+"350101",
+"280101",
+"290101",
+"300101",
+"300102",
+"310101",
+"310102",
+"250301",
+"250401",
+"250501",
+"260101",
+"260102",
+"270101",
+"230102",
+"240101",
+"240102",
+"250101",
+"250201",
+"250202",
+"200102",
+"200201",
+"200301",
+"210101",
+"220101",
+"230101",
+"180101",
+"180102",
+"180103",
+"190101",
+"190102",
+"200101",
+"172001",
+"172101",
+"172201",
+"172301",
+"172401",
+"172501",
+"171401",
+"171501",
+"171601",
+"171701",
+"171801",
+"171901",
+"171001",
+"171002",
+"171101",
+"171102",
+"171201",
+"171301",
+"170303",
+"170401",
+"170501",
+"170601",
+"170801",
+"170901",
+"170202",
+"170203",
+"170204",
+"170205",
+"170301",
+"170302",
+"160103",
+"160104",
+"160201",
+"170101",
+"170102",
+"170201",
+"151802",
+"151803",
+"151804",
+"151805",
+"160101",
+"160102",
+"151601",
+"151602",
+"151701",
+"151702",
+"151703",
+"151801",
+"151306",
+"151401",
+"151402",
+"151403",
+"151501",
+"151502",
+"151201",
+"151301",
+"151302",
+"151303",
+"151304",
+"151305",
+"151001",
+"151002",
+"151003",
+"151004",
+"151005",
+"151101",
+"150704",
+"150801",
+"150802",
+"150803",
+"150804",
+"150901",
+"150606",
+"150607",
+"150608",
+"150701",
+"150702",
+"150703",
+"150505",
+"150601",
+"150602",
+"150603",
+"150604",
+"150605",
+"150308",
+"150401",
+"150501",
+"150502",
+"150503",
+"150504",
+"150302",
+"150303",
+"150304",
+"150305",
+"150306",
+"150307",
+"150204",
+"150205",
+"150206",
+"150207",
+"150208",
+"150301",
+"150103",
+"150104",
+"150105",
+"150201",
+"150202",
+"150203",
+"141401",
+"141402",
+"141403",
+"141404",
+"150101",
+"150102",
+"140901",
+"141001",
+"141101",
+"141201",
+"141301",
+"141302",
+"140301",
+"140401",
+"140501",
+"140601",
+"140701",
+"140801",
+"130201",
+"130301",
+"130401",
+"130501",
+"140101",
+"140201",
+"121201",
+"121301",
+"121401",
+"121501",
+"121601",
+"121701",
+"120801",
+"120901",
+"120902",
+"120903",
+"121001",
+"121101",
+"120201",
+"120301",
+"120401",
+"120501",
+"120601",
+"120701",
+"110201",
+"110301",
+"110401",
+"110402",
+"110501",
+"120101",
+"100701",
+"100801",
+"100901",
+"101001",
+"110101",
+"110102",
+"100401",
+"100402",
+"100403",
+"100501",
+"100502",
+"100601",
+"100103",
+"100104",
+"100105",
+"100201",
+"100202",
+"100301",
+"090104",
+"090201",
+"090202",
+"090301",
+"100101",
+"100102",
+"080101",
+"080102",
+"080201",
+"090101",
+"090102",
+"090103",
+"071901",
+"072001",
+"072002",
+"072003",
+"072101",
+"072201",
+"071102",
+"071201",
+"071301",
+"071601",
+"071701",
+"071801",
+"070801",
+"070901",
+"070902",
+"071001",
+"071002",
+"071101",
+"070401",
+"070501",
+"070502",
+"070601",
+"070602",
+"070701",
+"070105",
+"070106",
+"070201",
+"070202",
+"070301",
+"070302",
+"060501",
+"060601",
+"070101",
+"070102",
+"070103",
+"070104",
+"050801",
+"050901",
+"060101",
+"060201",
+"060301",
+"060401",
+"050202",
+"050301",
+"050401",
+"050501",
+"050601",
+"050701",
+"042101",
+"042201",
+"042301",
+"050101",
+"050102",
+"050201",
+"041702",
+"041703",
+"041704",
+"041801",
+"041901",
+"042001",
+"041201",
+"041301",
+"041401",
+"041501",
+"041601",
+"041701",
+"040801",
+"040802",
+"040803",
+"040901",
+"041001",
+"041101",
+"040302",
+"040303",
+"040401",
+"040501",
+"040601",
+"040701",
+"040201",
+"040202",
+"040203",
+"040204",
+"040205",
+"040301",
+"030401",
+"030402",
+"030403",
+"030501",
+"040101",
+"040102",
+"030201",
+"030301",
+"030302",
+"030303",
+"030304",
+"030305",
+"010601",
+"010701",
+"010801",
+"010901",
+"010902",
+"020101"
+]
+},
+{
+"codigo": "610420000",
+"descricao": "PROFISSIONAL AUTONOMO EM  ATIVIDADE DE ARTIFICE OU ARTESAO",
+"aliquota": "0",
+"ctribnac": [
+"400101"
+]
+},
+{
+"codigo": "610500000",
+"descricao": "ADESTRADOR, AGENTE, ARTISTA, ATLETA, AVALIADOR, COMISSARIO, CORRETOR,DESENHISTA, DESPACHANTE, FOTOGRAFO, INTERMEDIARIO, INVESTIGADOR, PERITO, PROFESSOR, PROGRAMADOR, PROPAGANDISTA, REPORTER, REPRESENTANTE, CANTOR, CENOGRAFO, DANCARINO, MUSICO, MODELO, PROMOTOR DE VENDAS E OUTRASPROFISSOES PREVISTAS NO DECRETO 25508/2005.",
+"aliquota": "0",
+"ctribnac": [
+"010201",
+"040101",
+"040102",
+"172101",
+"172201",
+"172301",
+"172401",
+"172501",
+"370101",
+"171501",
+"171601",
+"171701",
+"171801",
+"171901",
+"172001",
+"171002",
+"171101",
+"171102",
+"171201",
+"171301",
+"171401",
+"170401",
+"170501",
+"170601",
+"170801",
+"170901",
+"171001",
+"170203",
+"170204",
+"170205",
+"170301",
+"170302",
+"170303",
+"141301",
+"141302",
+"170101",
+"170102",
+"170201",
+"170202",
+"130401",
+"140201",
+"140901",
+"141001",
+"141101",
+"141201",
+"090301",
+"100901",
+"110201",
+"110301",
+"130201",
+"130301",
+"041601",
+"050101",
+"050102",
+"050801",
+"080101",
+"080102",
+"040803",
+"041001",
+"041101",
+"041201",
+"041301",
+"041501",
+"040401",
+"040501",
+"040601",
+"040701",
+"040801",
+"040802"
+]
+},
+{
+"codigo": "610690000",
+"descricao": "PROFISSIONAL AUTONOMO EM ATIVIDADE  DE  BARBEIROS, CABELEIREIROS, MANICURES, PEDICURES, TRATAMENTO DA PELE, DE",
+"aliquota": "0",
+"ctribnac": [
+"060101",
+"060201"
+]
+},
+{
+"codigo": "610770000",
+"descricao": "DEMAIS PROFISSIONAIS AUTONOMOS NAO INCLUIDOS NOS CODIGOS 6.10.26 A 6.10.69 Z610770000",
+"aliquota": "0",
+"ctribnac": [
+"010101",
+"010201",
+"010301",
+"010302",
+"010401",
+"010501",
+"400101",
+"990101",
+"350102",
+"350103",
+"360101",
+"370101",
+"380101",
+"390101",
+"310103",
+"310104",
+"320101",
+"330101",
+"340101",
+"350101",
+"280101",
+"290101",
+"300101",
+"300102",
+"310101",
+"310102",
+"250301",
+"250401",
+"250501",
+"260101",
+"260102",
+"270101",
+"230102",
+"240101",
+"240102",
+"250101",
+"250201",
+"250202",
+"200102",
+"200201",
+"200301",
+"210101",
+"220101",
+"230101",
+"180101",
+"180102",
+"180103",
+"190101",
+"190102",
+"200101",
+"172001",
+"172101",
+"172201",
+"172301",
+"172401",
+"172501",
+"171401",
+"171501",
+"171601",
+"171701",
+"171801",
+"171901",
+"171001",
+"171002",
+"171101",
+"171102",
+"171201",
+"171301",
+"170303",
+"170401",
+"170501",
+"170601",
+"170801",
+"170901",
+"170202",
+"170203",
+"170204",
+"170205",
+"170301",
+"170302",
+"160103",
+"160104",
+"160201",
+"170101",
+"170102",
+"170201",
+"151802",
+"151803",
+"151804",
+"151805",
+"160101",
+"160102",
+"151601",
+"151602",
+"151701",
+"151702",
+"151703",
+"151801",
+"151306",
+"151401",
+"151402",
+"151403",
+"151501",
+"151502",
+"151201",
+"151301",
+"151302",
+"151303",
+"151304",
+"151305",
+"151001",
+"151002",
+"151003",
+"151004",
+"151005",
+"151101",
+"150704",
+"150801",
+"150802",
+"150803",
+"150804",
+"150901",
+"150606",
+"150607",
+"150608",
+"150701",
+"150702",
+"150703",
+"150505",
+"150601",
+"150602",
+"150603",
+"150604",
+"150605",
+"150308",
+"150401",
+"150501",
+"150502",
+"150503",
+"150504",
+"150302",
+"150303",
+"150304",
+"150305",
+"150306",
+"150307",
+"150204",
+"150205",
+"150206",
+"150207",
+"150208",
+"150301",
+"150103",
+"150104",
+"150105",
+"150201",
+"150202",
+"150203",
+"141401",
+"141402",
+"141403",
+"141404",
+"150101",
+"150102",
+"140901",
+"141001",
+"141101",
+"141201",
+"141301",
+"141302",
+"140301",
+"140401",
+"140501",
+"140601",
+"140701",
+"140801",
+"130201",
+"130301",
+"130401",
+"130501",
+"140101",
+"140201",
+"121201",
+"121301",
+"121401",
+"121501",
+"121601",
+"121701",
+"120801",
+"120901",
+"120902",
+"120903",
+"121001",
+"121101",
+"120201",
+"120301",
+"120401",
+"120501",
+"120601",
+"120701",
+"110201",
+"110301",
+"110401",
+"110402",
+"110501",
+"120101",
+"100701",
+"100801",
+"100901",
+"101001",
+"110101",
+"110102",
+"100401",
+"100402",
+"100403",
+"100501",
+"100502",
+"100601",
+"100103",
+"100104",
+"100105",
+"100201",
+"100202",
+"100301",
+"090104",
+"090201",
+"090202",
+"090301",
+"100101",
+"100102",
+"080101",
+"080102",
+"080201",
+"090101",
+"090102",
+"090103",
+"071901",
+"072001",
+"072002",
+"072003",
+"072101",
+"072201",
+"071102",
+"071201",
+"071301",
+"071601",
+"071701",
+"071801",
+"070801",
+"070901",
+"070902",
+"071001",
+"071002",
+"071101",
+"070401",
+"070501",
+"070502",
+"070601",
+"070602",
+"070701",
+"070105",
+"070106",
+"070201",
+"070202",
+"070301",
+"070302",
+"060501",
+"060601",
+"070101",
+"070102",
+"070103",
+"070104",
+"050801",
+"050901",
+"060101",
+"060201",
+"060301",
+"060401",
+"050202",
+"050301",
+"050401",
+"050501",
+"050601",
+"050701",
+"042101",
+"042201",
+"042301",
+"050101",
+"050102",
+"050201",
+"041702",
+"041703",
+"041704",
+"041801",
+"041901",
+"042001",
+"041201",
+"041301",
+"041401",
+"041501",
+"041601",
+"041701",
+"040801",
+"040802",
+"040803",
+"040901",
+"041001",
+"041101",
+"040302",
+"040303",
+"040401",
+"040501",
+"040601",
+"040701",
+"040201",
+"040202",
+"040203",
+"040204",
+"040205",
+"040301",
+"030401",
+"030402",
+"030403",
+"030501",
+"040101",
+"040102",
+"030201",
+"030301",
+"030302",
+"030303",
+"030304",
+"030305",
+"010601",
+"010701",
+"010801",
+"010901",
+"010902",
+"020101"
+]
+},
+{
+"codigo": "610780100",
+"descricao": "Taxista",
+"aliquota": "0",
+"ctribnac": [
+"160201"
+]
+},
+{
+"codigo": "681020200",
+"descricao": "Aluguel de imóveis próprios",
+"aliquota": "0",
+"ctribnac": [
+"990101"
+]
+},
+{
+"codigo": "771100000",
+"descricao": "Locação de automóveis sem condutor",
+"aliquota": "0",
+"ctribnac": [
+"990101"
+]
+},
+{
+"codigo": "771950100",
+"descricao": "Locação de embarcações sem tripulação, exceto para fins_x000D_recreativos",
+"aliquota": "0",
+"ctribnac": [
+"990101"
+]
+},
+{
+"codigo": "771950200",
+"descricao": "Locação de aeronaves sem tripulação",
+"aliquota": "0",
+"ctribnac": [
+"990101"
+]
+},
+{
+"codigo": "771959900",
+"descricao": "Locação de outros meios de transporte não especificados anteriormente, sem condutor",
+"aliquota": "0",
+"ctribnac": [
+"990101"
+]
+},
+{
+"codigo": "772170000",
+"descricao": "Aluguel de equipamentos recreativos e esportivos",
+"aliquota": "0",
+"ctribnac": [
+"990101"
+]
+},
+{
+"codigo": "772250000",
+"descricao": "Aluguel de fitas de vídeo, DVDs e similares",
+"aliquota": "0",
+"ctribnac": [
+"990101"
+]
+},
+{
+"codigo": "772330000",
+"descricao": "Aluguel de objetos do vestuário, jóias e acessórios",
+"aliquota": "0",
+"ctribnac": [
+"990101"
+]
+},
+{
+"codigo": "772920100",
+"descricao": "Aluguel de aparelhos de jogos eletrônicos",
+"aliquota": "0",
+"ctribnac": [
+"990101"
+]
+},
+{
+"codigo": "772920200",
+"descricao": "Aluguel de móveis, utensílios e aparelhos de uso doméstico e pessoal; instrumentos musicais",
+"aliquota": "0",
+"ctribnac": [
+"990101"
+]
+},
+{
+"codigo": "772920300",
+"descricao": "Aluguel de material médico",
+"aliquota": "0",
+"ctribnac": [
+"990101"
+]
+},
+{
+"codigo": "772929900",
+"descricao": "Aluguel de outros objetos pessoais e domésticos não especificados anteriormente",
+"aliquota": "0",
+"ctribnac": [
+"990101"
+]
+},
+{
+"codigo": "773140000",
+"descricao": "Aluguel de máquinas e equipamentos agrícolas sem operador",
+"aliquota": "0",
+"ctribnac": [
+"990101"
+]
+},
+{
+"codigo": "773220100",
+"descricao": "Aluguel de máquinas e equipamentos para construção sem operador, exceto andaimes",
+"aliquota": "0",
+"ctribnac": [
+"990101"
+]
+},
+{
+"codigo": "773310000",
+"descricao": "Aluguel de máquinas e equipamentos para escritório",
+"aliquota": "0",
+"ctribnac": [
+"990101"
+]
+},
+{
+"codigo": "773900100",
+"descricao": "Aluguel de máquinas e equipamentos para extração de minérios e petróleo, sem operador",
+"aliquota": "0",
+"ctribnac": [
+"990101"
+]
+},
+{
+"codigo": "773900200",
+"descricao": "Aluguel de equipamentos científicos, médicos e hospitalares, sem operador",
+"aliquota": "0",
+"ctribnac": [
+"990101"
+]
+},
+{
+"codigo": "773909900",
+"descricao": "Aluguel de outras máquinas e equipamentos comerciais e industriais não especificados anteriormente, sem operador",
+"aliquota": "0",
+"ctribnac": [
+"990101"
+]
+},
+{
+"codigo": "861010208",
+"descricao": "Serviços hospitalares e congêneres, quando faturados para institutos oficiais de previdência social, assistência social ou assistência à saúde",
+"aliquota": "2",
+"ctribnac": [
+"040301",
+"040302",
+"040303"
+]
+}
+]
+}

@@ -16,7 +16,7 @@ from app.core.certificados import situacao_validade
 from app.core.db import sessao
 from app.emissor import tabelas
 from app.emissor import textos
-from app.emissor.motor import ambiente, bloqueio_municipio, eh_simples, producao_disponivel
+from app.emissor.motor import ISSNET_DF, ambiente, canal, eh_simples, pendencia_canal, producao_disponivel
 from app.fiscal.documentos import cnpj_valido, cpf_valido, raiz_cnpj
 from app.models import Certificado, EmissorEmpresa, Empresa, NotaEmitida, ServicoEmissor, SyncEstado, Tomador
 
@@ -165,12 +165,13 @@ def _item_empresa(db: Session, e: Empresa) -> dict:
         if not garantir_municipio(db, e, cfg):
             pendencias.append("Não foi possível descobrir o código IBGE do município da empresa. Confira o município e "
                               "a UF no cadastro da empresa ou informe o código nos dados do prestador.")
-    if bloqueio_municipio(cfg):
-        pendencias.append(bloqueio_municipio(cfg))
+    pend_canal = pendencia_canal(db, e, cfg)
+    if pend_canal:
+        pendencias.append(pend_canal)
     if not e.ativa:
         pendencias.append("A empresa está inativa.")
     avisos = []
-    if procuracao:
+    if procuracao and canal(cfg) != ISSNET_DF:
         if ambiente(cfg) == 2:
             pendencias.append("Emissão por procuração só é aceita em produção: a homologação da Sefin recusa (E0718). "
                               "Escolha Produção no ambiente de emissão ou cadastre o certificado da empresa.")
@@ -196,6 +197,7 @@ def _item_empresa(db: Session, e: Empresa) -> dict:
             "producao_liberada": cfg.producao_liberada, "regime_tributario": cfg.regime_tributario,
             "simples": eh_simples(cfg)},
         "ambiente": ambiente(cfg),
+        "canal": canal(cfg),
         "pendencias": pendencias,
         "avisos": avisos,
         "pronta": e.emite_nfse and not pendencias,
@@ -226,12 +228,16 @@ def _validar_servico(d: ServicoIn) -> dict:
     if len(nbs) != 9 or tabelas.nbs_descricao(nbs) is None:
         raise HTTPException(422, "Código NBS não encontrado na tabela oficial (NBS 2.0).")
     campos = {"descricao": descricao, "ctribnac": ctrib, "cnbs": nbs, "ativo": d.ativo}
-    for nome, tam, rotulo in (("ctribmun", 3, "O código municipal"), ("cindop", 6, "O indicador da operação (cIndOp)"),
+    for nome, tam, rotulo in (("cindop", 6, "O indicador da operação (cIndOp)"),
                               ("cclasstrib", 6, "A classificação tributária (cClassTrib)")):
         v = _dig(getattr(d, nome))
         if v and len(v) != tam:
             raise HTTPException(422, f"{rotulo} deve ter {tam} dígitos.")
         campos[nome] = v or None
+    mun = _dig(d.ctribmun)
+    if len(mun) > 10:
+        raise HTTPException(422, "O código municipal deve ter até 10 dígitos (3 no padrão nacional; até 10 no ISSNet do DF).")
+    campos["ctribmun"] = mun or None
     return campos
 
 
@@ -427,6 +433,51 @@ def codigos_sugestoes(ctribnac: str):
     return tabelas.sugestoes(_dig(ctribnac))
 
 
+@router.get("/codigos/ctribmun-df")
+def codigos_ctribmun_df(q: str = "", ctribnac: str | None = None, limite: int = Query(40, ge=1, le=300)):
+    """cTribMun do DF (ISSNet), com os ligados ao código nacional do serviço primeiro."""
+    from app.emissor.issnet import ctribmun_df
+    return ctribmun_df.buscar(q, _dig(ctribnac) or None, limite)
+
+
+# ---------------------------------------------------------------------------
+# RPS do ISSNet do DF
+# ---------------------------------------------------------------------------
+
+def _empresa_issnet(db: Session, empresa_id: int, esc: int) -> tuple[Empresa, EmissorEmpresa]:
+    e = _empresa(db, empresa_id, esc)
+    cfg = db.get(EmissorEmpresa, e.id)
+    if canal(cfg) != ISSNET_DF:
+        raise HTTPException(409, "Esta empresa emite pela Sefin Nacional: não usa RPS do ISSNet.")
+    return e, cfg
+
+
+@router.get("/empresas/{empresa_id}/rps")
+def resumo_rps(empresa_id: int, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
+    from app.emissor.issnet import rps
+    e, cfg = _empresa_issnet(db, empresa_id, esc)
+    return rps.resumo(db, e.id, ambiente(cfg)).como_dict()
+
+
+@router.post("/empresas/{empresa_id}/rps/atualizar")
+def atualizar_rps(empresa_id: int, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
+    """Lê no ISSNet a lista de RPS liberados (só leitura) e devolve o resumo."""
+    from app.core.certificados import carregar_pfx
+    from app.emissor import motor
+    from app.emissor.issnet import rps
+    e, cfg = _empresa_issnet(db, empresa_id, esc)
+    pend = pendencia_canal(db, e, cfg)
+    if pend:
+        raise HTTPException(422, pend)
+    amb = ambiente(cfg)
+    pfx, senha = carregar_pfx(certificado_proprio(db, e))
+    with motor._trava(e.id), motor.fabrica_issnet(amb, pfx, senha) as cli:
+        sinc = rps.sincronizar(db, e.id, e.cnpj, cfg.inscricao_municipal, amb, cli)
+    if sinc.erro:
+        raise HTTPException(502, sinc.erro)
+    return rps.resumo(db, e.id, amb).como_dict()
+
+
 # ---------------------------------------------------------------------------
 # Tomadores
 # ---------------------------------------------------------------------------
@@ -569,6 +620,7 @@ def _nota_out(db: Session, n: NotaEmitida) -> dict:
         "situacao": n.situacao, "competencia": n.competencia, "tomador": n.tomador, "descricao": n.descricao,
         "ctribnac": n.ctribnac, "ctribnac_formatado": tabelas.formatar_ctribnac(n.ctribnac),
         "cnbs": n.cnbs, "cnbs_formatado": tabelas.formatar_nbs(n.cnbs), "ctribmun": n.ctribmun,
+        "canal": n.canal, "cindop": n.cindop, "cclasstrib": n.cclasstrib,
         "cod_municipio_prestacao": n.cod_municipio_prestacao,
         "valor_servico": f(n.valor_servico), "desconto": f(n.desconto), "iss_retido": n.iss_retido,
         "aliquota_iss": f(n.aliquota_iss), "ret_pis": f(n.ret_pis), "ret_cofins": f(n.ret_cofins),

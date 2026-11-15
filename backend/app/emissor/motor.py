@@ -6,6 +6,9 @@ Regras de segurança:
   duplicidade (E0014), então não existe nota duplicada.
 - Depois de falha de rede, o resultado é desconhecido: consulta-se /dps/{id} antes de qualquer reenvio.
 - Ambiente: produção restrita, salvo CONTASK_EMISSOR_PRODUCAO=true E a empresa com producao_liberada.
+- Canal: empresa do DF fora do Simples emite pelo webservice do ISSNet do DF; as demais pela Sefin Nacional.
+  No ISSNet o número da DPS (RPS) é do fisco: vem da lista de RPS disponíveis (issnet.rps), reservado antes do
+  envio. Depois de falha de rede consulta-se ConsultarNfseDps antes de qualquer reenvio.
 """
 from __future__ import annotations
 
@@ -18,6 +21,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Callable
 
+from lxml import etree
 from sqlalchemy.orm import Session
 
 from app.core.certificados import carregar_pfx, situacao_validade
@@ -25,8 +29,11 @@ from app.core.config import config
 from app.emissor import assinatura, textos
 from app.emissor.dps import (
     BRASILIA, PRODUCAO, RESTRITA, Cancelamento, DadosDps, DpsInvalida, Prestador, Retencoes, TomadorDps,
-    centavos, id_dps, montar, montar_cancelamento, serializar, validar_xsd,
+    centavos, id_dps, montar, montar_cancelamento, montar_issnet, serializar, validar_xsd, validar_xsd_issnet,
 )
+from app.emissor.issnet import mensagens as issnet_msg
+from app.emissor.issnet import rps as issnet_rps
+from app.emissor.issnet.soap import ClienteIssnet, ErroIssnet
 from app.emissor.sefin import ClienteSefin, ErroSefin
 from app.fiscal.parser import parse_nfse
 from app.models import EmissorEmpresa, Empresa, NotaEmitida, ServicoEmissor, agora
@@ -64,10 +71,6 @@ def eh_simples(cfg: EmissorEmpresa | None) -> bool:
 
 
 BRASILIA = "5300108"
-MSG_DF = ("No DF, só as empresas do Simples Nacional (e MEI) emitem pelo Emissor Nacional. As demais continuam no "
-          "emissor do DF (ISSNet) e não estão no cadastro nacional (CNC), então a Sefin recusa a nota (E0084). "
-          "Emita esta nota pelo ISSNet do DF. Se a empresa for do Simples, ajuste o regime tributário nos dados do prestador.")
-
 
 NACIONAL, ISSNET_DF = "nacional", "issnet_df"
 
@@ -79,16 +82,24 @@ def canal(cfg: EmissorEmpresa | None) -> str:
     return NACIONAL
 
 
-def bloqueio_municipio(cfg: EmissorEmpresa | None) -> str | None:
-    """Município que não aceita esta empresa no padrão nacional: hoje, o DF fora do Simples."""
-    if cfg is not None and cfg.cod_municipio == BRASILIA and not eh_simples(cfg):
-        return MSG_DF
+def pendencia_canal(db: Session, e: Empresa, cfg: EmissorEmpresa | None) -> str | None:
+    """O que falta para emitir pelo ISSNet do DF (None quando o canal é a Sefin ou está tudo certo)."""
+    from app.api.emissor import certificado_proprio
+    if canal(cfg) != ISSNET_DF:
+        return None
+    if certificado_proprio(db, e) is None:
+        return ("No DF, empresa fora do Simples emite pelo ISSNet, que exige o certificado A1 da própria empresa "
+                "(não aceita procuração). Cadastre o certificado da empresa.")
+    if not (cfg.inscricao_municipal or "").strip():
+        return "Informe a inscrição municipal nos dados do prestador: o ISSNet do DF exige."
     return None
 
 
 # Injetável nos testes
 FabricaCliente = Callable[[int, bytes, str], ClienteSefin]
 fabrica_cliente: FabricaCliente = lambda amb, pfx, senha: ClienteSefin(ambiente=amb, pfx=pfx, senha=senha)  # noqa: E731
+FabricaIssnet = Callable[[int, bytes, str], ClienteIssnet]
+fabrica_issnet: FabricaIssnet = lambda amb, pfx, senha: ClienteIssnet(ambiente=amb, pfx=pfx, senha=senha)  # noqa: E731
 
 
 class ErroEmissao(Exception):
@@ -143,14 +154,15 @@ def _empresa_pronta(db: Session, esc: int, empresa_id: int) -> tuple[Empresa, Em
     if situacao_validade(cert.validade) == "vencido":
         raise ErroEmissao(f"O certificado da empresa venceu em {cert.validade:%d/%m/%Y}.")
     cfg = config_prestador(db, e)
-    if emite_por_procuracao(db, e) and ambiente(cfg) == RESTRITA:
+    if canal(cfg) == NACIONAL and emite_por_procuracao(db, e) and ambiente(cfg) == RESTRITA:
         # Barrado antes de gastar número: a produção restrita não reconhece procurações
         raise ErroEmissao("Na homologação a Sefin recusa a emissão por procuração (E0718). Escolha Produção no ambiente "
                           "de emissão desta empresa ou cadastre o certificado A1 dela.")
     from app.emissor.municipio import garantir_municipio
     municipio_ok = garantir_municipio(db, e, cfg)
-    if bloqueio_municipio(cfg):
-        raise ErroEmissao(MSG_DF)  # barrado antes de gastar número e sem enviar à Sefin
+    pend = pendencia_canal(db, e, cfg)
+    if pend:
+        raise ErroEmissao(pend)  # barrado antes de gastar número
     if not municipio_ok:
         raise ErroEmissao("Não foi possível descobrir o código IBGE do município da empresa. Confira o município e a UF "
                           "no cadastro da empresa ou informe o código nos dados do prestador.")
@@ -172,6 +184,7 @@ def _dados(e: Empresa, cfg: EmissorEmpresa, nota: NotaEmitida) -> DadosDps:
         retencoes=Retencoes(iss=nota.iss_retido, pis=centavos(nota.ret_pis), cofins=centavos(nota.ret_cofins),
                             csll=centavos(nota.ret_csll), irrf=centavos(nota.ret_irrf), cp=centavos(nota.ret_cp)),
         percentual_tributos_sn=cfg.percentual_tributos, info_complementar=nota.info_complementar,
+        cindop=nota.cindop, cclasstrib=nota.cclasstrib,
     )
 
 
@@ -186,6 +199,7 @@ def _preencher(db: Session, nota: NotaEmitida, e: Empresa, cfg: EmissorEmpresa, 
     descricao = (ent.descricao or "").strip() or serv.descricao
     nota.servico_id = serv.id
     nota.ctribnac, nota.cnbs, nota.ctribmun = serv.ctribnac, serv.cnbs, serv.ctribmun
+    nota.cindop, nota.cclasstrib = serv.cindop, serv.cclasstrib
     nota.descricao = descricao
     nota.competencia = ent.competencia
     nota.tomador = ent.tomador
@@ -202,7 +216,14 @@ def _preencher(db: Session, nota: NotaEmitida, e: Empresa, cfg: EmissorEmpresa, 
 
 
 def _xml_assinado(db: Session, e: Empresa, cfg: EmissorEmpresa, nota: NotaEmitida) -> bytes:
-    from app.api.emissor import certificado_emissor
+    from app.api.emissor import certificado_emissor, certificado_proprio
+    if nota.canal == ISSNET_DF:
+        raiz = montar_issnet(_dados(e, cfg, nota))
+        pfx, senha = carregar_pfx(certificado_proprio(db, e))
+        chave, cert = assinatura.carregar_chave(pfx, senha)
+        assinatura.assinar(raiz, raiz[0], chave, cert, perfil=PERFIS_ISSNET[0])
+        validar_xsd_issnet(etree.fromstring(issnet_msg.gerar_nfse(raiz).encode("utf-8")))
+        return serializar(raiz)
     raiz = montar(_dados(e, cfg, nota))
     pfx, senha = carregar_pfx(certificado_emissor(db, e))
     chave, cert = assinatura.carregar_chave(pfx, senha)
@@ -291,6 +312,115 @@ def _recuperar(cli: ClienteSefin, db: Session, e: Empresa, nota: NotaEmitida, mo
 
 
 # ---------------------------------------------------------------------------
+# Envio pelo ISSNet do DF
+# ---------------------------------------------------------------------------
+
+def _cliente_issnet(db: Session, e: Empresa, amb: int) -> ClienteIssnet:
+    from app.api.emissor import certificado_proprio
+    pfx, senha = carregar_pfx(certificado_proprio(db, e))
+    return fabrica_issnet(amb, pfx, senha)
+
+
+def _alertas(r) -> str | None:
+    return "; ".join(f"{x.get('codigo')}: {x.get('descricao')}" for x in r.alertas) or None
+
+
+ERRO_ASSINATURA = "E0714"
+# O manual da Nota Control pede C14N inclusiva + RSA-SHA1, mas a produção do DF (15/11/2026) recusou esse perfil
+# com E0714 e aceitou C14N exclusiva + RSA-SHA256 (o da Sefin). O outro fica de reserva: E0714 não gera nota,
+# então reenviar com o outro perfil é seguro.
+PERFIS_ISSNET = (assinatura.SEFIN, assinatura.ISSNET)
+
+
+def _assinador_no_envelope(db: Session, e: Empresa, nota: NotaEmitida, perfil=assinatura.ISSNET):
+    """Assina a DPS já dentro do envelope SOAP. A primeira emissão real (15/11/2026) com a DPS assinada à parte
+    voltou E0714: o ISSNet confere a assinatura (C14N inclusiva) no próprio envelope, com os namespaces dele."""
+    from app.api.emissor import certificado_proprio
+    pfx, senha = carregar_pfx(certificado_proprio(db, e))
+    chave, cert = assinatura.carregar_chave(pfx, senha)
+
+    def assinar(envio) -> None:
+        dps = envio[0]
+        for s in dps.findall(f"{{{assinatura.DS}}}Signature"):
+            dps.remove(s)
+        assinatura.assinar(dps, dps[0], chave, cert, perfil=perfil)
+        # A cópia gravada leva as declarações do envelope e continua conferível sozinha
+        nota.xml_dps_path = _gravar(e, nota.ambiente, f"{nota.id_dps}.xml",
+                                    etree.tostring(dps, xml_declaration=True, encoding="UTF-8"))
+    return assinar
+
+
+def _enviar_issnet(db: Session, e: Empresa, cfg: EmissorEmpresa, nota: NotaEmitida, xml: bytes) -> None:
+    nota.enviado_em = agora()
+    with _cliente_issnet(db, e, nota.ambiente) as cli:
+        for perfil in PERFIS_ISSNET:
+            try:
+                r = cli.chamar("GerarNfse", issnet_msg.gerar_nfse(etree.fromstring(xml)),
+                               assinar=_assinador_no_envelope(db, e, nota, perfil))
+            except ErroIssnet as ex:
+                log.warning("Emissão ISSNet %s sem resposta: %s", nota.id_dps, ex)
+                _recuperar_issnet(cli, db, e, cfg, nota, motivo=str(ex))
+                return
+            if not any(x.get("codigo") == ERRO_ASSINATURA for x in r.erros):
+                break
+            log.warning("ISSNet recusou a assinatura (%s) da DPS %s", perfil.digest, nota.id_dps)
+        notas = issnet_msg.nfses(r)
+        if r.ok and notas:
+            _autorizar(db, e, nota, notas[0], None)
+            nota.mensagem = _alertas(r)
+            issnet_rps.concluir(db, nota.id, autorizada=True)
+            return
+        if r.ok:
+            # Resposta sem NFS-e e sem erro: confere pela DPS antes de dar qualquer resultado
+            _recuperar_issnet(cli, db, e, cfg, nota, motivo="O ISSNet não devolveu a nota.")
+            return
+        nota.situacao, nota.erros = "rejeitada", r.erros
+        nota.mensagem = issnet_msg.texto_erros(r.erros)
+
+
+def _recuperar_issnet(cli: ClienteIssnet, db: Session, e: Empresa, cfg: EmissorEmpresa, nota: NotaEmitida,
+                      motivo: str) -> str:
+    """autorizada | nao_gerada | desconhecido (mesma regra da Sefin: nunca reenviar às cegas)."""
+    try:
+        r = cli.chamar("ConsultarNfseDps", issnet_msg.consultar_nfse_por_dps(
+            e.cnpj, cfg.inscricao_municipal, nota.serie, nota.numero))
+    except ErroIssnet as ex:
+        nota.situacao = "pendente"
+        nota.mensagem = f"{motivo} Não foi possível confirmar o resultado ({ex}). Verifique antes de reenviar."
+        return "desconhecido"
+    notas = issnet_msg.nfses(r)
+    if notas:
+        _autorizar(db, e, nota, notas[0], None)
+        issnet_rps.concluir(db, nota.id, autorizada=True)
+        return "autorizada"
+    nota.situacao = "pendente"
+    if r.erros:
+        nota.mensagem = (f"{motivo} O ISSNet não encontrou nota para esta DPS "
+                         f"({issnet_msg.texto_erros(r.erros)}): pode reenviar.")
+        return "nao_gerada"
+    nota.mensagem = f"{motivo} Resposta inesperada do ISSNet na conferência. Verifique antes de reenviar."
+    return "desconhecido"
+
+
+def _reservar_rps(db: Session, e: Empresa, cfg: EmissorEmpresa, amb: int, nota: NotaEmitida) -> None:
+    """Chamado com a trava da empresa: sincroniza a lista se estiver velha e reserva o menor número livre."""
+    if issnet_rps.precisa_sincronizar(db, e.id, amb):
+        with _cliente_issnet(db, e, amb) as cli:
+            issnet_rps.sincronizar(db, e.id, e.cnpj, cfg.inscricao_municipal, amb, cli)
+    try:
+        r = issnet_rps.reservar(db, e.id, amb)
+    except issnet_rps.SemRps as ex:
+        sinc = issnet_rps.ultima_sincronizacao(db, e.id, amb)
+        detalhe = f" Última leitura com erro: {sinc.erro}" if sinc is not None and sinc.erro else ""
+        raise ErroEmissao(f"{ex}{detalhe}") from None
+    nota.serie, nota.numero = r.serie, r.numero
+    nota.id_dps = id_dps(cfg.cod_municipio, e.cnpj, r.serie, r.numero)
+    db.add(nota)
+    db.flush()
+    r.nota_id = nota.id
+
+
+# ---------------------------------------------------------------------------
 # Operações
 # ---------------------------------------------------------------------------
 
@@ -303,15 +433,31 @@ def emitir(db: Session, esc: int, usuario_id: int | None, ent: Entrada) -> NotaE
     e, cfg = _empresa_pronta(db, esc, ent.empresa_id)
     amb = ambiente(cfg)
     nota = NotaEmitida(escritorio_id=esc, empresa_id=e.id, usuario_id=usuario_id, ambiente=amb, serie=cfg.serie,
-                       numero=0, id_dps="", situacao="enviando", recorrente_id=ent.recorrente_id)
+                       numero=0, id_dps="", situacao="enviando", recorrente_id=ent.recorrente_id, canal=canal(cfg))
     _preencher(db, nota, e, cfg, ent)
     # Valida tudo (regras e XSD) antes de gastar um número
     try:
-        nota.numero = cfg.proximo_numero
+        nota.numero = cfg.proximo_numero if nota.canal == NACIONAL else 1
         _xml_assinado(db, e, cfg, nota)
     except DpsInvalida as ex:
         db.rollback()
         raise ErroEmissao(str(ex)) from None
+
+    if nota.canal == ISSNET_DF:
+        with _trava(e.id):
+            try:
+                _reservar_rps(db, e, cfg, amb, nota)
+            except ErroEmissao:
+                db.rollback()
+                raise
+            if ent.salvar_tomador:
+                _salvar_tomador(db, esc, ent.tomador)
+            db.commit()  # RPS reservado antes de enviar
+        xml = _xml_assinado(db, e, cfg, nota)
+        nota.xml_dps_path = _gravar(e, amb, f"{nota.id_dps}.xml", xml)
+        _enviar_issnet(db, e, cfg, nota, xml)
+        db.commit()
+        return nota
 
     with _trava(e.id):
         db.refresh(cfg)
@@ -346,7 +492,13 @@ def reenviar(db: Session, esc: int, nota_id: int, ent: Entrada | None) -> NotaEm
     e, cfg = _empresa_pronta(db, esc, nota.empresa_id)
     if nota.ambiente != ambiente(cfg):
         raise ErroEmissao("Esta nota é de outro ambiente (homologação x produção).", 409)
-    if nota.situacao == "pendente":
+    if nota.situacao == "pendente" and nota.canal == ISSNET_DF:
+        with _cliente_issnet(db, e, nota.ambiente) as cli:
+            resultado = _recuperar_issnet(cli, db, e, cfg, nota, motivo="Conferência antes do reenvio.")
+        if resultado != "nao_gerada":
+            db.commit()
+            return nota
+    elif nota.situacao == "pendente":
         from app.api.emissor import certificado_emissor
         pfx, senha = carregar_pfx(certificado_emissor(db, e))
         with fabrica_cliente(nota.ambiente, pfx, senha) as cli:
@@ -368,7 +520,10 @@ def reenviar(db: Session, esc: int, nota_id: int, ent: Entrada | None) -> NotaEm
     nota.situacao, nota.erros, nota.mensagem = "enviando", None, None
     nota.xml_dps_path = _gravar(e, nota.ambiente, f"{nota.id_dps}.xml", xml)
     db.commit()
-    _enviar(db, e, nota, xml)
+    if nota.canal == ISSNET_DF:
+        _enviar_issnet(db, e, cfg, nota, xml)
+    else:
+        _enviar(db, e, nota, xml)
     db.commit()
     return nota
 
@@ -380,6 +535,8 @@ def cancelar(db: Session, esc: int, nota_id: int, motivo: str, justificativa: st
     from app.api.emissor import certificado_proprio
     e = db.get(Empresa, nota.empresa_id)
     cert = certificado_proprio(db, e)  # por procuração a Sefin recusa o evento (E0812/E0813)
+    if nota.canal == ISSNET_DF:
+        return _cancelar_issnet(db, e, nota, cert, motivo, justificativa)
     if cert is None:
         raise ErroEmissao("A Sefin não aceita cancelamento por procuração. Cancele pelo Emissor Nacional Web "
                           "(Procuração/Representação) ou cadastre o certificado A1 da empresa.", 409)
@@ -401,6 +558,42 @@ def cancelar(db: Session, esc: int, nota_id: int, motivo: str, justificativa: st
         raise ErroEmissao("A Sefin recusou o cancelamento: " +
                           "; ".join(f"{x.get('codigo')}: {x.get('descricao')}" for x in r.erros))
     nota.xml_cancelamento_path = _gravar(e, nota.ambiente, f"EVT_{nota.chave}_101101.xml", r.xml)
+    nota.situacao, nota.cancelado_em = "cancelada", agora()
+    nota.motivo_cancelamento = " ".join(justificativa.split())
+    db.commit()
+    return nota
+
+
+def _cancelar_issnet(db: Session, e: Empresa, nota: NotaEmitida, cert, motivo: str, justificativa: str) -> NotaEmitida:
+    if cert is None:
+        raise ErroEmissao("O ISSNet exige o certificado A1 da própria empresa para cancelar.", 409)
+    try:
+        raiz = montar_cancelamento(Cancelamento(ambiente=nota.ambiente, cnpj_autor=e.cnpj, chave=nota.chave,
+                                                motivo=motivo, justificativa=justificativa))
+        pfx, senha = carregar_pfx(cert)
+        chave, c = assinatura.carregar_chave(pfx, senha)
+        assinatura.assinar(raiz, raiz[0], chave, c, perfil=PERFIS_ISSNET[0])
+        envio = issnet_msg.cancelar_nfse(raiz)
+        validar_xsd_issnet(etree.fromstring(envio.encode("utf-8")))
+    except DpsInvalida as ex:
+        raise ErroEmissao(str(ex)) from None
+
+    def assinar_no_envelope(pedido_envio) -> None:  # mesma regra da DPS (ver _assinador_no_envelope)
+        ped = pedido_envio[0]
+        for sig in ped.findall(f"{{{assinatura.DS}}}Signature"):
+            ped.remove(sig)
+        assinatura.assinar(ped, ped[0], chave, c, perfil=PERFIS_ISSNET[0])
+
+    with fabrica_issnet(nota.ambiente, pfx, senha) as cli:
+        try:
+            r = cli.chamar("CancelarNfse", envio, assinar=assinar_no_envelope)
+        except ErroIssnet as ex:
+            raise ErroEmissao(f"{ex} Confira a nota antes de tentar de novo.", 502) from None
+    evs = issnet_msg.eventos(r)
+    if not r.ok or not evs:
+        raise ErroEmissao("O ISSNet recusou o cancelamento: " +
+                          (issnet_msg.texto_erros(r.erros) or "sem evento na resposta."))
+    nota.xml_cancelamento_path = _gravar(e, nota.ambiente, f"EVT_{nota.chave}_101101.xml", evs[0])
     nota.situacao, nota.cancelado_em = "cancelada", agora()
     nota.motivo_cancelamento = " ".join(justificativa.split())
     db.commit()

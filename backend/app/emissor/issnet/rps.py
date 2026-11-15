@@ -25,9 +25,10 @@ from app.models import RpsDisponivel, SincronizacaoRps, agora
 log = logging.getLogger("contask.emissor.rps")
 
 POR_PAGINA = 50
-MAX_PAGINAS = 200        # 10 mil números: acima disso algo está errado na paginação
+MAX_PAGINAS = 2000       # 100 mil números: acima disso algo está errado na paginação
 LIMITE_MINIMO = 10       # alerta de "acabando" nunca abaixo disso
 VALIDADE_SINCRONIZACAO = timedelta(hours=1)
+FIM_DA_LISTA = "E319"    # "Página não encontrada": acabou a lista
 
 
 class SemRps(Exception):
@@ -43,6 +44,10 @@ def _lidos(cli: ClienteIssnet, cnpj: str, im: str) -> list[mensagens.Rps]:
     conhecidos: set[mensagens.Rps] = set()
     for pagina in range(1, MAX_PAGINAS + 1):
         r = cli.chamar("ConsultarDpsDisponivel", mensagens.consultar_dps_disponivel(cnpj, im, pagina))
+        if r.erros and all(x.get("codigo") == FIM_DA_LISTA for x in r.erros):
+            # Visto na produção: com exatamente 50 números, a página 2 responde E319. Na página 1, lista vazia.
+            # Se a leitura estiver errada, o número volta a "disponivel" na próxima sincronização.
+            return vistos
         if r.erros:
             raise ErroIssnet("O ISSNet recusou a consulta de RPS: " + mensagens.texto_erros(r.erros))
         lote, _ = mensagens.dps_disponiveis(r)
@@ -87,6 +92,10 @@ def sincronizar(db: Session, empresa_id: int, cnpj: str, im: str, ambiente: int,
     sinc.disponiveis = _contar(db, empresa_id, ambiente, "disponivel")
     db.commit()
     return sinc
+
+
+def ultima_sincronizacao(db: Session, empresa_id: int, ambiente: int) -> SincronizacaoRps | None:
+    return db.get(SincronizacaoRps, (empresa_id, ambiente))
 
 
 def precisa_sincronizar(db: Session, empresa_id: int, ambiente: int) -> bool:

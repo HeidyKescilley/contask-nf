@@ -715,7 +715,7 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
         </DialogContent>
       </Dialog>
 
-      <ServicoDialog empresaId={empresa.id} servico={null} aberto={novoServico} aoFechar={() => setNovoServico(false)}
+      <ServicoDialog empresaId={empresa.id} servico={null} aberto={novoServico} canal={empresa.canal} aoFechar={() => setNovoServico(false)}
         aoSalvar={(s) => escolherServico(s)} />
     </div>
   );

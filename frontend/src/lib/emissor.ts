@@ -47,6 +47,34 @@ export interface EmpresaEmissora {
   avisos: string[];
   /** 1 = produção (valor fiscal), 2 = produção restrita (homologação) */
   ambiente: 1 | 2;
+  /** Por onde a nota sai: Sefin Nacional ou, para empresa do DF fora do Simples, o ISSNet do DF */
+  canal: CanalEmissao;
+}
+
+export type CanalEmissao = "nacional" | "issnet_df";
+
+/** cTribMun do DF (tabela de correlação do ISSNet) */
+export interface CodigoMunicipalDf { codigo: string; descricao: string; aliquota: string | null; ctribnac: string[] }
+
+/** Monitoramento dos RPS liberados no ISSNet do DF */
+export interface ResumoRps {
+  disponiveis: number;
+  reservados: number;
+  usados_fora: number;
+  consumo_30_dias: number;
+  limite_alerta: number;
+  nivel: "ok" | "baixo" | "zerado" | "sem_dados";
+  faixas: { serie: string; de: number; ate: number; quantidade: number }[];
+  sincronizado_em: string | null;
+  erro: string | null;
+}
+
+export function useRps(empresaId: number, ativo = true) {
+  return useQuery({
+    enabled: ativo,
+    queryKey: ["emissor", "rps", empresaId],
+    queryFn: () => api<ResumoRps>(`/api/emissor/empresas/${empresaId}/rps`),
+  });
 }
 
 export interface Servico {
@@ -175,6 +203,7 @@ export interface NotaEmitida {
   cnbs: string;
   cnbs_formatado: string;
   ctribmun: string | null;
+  canal?: CanalEmissao;
   cod_municipio_prestacao: string;
   valor_servico: number;
   desconto: number;

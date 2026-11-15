@@ -4,6 +4,8 @@ Há dois leiautes ativos ao mesmo tempo:
 - produção (XSD v1.01 de 09/02/2026): cServ = cTribNac, cTribMun, xDescServ, cNBS; sem finNFSe;
 - produção restrita (XSD de 20/10/2026, reforma tributária): finNFSe depois de tpEmit; cServ = cTribNac,
   cTribMun, cNBS, cIntContrib, xDescServ.
+E o leiaute do ISSNet do DF (schema_v101 da Nota Control), em montar_issnet: IM e cTribMun obrigatórios,
+sem pAliq (o ISSNet calcula) e com o grupo IBSCBS.
 Regras de negócio aplicadas aqui estão anotadas com o código de rejeição da Sefin.
 """
 from __future__ import annotations
@@ -112,6 +114,8 @@ class DadosDps:
     percentual_tributos_sn: Decimal | None = None
     info_complementar: str | None = None
     emitido_em: datetime | None = None
+    cindop: str | None = None                 # IBS/CBS: indicador da operação (ISSNet)
+    cclasstrib: str | None = None             # IBS/CBS: classificação tributária (ISSNet)
 
     @property
     def id_dps(self) -> str:
@@ -260,6 +264,136 @@ def montar(d: DadosDps) -> etree._Element:
     else:
         _e(tt, "indTotTrib", 0)
     return raiz
+
+
+def validar_issnet(d: DadosDps) -> None:
+    """Regras do ISSNet do DF além das comuns (manual Nota Control v1.01 e schema_v101)."""
+    validar(d)
+    if not (d.prestador.inscricao_municipal or "").strip():
+        raise DpsInvalida("Informe a inscrição municipal da empresa nos dados do prestador: o ISSNet do DF exige.")
+    if not (d.ctribmun or "").isdigit() or not 1 <= len(d.ctribmun) <= 10:
+        raise DpsInvalida("Escolha o código de tributação municipal do DF (cTribMun) no cadastro do serviço: "
+                          "o ISSNet exige.")
+    if not (d.cindop or "").isdigit() or len(d.cindop) != 6 or not (d.cclasstrib or "").isdigit() or len(d.cclasstrib) != 6:
+        raise DpsInvalida("Informe o cIndOp e o cClassTrib (IBS/CBS) no cadastro do serviço: o ISSNet exige o grupo "
+                          "IBSCBS desde 01/10/2026.")
+    if d.tomador and len(d.tomador.documento) == 14 and not d.tomador.tem_endereco:
+        raise DpsInvalida("No ISSNet do DF, tomador com CNPJ precisa do endereço completo (CEP, município, logradouro, "
+                          "número e bairro) (E0235).")
+
+
+def montar_issnet(d: DadosDps) -> etree._Element:
+    """DPS no leiaute do ISSNet do DF. Mesmo namespace e Id da DPS nacional; a assinatura é outra
+    (assinatura.ISSNET) e o envio vai dentro de GerarNfseEnvio."""
+    validar_issnet(d)
+    # O relógio do ISSNet de produção estava atrás do nosso: dhEmi "no futuro" volta E0008
+    emitido = ((d.emitido_em or datetime.now(BRASILIA)).astimezone(BRASILIA).replace(microsecond=0)
+               - timedelta(minutes=2))
+    raiz = etree.Element(f"{{{NS}}}DPS", nsmap={None: NS}, versao="1.01")
+    inf = etree.SubElement(raiz, f"{{{NS}}}infDPS", Id=d.id_dps)
+    _e(inf, "tpAmb", d.ambiente)
+    _e(inf, "dhEmi", emitido.isoformat())
+    _e(inf, "verAplic", VERSAO_APLICATIVO)
+    _e(inf, "serie", int(d.serie))
+    _e(inf, "nDPS", int(d.numero))
+    _e(inf, "dCompet", d.competencia.isoformat())
+    _e(inf, "tpEmit", 1)
+    _e(inf, "cLocEmi", d.prestador.cod_municipio)
+
+    p = _e(inf, "prest")
+    _e(p, "CNPJ", d.prestador.cnpj)
+    _e(p, "IM", d.prestador.inscricao_municipal.strip())
+    rt = _e(p, "regTrib")
+    _e(rt, "opSimpNac", d.prestador.op_simples)
+    if d.prestador.op_simples == "3":
+        _e(rt, "regApTribSN", d.prestador.reg_ap_trib_sn or "1")
+    _e(rt, "regEspTrib", d.prestador.reg_esp_trib)
+
+    if d.tomador:
+        t = d.tomador
+        tm = _e(inf, "toma")
+        _e(tm, "CNPJ" if len(t.documento) == 14 else "CPF", t.documento)
+        if t.inscricao_municipal:
+            _e(tm, "IM", t.inscricao_municipal)
+        _e(tm, "xNome", t.nome[:150])
+        if t.tem_endereco:
+            end = _e(tm, "end")
+            nac = _e(end, "endNac")
+            _e(nac, "cMun", t.cod_municipio)
+            _e(nac, "CEP", t.cep)
+            _e(end, "xLgr", t.logradouro[:255])
+            _e(end, "nro", t.numero[:60])
+            if t.complemento:
+                _e(end, "xCpl", t.complemento[:156])
+            _e(end, "xBairro", t.bairro[:60])
+        if t.telefone:
+            _e(tm, "fone", t.telefone)
+        if t.email:
+            _e(tm, "email", t.email[:80])
+
+    s = _e(inf, "serv")
+    _e(_e(s, "locPrest"), "cLocPrestacao", d.cod_municipio_prestacao)
+    cs = _e(s, "cServ")
+    _e(cs, "cTribNac", d.ctribnac)
+    _e(cs, "cTribMun", int(d.ctribmun))
+    _e(cs, "xDescServ", d.descricao[:2000])
+    if d.cnbs:
+        _e(cs, "cNBS", d.cnbs)
+    if d.info_complementar:
+        _e(_e(s, "infoCompl"), "xInfComp", d.info_complementar[:2000])
+
+    v = _e(inf, "valores")
+    _e(_e(v, "vServPrest"), "vServ", _dec(d.valor))
+    if d.desconto_incondicionado > 0:
+        _e(_e(v, "vDescCondIncond"), "vDescIncond", _dec(d.desconto_incondicionado))
+    tr = _e(v, "trib")
+    tm = _e(tr, "tribMun")
+    _e(tm, "tribISSQN", 1)
+    _e(tm, "tpRetISSQN", 2 if d.retencoes.iss else 1)
+    # pAliq não vai: "a alíquota do ISS é definida pela legislação municipal e se informada será erro" (manual 5.1)
+    r = d.retencoes
+    if r.federais > 0:
+        tf = _e(tr, "tribFed")
+        if r.contribuicoes > 0:
+            pc = _e(tf, "piscofins")
+            _e(pc, "CST", "00")
+            _e(pc, "tpRetPisCofins", r.tp_ret_pis_cofins)
+        if r.cp > 0:
+            _e(tf, "vRetCP", _dec(r.cp))
+        if r.irrf > 0:
+            _e(tf, "vRetIRRF", _dec(r.irrf))
+        if r.contribuicoes > 0:
+            _e(tf, "vRetCSLL", _dec(r.contribuicoes))
+    tt = _e(tr, "totTrib")
+    if d.prestador.op_simples == "3":
+        _e(tt, "pTotTribSN", _dec(d.percentual_tributos_sn if d.percentual_tributos_sn is not None else Decimal("0")))
+    else:
+        # Não optante: o ISSNet recusa indTotTrib (E0713); vai o percentual aproximado, zerado
+        pt = _e(tt, "pTotTrib")
+        for tag in ("pTotTribFed", "pTotTribEst", "pTotTribMun"):
+            _e(pt, tag, "0.00")
+
+    ib = _e(inf, "IBSCBS")
+    _e(ib, "finNFSe", 0)            # NFS-e regular
+    _e(ib, "cIndOp", d.cindop)
+    _e(ib, "indDest", 0)            # o destinatário é o próprio tomador
+    g = _e(_e(_e(ib, "valores"), "trib"), "gIBSCBS")
+    _e(g, "CST", d.cclasstrib[:3])  # o CST são os 3 primeiros dígitos do cClassTrib
+    _e(g, "cClassTrib", d.cclasstrib)
+    return raiz
+
+
+@lru_cache
+def _schema_issnet() -> etree.XMLSchema:
+    return etree.XMLSchema(etree.parse(str(XSD / "issnet" / "schema_v101.xsd")))
+
+
+def validar_xsd_issnet(envio) -> None:
+    """Valida a mensagem inteira (GerarNfseEnvio, CancelarNfseEnvio...) no schema_v101 da Nota Control."""
+    schema = _schema_issnet()
+    if not schema.validate(envio):
+        erros = "; ".join(f"{e.message}" for e in list(schema.error_log)[:3])
+        raise DpsInvalida(f"O XML não passou na validação do esquema do ISSNet: {erros}")
 
 
 @dataclass
