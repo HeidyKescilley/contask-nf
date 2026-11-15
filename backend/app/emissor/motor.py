@@ -85,15 +85,16 @@ def canal(cfg: EmissorEmpresa | None) -> str:
 
 def pendencia_canal(db: Session, e: Empresa, cfg: EmissorEmpresa | None) -> str | None:
     """O que falta para emitir pelo ISSNet do DF (None quando o canal é a Sefin ou está tudo certo)."""
-    from app.api.emissor import certificado_proprio
+    from app.api.emissor import certificado_emissor
     if canal(cfg) != ISSNET_DF:
         return None
     if not producao_disponivel():
         return ("No DF, empresa fora do Simples emite pelo ISSNet, que não tem homologação: a emissão em produção "
                 "está desligada neste sistema (CONTASK_EMISSOR_PRODUCAO).")
-    if certificado_proprio(db, e) is None:
-        return ("No DF, empresa fora do Simples emite pelo ISSNet, que exige o certificado A1 da própria empresa "
-                "(não aceita procuração). Cadastre o certificado da empresa.")
+    if certificado_emissor(db, e) is None:
+        # Procuração vale: em 15/11/2026 o ISSNet de produção aceitou emissão e cancelamento assinados pelo
+        # certificado do procurador (CONTOUCH pela VCS, NFS-e 180), embora o manual peça o da empresa
+        return "Cadastre o certificado A1 da empresa ou use a procuração (certificado da contabilidade)."
     if not (cfg.inscricao_municipal or "").strip():
         return "Informe a inscrição municipal nos dados do prestador: o ISSNet do DF exige."
     return None
@@ -220,10 +221,10 @@ def _preencher(db: Session, nota: NotaEmitida, e: Empresa, cfg: EmissorEmpresa, 
 
 
 def _xml_assinado(db: Session, e: Empresa, cfg: EmissorEmpresa, nota: NotaEmitida) -> bytes:
-    from app.api.emissor import certificado_emissor, certificado_proprio
+    from app.api.emissor import certificado_emissor
     if nota.canal == ISSNET_DF:
         raiz = montar_issnet(_dados(e, cfg, nota))
-        pfx, senha = carregar_pfx(certificado_proprio(db, e))
+        pfx, senha = carregar_pfx(certificado_emissor(db, e))
         chave, cert = assinatura.carregar_chave(pfx, senha)
         assinatura.assinar(raiz, raiz[0], chave, cert, perfil=PERFIS_ISSNET[0])
         validar_xsd_issnet(etree.fromstring(issnet_msg.gerar_nfse(raiz).encode("utf-8")))
@@ -320,8 +321,8 @@ def _recuperar(cli: ClienteSefin, db: Session, e: Empresa, nota: NotaEmitida, mo
 # ---------------------------------------------------------------------------
 
 def _cliente_issnet(db: Session, e: Empresa, amb: int) -> ClienteIssnet:
-    from app.api.emissor import certificado_proprio
-    pfx, senha = carregar_pfx(certificado_proprio(db, e))
+    from app.api.emissor import certificado_emissor
+    pfx, senha = carregar_pfx(certificado_emissor(db, e))
     return fabrica_issnet(amb, pfx, senha)
 
 
@@ -339,8 +340,8 @@ PERFIS_ISSNET = (assinatura.SEFIN, assinatura.ISSNET)
 def _assinador_no_envelope(db: Session, e: Empresa, nota: NotaEmitida, perfil=assinatura.ISSNET):
     """Assina a DPS já dentro do envelope SOAP. A primeira emissão real (15/11/2026) com a DPS assinada à parte
     voltou E0714: o ISSNet confere a assinatura (C14N inclusiva) no próprio envelope, com os namespaces dele."""
-    from app.api.emissor import certificado_proprio
-    pfx, senha = carregar_pfx(certificado_proprio(db, e))
+    from app.api.emissor import certificado_emissor
+    pfx, senha = carregar_pfx(certificado_emissor(db, e))
     chave, cert = assinatura.carregar_chave(pfx, senha)
 
     def assinar(envio) -> None:
@@ -536,11 +537,11 @@ def cancelar(db: Session, esc: int, nota_id: int, motivo: str, justificativa: st
     nota = _nota(db, esc, nota_id)
     if nota.situacao != "autorizada" or not nota.chave:
         raise ErroEmissao("Só dá para cancelar uma nota autorizada.", 409)
-    from app.api.emissor import certificado_proprio
+    from app.api.emissor import certificado_emissor, certificado_proprio
     e = db.get(Empresa, nota.empresa_id)
+    if nota.canal == ISSNET_DF:  # no ISSNet a procuração também cancela (testado em 15/11/2026)
+        return _cancelar_issnet(db, e, nota, certificado_emissor(db, e), motivo, justificativa)
     cert = certificado_proprio(db, e)  # por procuração a Sefin recusa o evento (E0812/E0813)
-    if nota.canal == ISSNET_DF:
-        return _cancelar_issnet(db, e, nota, cert, motivo, justificativa)
     if cert is None:
         raise ErroEmissao("A Sefin não aceita cancelamento por procuração. Cancele pelo Emissor Nacional Web "
                           "(Procuração/Representação) ou cadastre o certificado A1 da empresa.", 409)
@@ -570,7 +571,7 @@ def cancelar(db: Session, esc: int, nota_id: int, motivo: str, justificativa: st
 
 def _cancelar_issnet(db: Session, e: Empresa, nota: NotaEmitida, cert, motivo: str, justificativa: str) -> NotaEmitida:
     if cert is None:
-        raise ErroEmissao("O ISSNet exige o certificado A1 da própria empresa para cancelar.", 409)
+        raise ErroEmissao("Cadastre o certificado A1 da empresa ou use a procuração para cancelar pelo ISSNet.", 409)
     try:
         raiz = montar_cancelamento(Cancelamento(ambiente=nota.ambiente, cnpj_autor=e.cnpj, chave=nota.chave,
                                                 motivo=motivo, justificativa=justificativa))

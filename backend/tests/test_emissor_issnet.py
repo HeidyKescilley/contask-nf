@@ -511,3 +511,22 @@ def test_issnet_e_sempre_producao(cliente, issnet, monkeypatch):
     monkeypatch.setattr(motor, "producao_disponivel", lambda: False)
     item = cliente.get(f"/api/emissor/empresas/{e['id']}").json()
     assert any("não tem homologação" in p for p in item["pendencias"]) and not item["pronta"]
+
+
+def test_issnet_aceita_procuracao_para_emitir_e_cancelar(cliente, issnet):
+    """Testado na produção em 15/11/2026: DPS e cancelamento assinados pelo procurador (NFS-e 180 da VCS)."""
+    from tests.test_empresas import _empresa
+    assert _contabilidade(cliente).status_code == 200
+    e = _empresa(cliente, dados_brasilapi='{"opcao_pelo_simples": false, "codigo_municipio_ibge": 5300108}').json()["empresa"]
+    cliente.put("/api/emissor/empresas/emissao", json={"empresa_ids": [e["id"]], "emite": True})
+    _config(cliente, e, op_simples="1", reg_ap_trib_sn=None, inscricao_municipal="123", regime_tributario="presumido")
+    s = cliente.post(f"/api/emissor/empresas/{e['id']}/servicos",
+                     json={"descricao": "Transporte municipal", "ctribnac": "160201", "cnbs": "104011111",
+                           "ctribmun": "1602", "cindop": "060101", "cclasstrib": "000001"}).json()
+    item = cliente.get(f"/api/emissor/empresas/{e['id']}").json()
+    assert item["canal"] == "issnet_df" and item["certificado"]["procuracao"] and item["pronta"], item["pendencias"]
+    n = cliente.post("/api/emissor/notas", json=_nota(e, s)).json()
+    assert n["situacao"] == "autorizada" and n["cancela_pela_api"]
+    r = cliente.post(f"/api/emissor/notas/{n['id']}/cancelar", json={"motivo": "9", "justificativa": "Teste do cancelamento por procuração"})
+    assert r.status_code == 200, r.text
+    assert r.json()["situacao"] == "cancelada" and issnet.cancelamentos == 1

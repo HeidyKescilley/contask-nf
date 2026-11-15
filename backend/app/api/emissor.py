@@ -470,7 +470,7 @@ def atualizar_rps(empresa_id: int, db: Session = Depends(sessao), esc: int = Dep
     if pend:
         raise HTTPException(422, pend)
     amb = ambiente(cfg)
-    pfx, senha = carregar_pfx(certificado_proprio(db, e))
+    pfx, senha = carregar_pfx(certificado_emissor(db, e))
     with motor._trava(e.id), motor.fabrica_issnet(amb, pfx, senha) as cli:
         sinc = rps.sincronizar(db, e.id, e.cnpj, cfg.inscricao_municipal, amb, cli)
     if sinc.erro:
@@ -615,7 +615,7 @@ def _nota_out(db: Session, n: NotaEmitida) -> dict:
         "info_usuario": info_usuario, "texto_simples": tem_simples, "texto_procon": tem_procon,
         "id": n.id, "empresa_id": n.empresa_id, "empresa_nome": e.apelido or e.nome_fantasia or e.razao_social,
         "empresa_cnpj": e.cnpj, "servico_id": n.servico_id, "ambiente": n.ambiente,
-        "cancela_pela_api": certificado_proprio(db, e) is not None,
+        "cancela_pela_api": certificado_proprio(db, e) is not None or (n.canal == ISSNET_DF and certificado_emissor(db, e) is not None),
         "homologacao": n.ambiente == 2, "serie": n.serie, "numero": n.numero, "id_dps": n.id_dps,
         "situacao": n.situacao, "competencia": n.competencia, "tomador": n.tomador, "descricao": n.descricao,
         "ctribnac": n.ctribnac, "ctribnac_formatado": tabelas.formatar_ctribnac(n.ctribnac),

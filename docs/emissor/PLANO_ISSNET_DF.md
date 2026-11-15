@@ -21,6 +21,10 @@ O que a produção mostrou e o manual não diz (ver `issnet/soap.py`, `motor.py`
 - `ConsultarDpsDisponivel` além da última página responde E319 (fim da lista);
 - `ValidarXml` valida só o schema, não a assinatura.
 
+Procuração (testada em 15/11/2026): o ISSNet de produção aceitou a DPS e o cancelamento assinados só pelo
+certificado do procurador (CONTOUCH pela VCS, NFS-e 180, emitida e cancelada; CNPJAutor = prestador), embora o
+manual peça o certificado da própria empresa. O Contask aceita a procuração nas empresas do ISSNet.
+
 Sem homologação (decisão de 15/11/2026): empresa do ISSNet emite sempre em produção. Pendente: confirmar se as notas do ISSNet
 chegam ao ADN (fase 6).
 

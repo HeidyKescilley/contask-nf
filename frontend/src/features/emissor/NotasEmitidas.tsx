@@ -344,11 +344,13 @@ function Rascunhos({ itens, empresaId }: { itens: Rascunho[]; empresaId: number 
   );
 }
 
+/** Códigos de motivo do evento de cancelamento (e101101/cMotivo), iguais na Sefin e no ISSNet do DF */
 const MOTIVOS = [
-  { id: "1", rotulo: "Erro na emissão" },
-  { id: "2", rotulo: "Serviço não prestado" },
-  { id: "9", rotulo: "Outros" },
+  { id: "1", rotulo: "Erro na emissão", ajuda: "Algum dado da nota saiu errado." },
+  { id: "2", rotulo: "Serviço não prestado", ajuda: "O serviço não chegou a ser prestado." },
+  { id: "9", rotulo: "Outros", ajuda: "Outro motivo, explicado na justificativa." },
 ];
+const JUST_MIN = 15, JUST_MAX = 255;
 
 function CancelarDialog({ nota, aoFechar }: { nota: NotaEmitida | null; aoFechar: () => void }) {
   const [motivo, setMotivo] = useState("1");
@@ -364,21 +366,36 @@ function CancelarDialog({ nota, aoFechar }: { nota: NotaEmitida | null; aoFechar
   return (
     <Dialog open={!!nota} onOpenChange={(v) => !v && !cancelar.isPending && fechar()}>
       <DialogContent titulo={`Cancelar a NFS-e nº ${nota?.numero_nfse ?? ""}`}
-        descricao={<>O cancelamento é enviado à Sefin e não pode ser desfeito. {nota?.tomador?.nome && <>Tomador: <strong>{nota.tomador.nome}</strong>, </>}valor de {moeda(nota?.valor_servico)}.</>}>
-        <form className="space-y-4" onSubmit={(ev) => { ev.preventDefault(); if (tam >= 15) cancelar.mutate(); }}>
-          <Campo rotulo="Motivo" obrigatorio>
-            {(p) => <Select {...p} value={motivo} onChange={(ev) => setMotivo(ev.target.value)}>{MOTIVOS.map((m) => <option key={m.id} value={m.id}>{m.rotulo}</option>)}</Select>}
-          </Campo>
-          <Campo rotulo="Justificativa" obrigatorio ajuda={`${tam}/255. Mínimo de 15 caracteres.`}>
+        descricao={<>O cancelamento é enviado {nota?.canal === "issnet_df" ? "ao ISSNet do DF" : "à Sefin"} e não pode ser desfeito. {nota?.tomador?.nome && <>Tomador: <strong>{nota.tomador.nome}</strong>, </>}valor de {moeda(nota?.valor_servico)}.</>}>
+        <form className="space-y-4" onSubmit={(ev) => { ev.preventDefault(); if (tam >= JUST_MIN) cancelar.mutate(); }}>
+          <fieldset>
+            <legend className="mb-1.5 text-sm font-medium">Motivo <span className="text-cancelada" aria-hidden>*</span></legend>
+            <div role="radiogroup" aria-label="Motivo do cancelamento" className="grid gap-2 sm:grid-cols-3">
+              {MOTIVOS.map((m) => (
+                <label key={m.id} className={cn("flex cursor-pointer items-start gap-2.5 rounded-xl border p-3 text-sm transition-colors",
+                  motivo === m.id ? "border-destaque bg-destaque-suave" : "border-borda hover:border-borda-forte")}>
+                  <input type="radio" name="motivo-cancelamento" value={m.id} checked={motivo === m.id}
+                    onChange={() => setMotivo(m.id)} className="mt-0.5 size-4 accent-destaque" />
+                  <span>
+                    <span className="block font-medium">{m.rotulo}</span>
+                    <span className="block text-xs text-texto-2">{m.ajuda}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          <Campo rotulo="Justificativa" obrigatorio
+            ajuda={tam < JUST_MIN ? `Mínimo de ${JUST_MIN} caracteres: faltam ${JUST_MIN - tam}.` : `${tam}/${JUST_MAX} caracteres.`}>
             {(p) => (
-              <textarea {...p} rows={3} maxLength={255} value={just} onChange={(ev) => setJust(ev.target.value)}
+              <textarea {...p} rows={3} maxLength={JUST_MAX} value={just} onChange={(ev) => setJust(ev.target.value)}
+                placeholder="Ex.: Nota emitida com o valor errado."
                 className="w-full rounded-xl border border-borda bg-superficie px-3 py-2 text-sm outline-none hover:border-borda-forte focus-visible:border-destaque focus-visible:ring-2 focus-visible:ring-destaque/25" />
             )}
           </Campo>
           {cancelar.isError && <Aviso tom="erro">{(cancelar.error as Error).message}</Aviso>}
           <div className="flex justify-end gap-2">
             <Button type="button" variante="fantasma" onClick={fechar} disabled={cancelar.isPending}>Voltar</Button>
-            <Button type="submit" disabled={tam < 15 || cancelar.isPending} className={cn("border-transparent bg-cancelada text-destaque-texto hover:bg-cancelada/90")}>
+            <Button type="submit" disabled={tam < JUST_MIN || cancelar.isPending} className={cn("border-transparent bg-cancelada text-destaque-texto hover:bg-cancelada/90")}>
               {cancelar.isPending && <Loader2 className="animate-spin" />} Cancelar a nota
             </Button>
           </div>
