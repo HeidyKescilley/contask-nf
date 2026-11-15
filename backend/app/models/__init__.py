@@ -146,12 +146,14 @@ class NotaEmitida(Base):
     id_dps: Mapped[str] = mapped_column(String(45))
     # enviando | autorizada | rejeitada | pendente (resultado desconhecido) | cancelada
     situacao: Mapped[str] = mapped_column(String(12), index=True)
+    # nacional (Sefin Nacional) | issnet_df (webservice do ISSNet do DF, empresas fora do Simples)
+    canal: Mapped[str] = mapped_column(String(10), default="nacional", server_default="nacional")
     competencia: Mapped[date] = mapped_column(Date)
     tomador: Mapped[dict | None] = mapped_column(JSON)  # cópia dos dados do tomador usados na nota
     descricao: Mapped[str] = mapped_column(Text)
     ctribnac: Mapped[str] = mapped_column(String(6))
     cnbs: Mapped[str] = mapped_column(String(9))
-    ctribmun: Mapped[str | None] = mapped_column(String(3))
+    ctribmun: Mapped[str | None] = mapped_column(String(10))  # no ISSNet DF: código municipal de até 10 dígitos
     cod_municipio_prestacao: Mapped[str] = mapped_column(String(7))
     valor_servico: Mapped[Decimal] = mapped_column(Numeric(15, 2))
     desconto: Mapped[Decimal] = mapped_column(Numeric(15, 2), default=Decimal("0"))
@@ -179,6 +181,36 @@ class NotaEmitida(Base):
     autorizado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     cancelado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     recorrente_id: Mapped[int | None] = mapped_column(ForeignKey("nota_recorrente.id", ondelete="SET NULL"))
+
+
+class RpsDisponivel(Base):
+    """Numeração de DPS (RPS) liberada pelo ISSNet do DF para a empresa e o que aconteceu com cada número.
+
+    No ISSNet a numeração é do fisco (manual v1.01, 5.2): a empresa só usa os números que o ISSNet lista em
+    ConsultarDpsDisponivel. situacao: disponivel | reservado (nota criada, ainda sem resultado) | usado
+    (virou nota no Contask) | usado_fora (sumiu da lista sem nota do Contask: usado no portal do ISSNet).
+    """
+    __tablename__ = "rps_disponivel"
+    __table_args__ = (UniqueConstraint("empresa_id", "ambiente", "serie", "numero", name="uq_rps_empresa_numero"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    empresa_id: Mapped[int] = mapped_column(ForeignKey("empresa.id", ondelete="CASCADE"), index=True)
+    ambiente: Mapped[int] = mapped_column(Integer)
+    serie: Mapped[str] = mapped_column(String(5))
+    numero: Mapped[int] = mapped_column(Integer)
+    situacao: Mapped[str] = mapped_column(String(12), default="disponivel", index=True)
+    nota_id: Mapped[int | None] = mapped_column(ForeignKey("nota_emitida.id", ondelete="SET NULL"))
+    visto_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)  # última vez na lista do ISSNet
+    atualizado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora, onupdate=agora)
+
+
+class SincronizacaoRps(Base):
+    """Última leitura de ConsultarDpsDisponivel por empresa e ambiente (para o painel e os alertas)."""
+    __tablename__ = "sincronizacao_rps"
+    empresa_id: Mapped[int] = mapped_column(ForeignKey("empresa.id", ondelete="CASCADE"), primary_key=True)
+    ambiente: Mapped[int] = mapped_column(Integer, primary_key=True)
+    sincronizado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    disponiveis: Mapped[int] = mapped_column(Integer, default=0)
+    erro: Mapped[str | None] = mapped_column(Text)
 
 
 class NotaRascunho(Base):
@@ -221,7 +253,7 @@ class ServicoEmissor(Base):
     descricao: Mapped[str] = mapped_column(Text)              # xDescServ (até 2000)
     ctribnac: Mapped[str] = mapped_column(String(6))           # código de tributação nacional (LC 116)
     cnbs: Mapped[str] = mapped_column(String(9))               # NBS 2.0
-    ctribmun: Mapped[str | None] = mapped_column(String(3))    # código complementar municipal
+    ctribmun: Mapped[str | None] = mapped_column(String(10))   # código municipal (Sefin: 3 dígitos; ISSNet DF: até 10)
     cindop: Mapped[str | None] = mapped_column(String(6))      # IBS/CBS: indicador da operação
     cclasstrib: Mapped[str | None] = mapped_column(String(6))  # IBS/CBS: classificação tributária
     ativo: Mapped[bool] = mapped_column(Boolean, default=True)

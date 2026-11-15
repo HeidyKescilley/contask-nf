@@ -69,6 +69,16 @@ MSG_DF = ("No DF, só as empresas do Simples Nacional (e MEI) emitem pelo Emisso
           "Emita esta nota pelo ISSNet do DF. Se a empresa for do Simples, ajuste o regime tributário nos dados do prestador.")
 
 
+NACIONAL, ISSNET_DF = "nacional", "issnet_df"
+
+
+def canal(cfg: EmissorEmpresa | None) -> str:
+    """Por onde a nota sai: ISSNet do DF para empresa do DF fora do Simples; Sefin Nacional no resto."""
+    if cfg is not None and cfg.cod_municipio == BRASILIA and not eh_simples(cfg):
+        return ISSNET_DF
+    return NACIONAL
+
+
 def bloqueio_municipio(cfg: EmissorEmpresa | None) -> str | None:
     """Município que não aceita esta empresa no padrão nacional: hoje, o DF fora do Simples."""
     if cfg is not None and cfg.cod_municipio == BRASILIA and not eh_simples(cfg):
