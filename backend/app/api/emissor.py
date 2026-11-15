@@ -656,6 +656,8 @@ def liberar_producao(empresa_id: int, dados: LiberacaoIn, db: Session = Depends(
     if dados.liberada and not producao_disponivel():
         raise HTTPException(409, "A emissão em produção está desligada neste sistema (CONTASK_EMISSOR_PRODUCAO).")
     c = config_prestador(db, e)
+    if not dados.liberada and canal(c) == ISSNET_DF:
+        raise HTTPException(409, "O ISSNet do DF não tem homologação: as notas desta empresa saem sempre em produção.")
     c.producao_liberada = dados.liberada
     db.commit()
     return _item_empresa(db, e)

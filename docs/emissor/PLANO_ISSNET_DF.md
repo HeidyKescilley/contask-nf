@@ -21,7 +21,7 @@ O que a produção mostrou e o manual não diz (ver `issnet/soap.py`, `motor.py`
 - `ConsultarDpsDisponivel` além da última página responde E319 (fim da lista);
 - `ValidarXml` valida só o schema, não a assinatura.
 
-Pendente: a homologação da Nota Control (precisa de acesso pedido ao suporte) e confirmar se as notas do ISSNet
+Sem homologação (decisão de 15/11/2026): empresa do ISSNet emite sempre em produção. Pendente: confirmar se as notas do ISSNet
 chegam ao ADN (fase 6).
 
 A emissão continua barrada (E0084) até a fase 3 ser testada na homologação.

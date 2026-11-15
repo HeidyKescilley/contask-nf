@@ -315,6 +315,7 @@ def test_concluir_e_liberar_o_numero_da_nota(cliente):
 @pytest.fixture()
 def issnet(monkeypatch):
     sim = IssnetSimulado(range(1, 31))
+    monkeypatch.setattr(motor, "producao_disponivel", lambda: True)  # o ISSNet só tem produção
     monkeypatch.setattr(motor, "fabrica_issnet",
                         lambda amb, pfx, senha: ClienteIssnet(ambiente=amb, transport=httpx.MockTransport(sim)))
     return sim
@@ -364,7 +365,7 @@ def test_emissao_pelo_issnet_usa_o_menor_rps_e_autoriza(cliente, issnet, monkeyp
     assert n["situacao"] == "autorizada" and n["canal"] == "issnet_df" and (n["serie"], n["numero"]) == ("8", 1)
     assert n["chave"] and n["numero_nfse"] == "7"
     [dps] = issnet.dps
-    assert _no(dps, "tpAmb").text == "2" and _no(dps, "prest/IM").text == "0776997600106"
+    assert _no(dps, "tpAmb").text == "1" and _no(dps, "prest/IM").text == "0776997600106"
     assert _no(dps, "serv/cServ/cTribMun").text == "1602" and _no(dps, "valores/trib/tribMun/pAliq") is None
     assert _no(dps, "IBSCBS/cIndOp").text == "060101" and _no(dps, "IBSCBS/valores/trib/gIBSCBS/CST").text == "000"
     assert _no(dps, "finNFSe") is None  # no ISSNet o finNFSe fica dentro do IBSCBS
@@ -499,3 +500,14 @@ def test_e0714_reenvia_uma_vez_com_o_outro_perfil(cliente, issnet, monkeypatch):
     monkeypatch.setattr(IssnetSimulado, "__call__", recusa_o_primeiro_perfil)
     n = cliente.post("/api/emissor/notas", json=_nota(e, s)).json()
     assert recusados == [1] and n["situacao"] == "autorizada" and len(issnet.notas) == 1
+
+
+def test_issnet_e_sempre_producao(cliente, issnet, monkeypatch):
+    e, _ = _df_presumido(cliente)
+    cliente.put(f"/api/emissor/empresas/{e['id']}/producao", json={"liberada": True})
+    assert cliente.get(f"/api/emissor/empresas/{e['id']}").json()["ambiente"] == 1
+    r = cliente.put(f"/api/emissor/empresas/{e['id']}/producao", json={"liberada": False})
+    assert r.status_code == 409 and "homologação" in r.json()["detail"]
+    monkeypatch.setattr(motor, "producao_disponivel", lambda: False)
+    item = cliente.get(f"/api/emissor/empresas/{e['id']}").json()
+    assert any("não tem homologação" in p for p in item["pendencias"]) and not item["pronta"]

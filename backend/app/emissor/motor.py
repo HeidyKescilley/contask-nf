@@ -55,8 +55,9 @@ def producao_disponivel() -> bool:
 
 
 def ambiente(cfg: EmissorEmpresa | None = None) -> int:
-    """Produção só com a chave geral ligada e a empresa liberada; o resto vai para a produção restrita."""
-    if producao_disponivel() and cfg is not None and cfg.producao_liberada:
+    """Produção só com a chave geral ligada e a empresa liberada; o resto vai para a produção restrita.
+    O ISSNet do DF não tem homologação para o Contask (decisão de 15/11/2026): é sempre produção."""
+    if producao_disponivel() and cfg is not None and (cfg.producao_liberada or canal(cfg) == ISSNET_DF):
         return PRODUCAO
     return RESTRITA
 
@@ -87,6 +88,9 @@ def pendencia_canal(db: Session, e: Empresa, cfg: EmissorEmpresa | None) -> str 
     from app.api.emissor import certificado_proprio
     if canal(cfg) != ISSNET_DF:
         return None
+    if not producao_disponivel():
+        return ("No DF, empresa fora do Simples emite pelo ISSNet, que não tem homologação: a emissão em produção "
+                "está desligada neste sistema (CONTASK_EMISSOR_PRODUCAO).")
     if certificado_proprio(db, e) is None:
         return ("No DF, empresa fora do Simples emite pelo ISSNet, que exige o certificado A1 da própria empresa "
                 "(não aceita procuração). Cadastre o certificado da empresa.")

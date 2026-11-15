@@ -141,17 +141,22 @@ function PainelAmbiente({ e }: { e: EmpresaEmissora }) {
       : "Escolha onde as notas desta empresa são emitidas. Toda empresa começa em produção; use a homologação para testar sem valor fiscal."}>
       {sistema.isLoading && <Esqueleto className="h-10 w-full" />}
       {sistema.isError && <EstadoErro mensagem={(sistema.error as Error).message} tentarDeNovo={() => sistema.refetch()} />}
-      {sistema.data && (
+      {sistema.data && e.canal === "issnet_df" && (
+        disponivel
+          ? <Aviso tom="info">Produção: ISSNet do DF, com valor fiscal. O ISSNet não tem homologação, então as notas desta empresa saem sempre em produção.</Aviso>
+          : <Aviso tom="alerta">O ISSNet do DF só tem produção, e a produção está desligada neste sistema (CONTASK_EMISSOR_PRODUCAO): esta empresa não emite.</Aviso>
+      )}
+      {sistema.data && e.canal !== "issnet_df" && (
         <div role="radiogroup" aria-label="Ambiente de emissão" className="grid gap-3 sm:grid-cols-2">
           <OpcaoAmbiente marcada={!liberada} icone={FlaskConical} titulo="Homologação"
-            descricao={e.canal === "issnet_df" ? "Homologação do ISSNet (Nota Control). Exige acesso liberado pelo suporte da Nota Control." : "Produção restrita da Sefin. As notas não têm valor fiscal: serve para testar."}
+            descricao="Produção restrita da Sefin. As notas não têm valor fiscal: serve para testar."
             desabilitada={mudar.isPending} aoEscolher={() => liberada && mudar.mutate(false)} />
           <OpcaoAmbiente marcada={liberada} icone={Landmark} titulo="Produção"
-            descricao={!disponivel ? "Desligada neste sistema (CONTASK_EMISSOR_PRODUCAO)." : e.canal === "issnet_df" ? "ISSNet do DF de produção. As notas têm valor fiscal." : "Sefin de produção. As notas têm valor fiscal."}
+            descricao={disponivel ? "Sefin de produção. As notas têm valor fiscal." : "Desligada neste sistema (CONTASK_EMISSOR_PRODUCAO)."}
             desabilitada={mudar.isPending || (!disponivel && !liberada)} aoEscolher={() => !liberada && setConfirmar(true)} />
         </div>
       )}
-      {sistema.data && liberada && !disponivel && (
+      {sistema.data && e.canal !== "issnet_df" && liberada && !disponivel && (
         <div className="mt-3"><Aviso tom="alerta">A produção está desligada neste sistema: enquanto isso, a empresa emite na homologação.</Aviso></div>
       )}
       {mudar.isPending && <p className="mt-2 flex items-center gap-1.5 text-sm text-texto-2"><Loader2 className="size-4 animate-spin" /> Salvando…</p>}
