@@ -168,7 +168,7 @@ class SefinSimulada:
                 return httpx.Response(404, json={"erro": {"codigo": "E404"}})
             return httpx.Response(200, json={"tipoAmbiente": 1, "eventos": [{  # formato real da Sefin
                 "chaveAcesso": chave, "tipoEvento": int(tipo), "numeroPedidoRegistroEvento": 1,
-                "arquivoXml": base64.b64encode(gzip.compress(evento_xml(chave, tipo))).decode()}]})
+                "arquivoXml": base64.b64encode(base64.b64encode(gzip.compress(evento_xml(chave, tipo)))).decode()}]})
         if req.method == "GET" and "/nfse/" in req.url.path:
             chave = req.url.path.rsplit("/", 1)[1]
             return httpx.Response(200, json={"nfseXmlGZipB64": self._nfse(chave, OUTRO)})

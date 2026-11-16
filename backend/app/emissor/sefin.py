@@ -45,10 +45,19 @@ def descompactar(b64: str) -> bytes:
         return bruto
 
 
+GZIP = bytes([0x1F, 0x8B])
+
+
 def _xml(conteudo: str) -> bytes:
-    """XML que vem como texto puro ou em base64 (com ou sem gzip)."""
-    texto = conteudo.lstrip()
-    return texto.encode("utf-8") if texto.startswith("<") else descompactar(conteudo)
+    """XML em texto puro, base64 ou gzip, em camadas. Na consulta de eventos a Sefin manda base64 de
+    base64 de gzip (visto em produção em 16/11/2026)."""
+    dados = conteudo.encode("ascii", "ignore") if isinstance(conteudo, str) else conteudo
+    for _ in range(4):
+        dados = dados.lstrip()
+        if dados.startswith(b"<"):
+            return dados
+        dados = gzip.decompress(dados) if dados[:2] == GZIP else base64.b64decode(dados)
+    raise ErroSefin("XML do evento em formato inesperado.")
 
 
 def _erros(d: dict) -> list[dict]:
