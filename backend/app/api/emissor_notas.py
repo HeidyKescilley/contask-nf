@@ -15,7 +15,7 @@ from app.api.emissor import EmissaoIn, _dig, _empresa, _entrada, _nota_out, conf
 from app.api.escopo import escritorio_atual
 from app.core.config import config
 from app.core.db import sessao
-from app.emissor import textos
+from app.emissor import tabelas, textos
 from app.emissor.dps import BRASILIA, PRODUCAO
 from app.emissor.motor import ambiente
 from app.models import Empresa, Nota, NotaEmitida, NotaRascunho, NotaRecorrente, ServicoEmissor, Tomador
@@ -180,9 +180,11 @@ def modelo_do_xml(xml: bytes) -> dict:
     elif contrib > 0:
         ret["ret_csll"] = float(contrib)
     info, tem_simples, tem_procon = textos.separar(_t(dps, "n:serv/n:infoCompl/n:xInfComp"))
+    ibs = dps.find("n:IBSCBS", N)
     return {
         "tomador": tomador, "descricao": _t(cs, "n:xDescServ") or "", "ctribnac": _t(cs, "n:cTribNac"),
-        "cnbs": _t(cs, "n:cNBS"), "ctribmun": _t(cs, "n:cTribMun"),
+        "cnbs": _t(cs, "n:cNBS"), "ctribmun": _t(cs, "n:cTribMun"), "cindop": _t(ibs, "n:cIndOp"),
+        "cclasstrib": _t(ibs, "n:valores/n:trib/n:gIBSCBS/n:cClassTrib"),
         "cod_municipio_prestacao": _t(dps, "n:serv/n:locPrest/n:cLocPrestacao"),
         "valor_servico": _num(_t(dps, "n:valores/n:vServPrest/n:vServ")),
         "desconto": _num(_t(dps, "n:valores/n:vDescCondIncond/n:vDescIncond")),
@@ -208,10 +210,75 @@ def modelo_nota_adn(empresa_id: int, nota_id: int, db: Session = Depends(sessao)
             for k, v in m["tomador"].items():
                 if not v and getattr(salvo, k, None):
                     m["tomador"][k] = getattr(salvo, k)
-    serv = db.scalar(select(ServicoEmissor).where(ServicoEmissor.empresa_id == e.id, ServicoEmissor.ativo,
-                                                  ServicoEmissor.ctribnac == m["ctribnac"], ServicoEmissor.cnbs == m["cnbs"])
-                     .order_by(ServicoEmissor.id))
-    return {**m, "servico_id": serv.id if serv else None, "numero_nfse": n.numero, "empresa_id": e.id}
+    serv = servico_igual(db, e.id, m)
+    return {**m, **_rotulos(m), "servico_id": serv.id if serv else None, "numero_nfse": n.numero, "empresa_id": e.id}
+
+
+def servico_igual(db: Session, empresa_id: int, m: dict) -> ServicoEmissor | None:
+    """Serviço cadastrado com exatamente os mesmos códigos da nota (senão a nota duplicada usa os códigos dela)."""
+    chave = lambda x: tuple((x.get(k) if isinstance(x, dict) else getattr(x, k)) or None  # noqa: E731
+                            for k in ("ctribnac", "cnbs", "ctribmun", "cindop", "cclasstrib"))
+    alvo = chave(m)
+    for s in db.scalars(select(ServicoEmissor).where(ServicoEmissor.empresa_id == empresa_id, ServicoEmissor.ativo,
+                                                     ServicoEmissor.ctribnac == m.get("ctribnac"))
+                        .order_by(ServicoEmissor.id)):
+        if chave(s) == alvo:
+            return s
+    return None
+
+
+def _rotulos(m: dict) -> dict:
+    serv = tabelas.servico(m.get("ctribnac") or "")
+    return {"ctribnac_formatado": tabelas.formatar_ctribnac(m["ctribnac"]) if m.get("ctribnac") else None,
+            "ctribnac_descricao": serv["descricao"] if serv else None,
+            "cnbs_formatado": tabelas.formatar_nbs(m["cnbs"]) if m.get("cnbs") else None,
+            "cnbs_descricao": tabelas.nbs_descricao(m["cnbs"]) if m.get("cnbs") else None}
+
+
+# ---------------------------------------------------------------------------
+# Última nota da empresa: dados do prestador e do serviço para pré-preencher a configuração do emissor
+# ---------------------------------------------------------------------------
+
+def prestador_do_xml(xml: bytes) -> dict:
+    raiz = etree.fromstring(xml, parser=etree.XMLParser(resolve_entities=False, no_network=True))
+    dps = raiz.find(".//n:infDPS", N)
+    if dps is None:
+        raise ValueError("XML sem DPS")
+    rt = dps.find("n:prest/n:regTrib", N)
+    numero = _t(dps, "n:nDPS")
+    return {
+        "inscricao_municipal": _t(dps, "n:prest/n:IM"), "op_simples": _t(rt, "n:opSimpNac"),
+        "reg_ap_trib_sn": _t(rt, "n:regApTribSN"), "reg_esp_trib": _t(rt, "n:regEspTrib"),
+        "cod_municipio": _t(dps, "n:cLocEmi"), "serie": (_t(dps, "n:serie") or "").lstrip("0") or None,
+        "numero_dps": int(numero) if numero and numero.isdigit() else None,
+    }
+
+
+@router.get("/empresas/{empresa_id}/ultima-nota")
+def ultima_nota(empresa_id: int, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
+    """Última NFS-e prestada que veio do ADN (com XML): regime, IM, município e serviço, para pré-preencher."""
+    e = _empresa(db, empresa_id, esc)
+    pasta = config().dados_dir
+    notas = db.scalars(select(Nota).where(Nota.empresa_id == e.id, Nota.papel == "prestada", Nota.xml_path.is_not(None))
+                       .order_by(Nota.data_emissao.desc(), Nota.id.desc()).limit(20))
+    for n in notas:
+        arq = pasta / n.xml_path
+        if not arq.is_file():
+            continue
+        try:
+            xml = arq.read_bytes()
+            prest, m = prestador_do_xml(xml), modelo_do_xml(xml)
+        except (ValueError, etree.XMLSyntaxError, HTTPException):
+            continue
+        servico = {k: m.get(k) for k in ("descricao", "ctribnac", "cnbs", "ctribmun", "cindop", "cclasstrib")}
+        do_contask = db.scalar(select(NotaEmitida.id).where(NotaEmitida.chave == n.chave)) is not None if n.chave else False
+        return {
+            "nota_id": n.id, "numero_nfse": n.numero, "data": _com_fuso(n.data_emissao, BRASILIA), "chave": n.chave,
+            "emitida_pelo_contask": do_contask, "prestador": prest,
+            "servico": {**servico, **_rotulos(servico)} if servico["ctribnac"] and servico["cnbs"] else None,
+            "servico_cadastrado": bool(servico["ctribnac"]) and servico_igual(db, e.id, servico) is not None,
+        }
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -324,7 +391,9 @@ def _validar_recorrente(db: Session, d: RecorrenteIn) -> dict:
     except ValueError as ex:
         raise HTTPException(422, f"Dados da nota incompletos: {ex}") from None
     serv = db.get(ServicoEmissor, dados.get("servico_id") or 0)
-    if serv is None or serv.empresa_id != d.empresa_id:
+    if dados.get("servico_id") and (serv is None or serv.empresa_id != d.empresa_id):
+        raise HTTPException(422, "Escolha um serviço desta empresa.")
+    if serv is None and not dados.get("servico"):
         raise HTTPException(422, "Escolha um serviço desta empresa.")
     if not (dados.get("descricao") or "").strip():
         raise HTTPException(422, "Informe a descrição da nota.")

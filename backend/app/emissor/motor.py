@@ -137,6 +137,7 @@ class Entrada:
     texto_simples: bool = True    # só vale para empresa do Simples
     texto_procon: bool = True
     recorrente_id: int | None = None
+    servico_codigos: dict | None = None  # sem serviço cadastrado: ctribnac, cnbs, ctribmun, cindop, cclasstrib
     extras: dict = field(default_factory=dict)
 
 
@@ -199,12 +200,18 @@ def _preencher(db: Session, nota: NotaEmitida, e: Empresa, cfg: EmissorEmpresa, 
         serv = db.get(ServicoEmissor, ent.servico_id)
         if serv is None or serv.empresa_id != e.id:
             raise ErroEmissao("Serviço não encontrado para esta empresa.", 404)
-    if serv is None:
+    if serv is not None:
+        codigos = {k: getattr(serv, k) for k in ("ctribnac", "cnbs", "ctribmun", "cindop", "cclasstrib")}
+    elif ent.servico_codigos:
+        codigos = ent.servico_codigos
+    else:
         raise ErroEmissao("Escolha o serviço (ou cadastre um novo).")
-    descricao = (ent.descricao or "").strip() or serv.descricao
-    nota.servico_id = serv.id
-    nota.ctribnac, nota.cnbs, nota.ctribmun = serv.ctribnac, serv.cnbs, serv.ctribmun
-    nota.cindop, nota.cclasstrib = serv.cindop, serv.cclasstrib
+    descricao = (ent.descricao or "").strip() or (serv.descricao if serv else "")
+    if not descricao:
+        raise ErroEmissao("Informe a descrição do serviço.")
+    nota.servico_id = serv.id if serv else None
+    nota.ctribnac, nota.cnbs, nota.ctribmun = codigos["ctribnac"], codigos["cnbs"], codigos.get("ctribmun")
+    nota.cindop, nota.cclasstrib = codigos.get("cindop"), codigos.get("cclasstrib")
     nota.descricao = descricao
     nota.competencia = ent.competencia
     nota.tomador = ent.tomador

@@ -7,7 +7,8 @@ import { Aviso, Campo, Input } from "@/components/ui/campos";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
 import {
-  apenasDigitos, useAtualizarEmissor, type CanalEmissao, type CodigoMunicipalDf, type CodigoNbs, type CodigoServico, type Servico, type Sugestao,
+  apenasDigitos, useAtualizarEmissor, type CanalEmissao, type CodigoMunicipalDf, type CodigoNbs, type CodigoServico, type CodigosServico, type Servico,
+  type Sugestao,
 } from "@/lib/emissor";
 import { cn } from "@/lib/utils";
 
@@ -66,8 +67,10 @@ function Escolhido({ codigo, descricao, limpar }: { codigo: string; descricao: s
 const VAZIO = { descricao: "", ctribnac: "", ctribnac_formatado: "", ctribnac_descricao: null as string | null,
   cnbs: "", cnbs_formatado: "", cnbs_descricao: null as string | null, ctribmun: "", cindop: "", cclasstrib: "", ativo: true };
 
-export function ServicoDialog({ empresaId, servico, aberto, aoFechar, aoSalvar, canal = "nacional" }: {
+export function ServicoDialog({ empresaId, servico, aberto, aoFechar, aoSalvar, canal = "nacional", modelo = null }: {
   empresaId: number; servico: Servico | null; aberto: boolean; aoFechar: () => void; aoSalvar?: (s: Servico) => void;
+  /** serviço novo já preenchido (códigos e descrição de uma nota) */
+  modelo?: (CodigosServico & { descricao: string }) | null;
   /** issnet_df: cTribMun do DF (até 10 dígitos), cIndOp e cClassTrib são obrigatórios */
   canal?: CanalEmissao;
 }) {
@@ -75,7 +78,12 @@ export function ServicoDialog({ empresaId, servico, aberto, aoFechar, aoSalvar, 
   const atualizar = useAtualizarEmissor();
   const [f, setF] = useState(VAZIO);
   useEffect(() => {
-    if (aberto) setF(servico ? { ...VAZIO, ...servico, ctribmun: servico.ctribmun ?? "", cindop: servico.cindop ?? "", cclasstrib: servico.cclasstrib ?? "" } : VAZIO);
+    const base = servico ?? (modelo ? {
+      ...modelo, ctribnac_formatado: modelo.ctribnac_formatado ?? modelo.ctribnac, ctribnac_descricao: modelo.ctribnac_descricao ?? null,
+      cnbs_formatado: modelo.cnbs_formatado ?? modelo.cnbs, cnbs_descricao: modelo.cnbs_descricao ?? null, ativo: true,
+    } : null);
+    if (aberto) setF(base ? { ...VAZIO, ...base, ctribmun: base.ctribmun ?? "", cindop: base.cindop ?? "", cclasstrib: base.cclasstrib ?? "" } : VAZIO);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aberto, servico]);
 
   const sugestoes = useQuery({

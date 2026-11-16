@@ -153,6 +153,50 @@ export function useEmpresaEmissora(id: number) {
   return useQuery({ queryKey: ["emissor", "empresa", id], queryFn: () => api<EmpresaEmissora>(`/api/emissor/empresas/${id}`) });
 }
 
+/** Códigos do serviço levados na própria nota (duplicar sem ter o serviço cadastrado). */
+export interface CodigosServico {
+  ctribnac: string;
+  cnbs: string;
+  ctribmun: string | null;
+  cindop: string | null;
+  cclasstrib: string | null;
+  ctribnac_formatado?: string | null;
+  ctribnac_descricao?: string | null;
+  cnbs_formatado?: string | null;
+  cnbs_descricao?: string | null;
+}
+
+export const codigosIguais = (a: { [K in keyof CodigosServico]?: CodigosServico[K] | null }, b: { [K in keyof CodigosServico]?: CodigosServico[K] | null }) =>
+  (["ctribnac", "cnbs", "ctribmun", "cindop", "cclasstrib"] as const).every((k) => (a[k] || null) === (b[k] || null));
+
+/** Última NFS-e prestada que veio do ADN: dados do prestador e do serviço para pré-preencher o emissor. */
+export interface UltimaNota {
+  nota_id: number;
+  numero_nfse: string | null;
+  data: string | null;
+  chave: string | null;
+  emitida_pelo_contask: boolean;
+  prestador: {
+    inscricao_municipal: string | null;
+    op_simples: "1" | "2" | "3" | null;
+    reg_ap_trib_sn: string | null;
+    reg_esp_trib: string | null;
+    cod_municipio: string | null;
+    serie: string | null;
+    numero_dps: number | null;
+  };
+  servico: (CodigosServico & { descricao: string }) | null;
+  servico_cadastrado: boolean;
+}
+
+export function useUltimaNota(empresaId: number) {
+  return useQuery({
+    queryKey: ["emissor", "ultima-nota", empresaId],
+    queryFn: () => api<UltimaNota | null>(`/api/emissor/empresas/${empresaId}/ultima-nota`),
+    staleTime: 60_000,
+  });
+}
+
 export function useServicos(empresaId: number, inativos = false) {
   return useQuery({
     queryKey: ["emissor", "servicos", empresaId, inativos],
@@ -203,6 +247,8 @@ export interface NotaEmitida {
   cnbs: string;
   cnbs_formatado: string;
   ctribmun: string | null;
+  cindop: string | null;
+  cclasstrib: string | null;
   canal?: CanalEmissao;
   cod_municipio_prestacao: string;
   valor_servico: number;
@@ -281,6 +327,9 @@ export function useNotasEmpresa(empresaId: number | null, f: FiltrosNotas) {
 /** Corpo da emissão (POST /api/emissor/notas). Rascunhos e recorrências guardam o mesmo formato. */
 export interface CorpoEmissao {
   servico_id?: number | null;
+  /** sem serviço cadastrado: os códigos vêm da nota duplicada */
+  servico?: CodigosServico | null;
+  cod_municipio_prestacao?: string | null;
   descricao?: string;
   competencia?: string;
   valor?: string;
@@ -350,6 +399,13 @@ export interface ModeloAdn {
   ctribnac: string | null;
   cnbs: string | null;
   ctribmun: string | null;
+  cindop: string | null;
+  cclasstrib: string | null;
+  ctribnac_formatado: string | null;
+  ctribnac_descricao: string | null;
+  cnbs_formatado: string | null;
+  cnbs_descricao: string | null;
+  cod_municipio_prestacao: string | null;
   descricao: string;
   tomador: Tomador | null;
   valor_servico: number;

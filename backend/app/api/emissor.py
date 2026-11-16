@@ -51,13 +51,17 @@ class EmissaoLote(BaseModel):
     emite: bool
 
 
-class ServicoIn(BaseModel):
-    descricao: str
+class CodigosServicoIn(BaseModel):
+    """Códigos do serviço informados na própria nota (duplicar sem ter o serviço cadastrado)."""
     ctribnac: str
     cnbs: str
     ctribmun: str | None = None
     cindop: str | None = None
     cclasstrib: str | None = None
+
+
+class ServicoIn(CodigosServicoIn):
+    descricao: str
     ativo: bool = True
 
 
@@ -158,8 +162,6 @@ def _item_empresa(db: Session, e: Empresa) -> dict:
         pendencias.append("Cadastre o certificado A1 da empresa ou use a procuração (certificado da contabilidade).")
     elif situacao_validade(cert.validade) == "vencido":
         pendencias.append(f"O certificado venceu em {cert.validade:%d/%m/%Y}.")
-    if n_serv == 0:
-        pendencias.append("Cadastre pelo menos um serviço.")
     if cfg is not None and not cfg.cod_municipio:
         from app.emissor.municipio import garantir_municipio
         if not garantir_municipio(db, e, cfg):
@@ -171,6 +173,9 @@ def _item_empresa(db: Session, e: Empresa) -> dict:
     if not e.ativa:
         pendencias.append("A empresa está inativa.")
     avisos = []
+    if e.emite_nfse and n_serv == 0:
+        avisos.append("Nenhum serviço cadastrado. Cadastre um abaixo ou duplique uma nota já emitida: os códigos do "
+                      "serviço vêm da própria nota.")
     if procuracao and canal(cfg) != ISSNET_DF:
         if ambiente(cfg) == 2:
             pendencias.append("Emissão por procuração só é aceita em produção: a homologação da Sefin recusa (E0718). "
@@ -222,12 +227,16 @@ def _validar_servico(d: ServicoIn) -> dict:
         raise HTTPException(422, "Informe a descrição do serviço.")
     if len(descricao) > 2000:
         raise HTTPException(422, "A descrição pode ter no máximo 2.000 caracteres.")
+    return {"descricao": descricao, **_validar_codigos(d), "ativo": d.ativo}
+
+
+def _validar_codigos(d: CodigosServicoIn) -> dict:
     ctrib, nbs = _dig(d.ctribnac), _dig(d.cnbs)
     if tabelas.servico(ctrib) is None:
         raise HTTPException(422, "Código de tributação nacional não encontrado na lista oficial (LC 116).")
     if len(nbs) != 9 or tabelas.nbs_descricao(nbs) is None:
         raise HTTPException(422, "Código NBS não encontrado na tabela oficial (NBS 2.0).")
-    campos = {"descricao": descricao, "ctribnac": ctrib, "cnbs": nbs, "ativo": d.ativo}
+    campos = {"ctribnac": ctrib, "cnbs": nbs}
     for nome, tam, rotulo in (("cindop", 6, "O indicador da operação (cIndOp)"),
                               ("cclasstrib", 6, "A classificação tributária (cClassTrib)")):
         v = _dig(getattr(d, nome))
@@ -559,7 +568,8 @@ def excluir_tomador(tomador_id: int, db: Session = Depends(sessao), esc: int = D
 
 class EmissaoIn(BaseModel):
     empresa_id: int
-    servico_id: int
+    servico_id: int | None = None
+    servico: CodigosServicoIn | None = None  # sem serviço cadastrado: os códigos vêm da nota duplicada
     descricao: str | None = None
     competencia: date
     valor: Decimal = Field(gt=0)
@@ -597,6 +607,7 @@ def _entrada(d: EmissaoIn):
         ret_cofins=d.ret_cofins, ret_csll=d.ret_csll, ret_irrf=d.ret_irrf, ret_cp=d.ret_cp,
         cod_municipio_prestacao=mun or None, info_complementar=d.info_complementar,
         texto_simples=d.texto_simples, texto_procon=d.texto_procon,
+        servico_codigos=_validar_codigos(d.servico) if d.servico and not d.servico_id else None,
     )
 
 

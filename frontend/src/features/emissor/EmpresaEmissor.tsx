@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { ArrowLeft, FileText, FlaskConical, Hash, KeyRound, Landmark, Loader2, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { ArrowLeft, FileText, FlaskConical, Hash, History, KeyRound, Landmark, Loader2, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
@@ -11,10 +11,11 @@ import { Aviso, Campo, Input, Select } from "@/components/ui/campos";
 import { api } from "@/lib/api";
 import {
   REGIMES, REG_AP_TRIB_SN, REG_ESP_TRIB, apenasDigitos, useAmbienteEmissor, useAtualizarEmissor, useEmpresaEmissora, useRps, useServicos,
-  type CanalEmissao, type ConfigPrestador, type EmpresaEmissora, type RegimeTributario, type ResumoRps, type Servico,
+  useUltimaNota, type CanalEmissao, type ConfigPrestador, type EmpresaEmissora, type RegimeTributario, type ResumoRps, type Servico,
+  type UltimaNota,
 } from "@/lib/emissor";
 import { nomeExibicao } from "@/lib/empresas";
-import { formatarDataHora, formatarDoc } from "@/lib/formato";
+import { formatarData, formatarDataHora, formatarDoc } from "@/lib/formato";
 import { Painel } from "@/features/empresas/Passos";
 import { AbasEmissor } from "./Abas";
 import { cn } from "@/lib/utils";
@@ -38,6 +39,8 @@ export function EmpresaEmissor() {
 
 function Detalhe({ e }: { e: EmpresaEmissora }) {
   const atualizar = useAtualizarEmissor();
+  // Última nota da empresa (do ADN): pré-preenche os dados do prestador e o serviço. Se falhar, a tela segue sem ela.
+  const ultima = useUltimaNota(e.id);
   const alternar = useMutation({
     mutationFn: () => api("/api/emissor/empresas/emissao", { method: "PUT", body: JSON.stringify({ empresa_ids: [e.id], emite: !e.emite_nfse }) }),
     onSuccess: () => { atualizar(); toast.success(e.emite_nfse ? "A empresa não emite mais pelo Contask." : "A empresa agora emite NFS-e pelo Contask."); },
@@ -94,8 +97,9 @@ function Detalhe({ e }: { e: EmpresaEmissora }) {
 
       {e.emite_nfse && e.config && <PainelAmbiente e={e} />}
       {e.emite_nfse && e.canal === "issnet_df" && <PainelRps e={e} />}
-      {e.config && <FormPrestador e={e} cfg={e.config} />}
-      <ListaServicos empresaId={e.id} canal={e.canal} />
+      {e.config && (ultima.isLoading ? <Esqueleto className="h-64 w-full" />
+        : <FormPrestador e={e} cfg={e.config} ultima={ultima.data ?? null} />)}
+      <ListaServicos empresaId={e.id} canal={e.canal} ultima={ultima.data ?? null} />
     </div>
   );
 }
@@ -180,15 +184,43 @@ function PainelAmbiente({ e }: { e: EmpresaEmissora }) {
   );
 }
 
-function FormPrestador({ e, cfg }: { e: EmpresaEmissora; cfg: ConfigPrestador }) {
+type DadosPrestador = Omit<ConfigPrestador, "inscricao_municipal" | "cod_municipio" | "reg_ap_trib_sn" | "proximo_numero" | "regime_tributario"> & {
+  inscricao_municipal: string; cod_municipio: string; reg_ap_trib_sn: string; proximo_numero: string; regime_tributario: RegimeTributario | "";
+};
+
+/** Dados do prestador da última nota por cima do formulário. Série e número não: são de outro sistema. */
+function comUltimaNota(d: DadosPrestador, u: UltimaNota, issnet: boolean): DadosPrestador {
+  const p = u.prestador;
+  const op = p.op_simples ?? d.op_simples;
+  const simples = op === "2" || op === "3";
+  return {
+    ...d, op_simples: op as ConfigPrestador["op_simples"],
+    // Fora do Simples a nota não diz se é presumido ou real: a pessoa escolhe
+    regime_tributario: simples ? "simples" : d.regime_tributario === "simples" ? "" : d.regime_tributario,
+    reg_ap_trib_sn: op === "3" ? p.reg_ap_trib_sn || d.reg_ap_trib_sn || "1" : "",
+    reg_esp_trib: p.reg_esp_trib ?? d.reg_esp_trib,
+    // Sem IM na nota, o cadastro nacional não tem a inscrição (informar daria E0120). No ISSNet ela é obrigatória.
+    inscricao_municipal: p.inscricao_municipal ?? (issnet ? d.inscricao_municipal : ""),
+    cod_municipio: p.cod_municipio ?? d.cod_municipio,
+  };
+}
+
+function FormPrestador({ e, cfg, ultima }: { e: EmpresaEmissora; cfg: ConfigPrestador; ultima: UltimaNota | null }) {
   const atualizar = useAtualizarEmissor();
-  const inicial = {
+  const issnet = e.canal === "issnet_df";
+  const inicial: DadosPrestador = {
     ...cfg, inscricao_municipal: cfg.inscricao_municipal ?? "", cod_municipio: cfg.cod_municipio ?? "", reg_ap_trib_sn: cfg.reg_ap_trib_sn ?? "", proximo_numero: String(cfg.proximo_numero),
     // Sem regime gravado: Simples se a DPS já dizia MEI/ME-EPP; senão, a pessoa escolhe
     regime_tributario: (cfg.regime_tributario ?? (cfg.op_simples === "1" ? "" : "simples")) as RegimeTributario | "",
   };
-  const [d, setD] = useState(inicial);
+  // Emissor ainda não configurado (regime nunca salvo): já abre com os dados da última nota da empresa
+  const usarUltima = !!ultima && !ultima.emitida_pelo_contask && cfg.regime_tributario === null;
+  const [d, setD] = useState<DadosPrestador>(usarUltima ? comUltimaNota(inicial, ultima!, issnet) : inicial);
+  const [daUltima, setDaUltima] = useState(usarUltima);
   const mudou = JSON.stringify(d) !== JSON.stringify(inicial);
+  const notaUltima = ultima ? `NFS-e nº ${ultima.numero_nfse ?? "—"}${ultima.data ? `, de ${formatarData(ultima.data)}` : ""}` : "";
+  const mesmaSerie = !!ultima && !ultima.emitida_pelo_contask && !issnet && !!ultima.prestador.serie
+    && Number(ultima.prestador.serie) === Number(d.serie);
   const salvar = useMutation({
     mutationFn: () => api<EmpresaEmissora>(`/api/emissor/empresas/${e.id}/config`, {
       method: "PUT",
@@ -197,12 +229,38 @@ function FormPrestador({ e, cfg }: { e: EmpresaEmissora; cfg: ConfigPrestador })
         regime_tributario: d.regime_tributario || null, proximo_numero: Number(d.proximo_numero) || 0,
         cod_municipio: d.cod_municipio || null }),
     }),
-    onSuccess: () => { atualizar(); toast.success("Dados do prestador salvos."); },
+    onSuccess: () => { atualizar(); setDaUltima(false); toast.success("Dados do prestador salvos."); },
     onError: (er) => toast.error((er as Error).message),
   });
 
   return (
-    <Painel titulo="Dados do prestador" descricao="Vão em toda nota desta empresa. O regime veio da consulta do CNPJ: confira antes de emitir.">
+    <Painel titulo="Dados do prestador" descricao={ultima && !ultima.emitida_pelo_contask
+      ? "Vão em toda nota desta empresa. Dá para trazer o regime, a inscrição municipal e o município da última nota emitida."
+      : "Vão em toda nota desta empresa. O regime veio da consulta do CNPJ: confira antes de emitir."}>
+      {daUltima && ultima && (
+        <div className="mb-4">
+          <Aviso tom="info">
+            Preenchido com os dados do emissor da última nota da empresa ({notaUltima}). Confira e clique em <strong>Salvar</strong>.
+            {d.regime_tributario === "" && " A nota não diz se a empresa é do lucro presumido ou real: escolha o regime."}
+          </Aviso>
+        </div>
+      )}
+      {!daUltima && ultima && !ultima.emitida_pelo_contask && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-borda bg-superficie-2 px-3.5 py-2.5 text-sm">
+          <span className="text-texto-2">Última nota da empresa: {notaUltima}.</span>
+          <Button type="button" tamanho="pequeno" onClick={() => { setD(comUltimaNota(d, ultima, issnet)); setDaUltima(true); }}>
+            <History /> Preencher com a última nota
+          </Button>
+        </div>
+      )}
+      {mesmaSerie && (
+        <div className="mb-4">
+          <Aviso tom="alerta">
+            A última nota foi emitida por outro sistema na série {ultima!.prestador.serie}
+            {ultima!.prestador.numero_dps ? ` (DPS nº ${ultima!.prestador.numero_dps})` : ""}. Use outra série no Contask para não repetir números: a Sefin recusa DPS repetida (E0014).
+          </Aviso>
+        </div>
+      )}
       <form className="grid grid-cols-1 gap-4 sm:grid-cols-2" onSubmit={(ev) => { ev.preventDefault(); salvar.mutate(); }}>
         <Campo rotulo="Regime tributário" obrigatorio
           ajuda={d.regime_tributario === "simples" ? "As notas levam o texto do Simples Nacional nas informações complementares." : undefined}>
@@ -263,7 +321,7 @@ function FormPrestador({ e, cfg }: { e: EmpresaEmissora; cfg: ConfigPrestador })
         )}
         {salvar.isError && <div className="sm:col-span-2"><Aviso tom="erro">{(salvar.error as Error).message}</Aviso></div>}
         <div className="flex justify-end gap-2 sm:col-span-2">
-          {mudou && <Button type="button" variante="fantasma" onClick={() => setD(inicial)}>Desfazer</Button>}
+          {mudou && <Button type="button" variante="fantasma" onClick={() => { setD(inicial); setDaUltima(false); }}>Desfazer</Button>}
           <Button type="submit" variante="primario" disabled={!mudou || !d.regime_tributario || salvar.isPending}>
             {salvar.isPending && <Loader2 className="animate-spin" />} Salvar
           </Button>
@@ -273,11 +331,13 @@ function FormPrestador({ e, cfg }: { e: EmpresaEmissora; cfg: ConfigPrestador })
   );
 }
 
-function ListaServicos({ empresaId, canal }: { empresaId: number; canal: CanalEmissao }) {
+function ListaServicos({ empresaId, canal, ultima }: { empresaId: number; canal: CanalEmissao; ultima: UltimaNota | null }) {
   const [inativos, setInativos] = useState(false);
   const lista = useServicos(empresaId, inativos);
   const atualizar = useAtualizarEmissor();
-  const [dialogo, setDialogo] = useState<{ aberto: boolean; servico: Servico | null }>({ aberto: false, servico: null });
+  const [dialogo, setDialogo] = useState<{ aberto: boolean; servico: Servico | null; daNota?: boolean }>({ aberto: false, servico: null });
+  const servicoUltima = ultima && !ultima.servico_cadastrado ? ultima.servico : null;
+  const usarUltima = () => setDialogo({ aberto: true, servico: null, daNota: true });
   const excluir = useMutation({
     mutationFn: (s: Servico) => api<void>(`/api/emissor/servicos/${s.id}`, { method: "DELETE" }),
     onSuccess: () => { atualizar(); toast.success("Serviço excluído."); },
@@ -296,6 +356,7 @@ function ListaServicos({ empresaId, canal }: { empresaId: number; canal: CanalEm
             <input type="checkbox" className="size-4 accent-destaque" checked={inativos} onChange={(ev) => setInativos(ev.target.checked)} />
             Mostrar inativos
           </label>
+          {servicoUltima && !!lista.data?.length && <Button onClick={usarUltima}><History /> Da última nota</Button>}
           <Button variante="primario" onClick={() => setDialogo({ aberto: true, servico: null })}><Plus /> Novo serviço</Button>
         </div>
       </div>
@@ -304,8 +365,15 @@ function ListaServicos({ empresaId, canal }: { empresaId: number; canal: CanalEm
       {lista.isError && <EstadoErro mensagem={(lista.error as Error).message} tentarDeNovo={() => lista.refetch()} />}
       {lista.data?.length === 0 && (
         <EstadoVazio icone={FileText} titulo="Nenhum serviço cadastrado"
-          acao={<Button variante="primario" onClick={() => setDialogo({ aberto: true, servico: null })}><Plus /> Cadastrar o primeiro serviço</Button>}>
-          Cadastre a descrição e os códigos uma vez. Nas próximas notas, é só escolher o serviço.
+          acao={servicoUltima ? (
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button variante="primario" onClick={usarUltima}><History /> Usar o serviço da última nota</Button>
+              <Button onClick={() => setDialogo({ aberto: true, servico: null })}><Plus /> Cadastrar outro</Button>
+            </div>
+          ) : <Button variante="primario" onClick={() => setDialogo({ aberto: true, servico: null })}><Plus /> Cadastrar o primeiro serviço</Button>}>
+          {servicoUltima
+            ? <>A última nota da empresa usou o item <span className="font-mono">{servicoUltima.ctribnac_formatado ?? servicoUltima.ctribnac}</span>. Dá para cadastrá-lo já preenchido. Também dá para emitir sem cadastrar, duplicando uma nota.</>
+            : "Cadastre a descrição e os códigos uma vez. Nas próximas notas, é só escolher o serviço."}
         </EstadoVazio>
       )}
       {lista.data && lista.data.length > 0 && (
@@ -329,7 +397,8 @@ function ListaServicos({ empresaId, canal }: { empresaId: number; canal: CanalEm
           ))}
         </ul>
       )}
-      <ServicoDialog empresaId={empresaId} servico={dialogo.servico} aberto={dialogo.aberto} canal={canal} aoFechar={() => setDialogo({ aberto: false, servico: null })} />
+      <ServicoDialog empresaId={empresaId} servico={dialogo.servico} aberto={dialogo.aberto} canal={canal}
+        modelo={dialogo.daNota ? servicoUltima : null} aoFechar={() => setDialogo({ aberto: false, servico: null })} />
     </Painel>
   );
 }

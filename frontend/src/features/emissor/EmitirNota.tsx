@@ -13,10 +13,10 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Painel } from "@/features/empresas/Passos";
 import { api } from "@/lib/api";
 import {
-  TEXTO_PROCON, TEXTO_SIMPLES, VARIAVEIS, aplicarVariaveis, apenasDigitos, arredondar, escreverValor, lerValor, mascararCep, proximaData,
-  useAtualizarEmissor, useEmpresasEmissoras, useServicos, variaveisDesconhecidas,
-  type ConsultaTomador, type CorpoEmissao, type EmpresaEmissora, type ModeloAdn, type NotaEmitida, type Rascunho, type Recorrente,
-  type Servico, type Tomador,
+  TEXTO_PROCON, TEXTO_SIMPLES, VARIAVEIS, aplicarVariaveis, apenasDigitos, arredondar, codigosIguais, escreverValor, lerValor, mascararCep,
+  proximaData, useAtualizarEmissor, useEmpresasEmissoras, useServicos, variaveisDesconhecidas,
+  type CodigosServico, type ConsultaTomador, type CorpoEmissao, type EmpresaEmissora, type ModeloAdn, type NotaEmitida, type Rascunho,
+  type Recorrente, type Servico, type Tomador,
 } from "@/lib/emissor";
 import { nomeExibicao, useEmpresaSelecionada } from "@/lib/empresas";
 import { CONTRATE, useTesteGratis } from "@/lib/sessao";
@@ -43,6 +43,9 @@ export interface DadosRecorrencia { nome: string; dia: string; competencia: "atu
 
 export interface Form {
   servicoId: number | null;
+  /** códigos da nota duplicada: usados quando não há serviço cadastrado igual */
+  servicoNota: CodigosServico | null;
+  localPrestacao: string;
   descricao: string;
   competencia: string;
   valor: string;
@@ -64,7 +67,7 @@ export function hoje() {
 }
 
 export function vazio(): Form {
-  return { servicoId: null, descricao: "", competencia: hoje(), valor: "", desconto: "", semTomador: false,
+  return { servicoId: null, servicoNota: null, localPrestacao: "", descricao: "", competencia: hoje(), valor: "", desconto: "", semTomador: false,
     tomador: TOMADOR_VAZIO, salvarTomador: true, issRetido: false, aliquota: "",
     ret: { ret_pis: "", ret_cofins: "", ret_csll: "", ret_irrf: "", ret_cp: "" }, info: "", textoSimples: true, textoProcon: true };
 }
@@ -73,11 +76,20 @@ const doTomador = (t: Partial<Tomador> | null | undefined): Tomador =>
   t ? { ...TOMADOR_VAZIO, ...Object.fromEntries(Object.entries(t).map(([k, v]) => [k, v ?? ""])) } as Tomador : TOMADOR_VAZIO;
 const v2 = (x: number | null | undefined) => (x ? escreverValor(x) : "");
 
+type CodigosSoltos = { [K in keyof CodigosServico]?: CodigosServico[K] | null };
+function codigosDe(x: CodigosSoltos | null | undefined): CodigosServico | null {
+  if (!x?.ctribnac || !x.cnbs) return null;
+  return { ctribnac: x.ctribnac, cnbs: x.cnbs, ctribmun: x.ctribmun || null, cindop: x.cindop || null, cclasstrib: x.cclasstrib || null,
+    ctribnac_formatado: x.ctribnac_formatado ?? null, ctribnac_descricao: x.ctribnac_descricao ?? null,
+    cnbs_formatado: x.cnbs_formatado ?? null, cnbs_descricao: x.cnbs_descricao ?? null };
+}
+
 /** Nota já emitida -> formulário. Para duplicar, a competência volta para hoje. */
 export function daNota(n: NotaEmitida | ModeloAdn, duplicar = false): Form {
   // Nota sem nenhum texto legal (anterior a eles ou de outro emissor): ao duplicar, vale o padrão (marcados)
   const padrao = duplicar && !n.texto_simples && !n.texto_procon;
-  return { servicoId: n.servico_id, descricao: n.descricao, competencia: duplicar || !("competencia" in n) ? hoje() : n.competencia,
+  return { servicoId: n.servico_id, servicoNota: codigosDe(n), localPrestacao: n.cod_municipio_prestacao ?? "",
+    descricao: n.descricao, competencia: duplicar || !("competencia" in n) ? hoje() : n.competencia,
     valor: escreverValor(n.valor_servico), desconto: v2(n.desconto), semTomador: !n.tomador, tomador: doTomador(n.tomador),
     salvarTomador: true, issRetido: n.iss_retido, aliquota: n.aliquota_iss ? escreverValor(n.aliquota_iss) : "",
     ret: { ret_pis: v2(n.ret_pis), ret_cofins: v2(n.ret_cofins), ret_csll: v2(n.ret_csll), ret_irrf: v2(n.ret_irrf), ret_cp: v2(n.ret_cp) },
@@ -92,7 +104,8 @@ export function doCorpo(d: CorpoEmissao): Form {
     return isNaN(n) || n === 0 ? "" : escreverValor(n);
   };
   return {
-    ...base, servicoId: d.servico_id ?? null, descricao: d.descricao ?? "", competencia: d.competencia ?? base.competencia,
+    ...base, servicoId: d.servico_id ?? null, servicoNota: codigosDe(d.servico), localPrestacao: d.cod_municipio_prestacao ?? "",
+    descricao: d.descricao ?? "", competencia: d.competencia ?? base.competencia,
     valor: v(d.valor), desconto: v(d.desconto), semTomador: d.tomador === null, tomador: doTomador(d.tomador),
     salvarTomador: d.salvar_tomador ?? true, issRetido: !!d.iss_retido, aliquota: v(d.aliquota_iss),
     ret: { ret_pis: v(d.ret_pis), ret_cofins: v(d.ret_cofins), ret_csll: v(d.ret_csll), ret_irrf: v(d.ret_irrf), ret_cp: v(d.ret_cp) },
@@ -156,7 +169,7 @@ export function EmitirNota() {
       {empresas.data && !carregando && !carregandoFonte && !erroFonte && (
         !empresa || !empresa.emite_nfse ? <SemEmpresa id={empresaId} /> : (
           <Formulario key={chave} empresa={empresa} inicial={inicial} notaInicial={notaId ? original.data ?? null : null}
-            rascunhoId={rascunhoId} servicoOriginal={modelo.data && !modelo.data.servico_id ? modelo.data : null} />
+            rascunhoId={rascunhoId} />
         )
       )}
     </>
@@ -191,12 +204,11 @@ function Secao({ n, titulo, children, acao }: { n: number; titulo: string; child
 const CLASSE_TEXTO = "w-full rounded-xl border border-borda bg-superficie px-3 py-2 text-sm outline-none hover:border-borda-forte focus-visible:border-destaque focus-visible:ring-2 focus-visible:ring-destaque/25";
 const dataBR = (d: Date) => d.toLocaleDateString("pt-BR");
 
-export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = null, servicoOriginal = null, recorrencia }: {
+export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = null, recorrencia }: {
   empresa: EmpresaEmissora;
   inicial: Form;
   notaInicial?: NotaEmitida | null;
   rascunhoId?: number | null;
-  servicoOriginal?: ModeloAdn | null;
   /** modo recorrência: dados da agenda e a recorrência em edição (se houver) */
   recorrencia?: { dados: DadosRecorrencia; existente: Recorrente | null };
 }) {
@@ -221,9 +233,20 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
   const simples = !!cfg?.simples;
   const precisaAliquota = !!cfg && cfg.op_simples === "3" && cfg.reg_ap_trib_sn === "1" && cfg.reg_esp_trib === "0" && f.issRetido;
 
-  // Serviço único já vem escolhido
+  // Serviço único já vem escolhido. Na nota duplicada, o serviço cadastrado só vale se tiver os mesmos códigos dela;
+  // senão a nota sai com os códigos da original, sem precisar cadastrar
   useEffect(() => {
-    if (!servicos.data || f.servicoId) return;
+    if (!servicos.data) return;
+    const nota = f.servicoNota;
+    if (nota) {
+      const atual = servicos.data.find((s) => s.id === f.servicoId);
+      if (!atual || !codigosIguais(atual, nota)) {
+        const igual = servicos.data.find((s) => codigosIguais(s, nota));
+        setF((a) => ({ ...a, servicoId: igual?.id ?? null }));
+      }
+      return;
+    }
+    if (f.servicoId) return;
     if (servicos.data.length === 1 && !f.descricao) escolherServico(servicos.data[0]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [servicos.data]);
@@ -231,6 +254,9 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
   function escolherServico(s: Servico | undefined) {
     setF((a) => ({ ...a, servicoId: s?.id ?? null, descricao: s?.descricao ?? "" }));
   }
+  const DA_NOTA = "nota";
+  const usaNota = !f.servicoId && !!f.servicoNota;
+  const codigosAtuais: Partial<CodigosServico> | null = f.servicoId ? servicos.data?.find((x) => x.id === f.servicoId) ?? null : f.servicoNota;
 
   const valor = num(f.valor);
   const desconto = num(f.desconto);
@@ -256,7 +282,8 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
     if (!proxima) problemas.push("Informe o dia da emissão (1 a 31).");
     if (desconhecidas.length) problemas.push(`Variável desconhecida: ${desconhecidas.map((x) => `{${x}}`).join(", ")}.`);
   }
-  if (!f.servicoId) problemas.push("Escolha o serviço.");
+  if (!f.servicoId && !f.servicoNota) problemas.push("Escolha o serviço.");
+  if (f.localPrestacao && apenasDigitos(f.localPrestacao).length !== 7) problemas.push("O local da prestação deve ter o código IBGE de 7 dígitos.");
   if (!f.descricao.trim()) problemas.push("Informe a descrição do serviço.");
   if (!(valor > 0)) problemas.push("Informe o valor do serviço.");
   if (f.valor && isNaN(lerValor(f.valor))) problemas.push("Valor do serviço inválido. Use o formato 1.234,56.");
@@ -273,7 +300,10 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
 
   const fixo = (s: string) => { const n = lerValor(s); return isNaN(n) ? "" : n.toFixed(2); };
   const corpo = (): CorpoEmissao & { empresa_id: number } => ({
-    empresa_id: empresa.id, servico_id: f.servicoId, descricao: f.descricao, competencia: f.competencia,
+    empresa_id: empresa.id, servico_id: f.servicoId, competencia: f.competencia, descricao: f.descricao,
+    servico: f.servicoId || !f.servicoNota ? null : { ctribnac: f.servicoNota.ctribnac, cnbs: f.servicoNota.cnbs,
+      ctribmun: f.servicoNota.ctribmun, cindop: f.servicoNota.cindop, cclasstrib: f.servicoNota.cclasstrib },
+    cod_municipio_prestacao: apenasDigitos(f.localPrestacao) || null,
     valor: fixo(f.valor), desconto: desconto.toFixed(2),
     tomador: f.semTomador ? null : { ...t, documento: doc },
     salvar_tomador: f.salvarTomador, iss_retido: f.issRetido,
@@ -348,7 +378,7 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
           <div className="mt-6 flex flex-wrap justify-center gap-2">
             <Button asChild variante="primario"><a href={`/api/emissor/notas/${resultado.id}/danfse`} target="_blank" rel="noreferrer"><FileText /> Abrir DANFSe</a></Button>
             {!teste.emTeste && <Button asChild><a href={`/api/emissor/notas/${resultado.id}/xml`}><Download /> Baixar XML</a></Button>}
-            <Button onClick={() => { setResultado(null); setF({ ...vazio(), servicoId: f.servicoId, descricao: f.descricao }); }}><Plus /> Emitir outra nota</Button>
+            <Button onClick={() => { setResultado(null); setF({ ...vazio(), servicoId: f.servicoId, servicoNota: f.servicoNota, localPrestacao: f.localPrestacao, descricao: f.descricao }); }}><Plus /> Emitir outra nota</Button>
             <Button variante="fantasma" onClick={() => navegar(`/emissor?empresa=${empresa.id}`)}>Ver notas</Button>
           </div>
         </div>
@@ -508,37 +538,53 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
 
         <Secao n={++n} titulo="Serviço"
           acao={<Button tamanho="pequeno" variante="fantasma" onClick={() => setNovoServico(true)}><Plus /> Novo serviço</Button>}>
-          {servicoOriginal && !f.servicoId && (
-            <div className="mb-3">
-              <Aviso tom="alerta">
-                O serviço da nota original (item <span className="font-mono">{servicoOriginal.ctribnac}</span>, NBS <span className="font-mono">{servicoOriginal.cnbs}</span>) não está cadastrado nesta empresa. Cadastre-o em "Novo serviço" ou escolha outro.
-              </Aviso>
-            </div>
-          )}
           {servicos.isLoading ? <Esqueleto className="h-9 w-full" />
             : servicos.isError ? <EstadoErro mensagem={(servicos.error as Error).message} tentarDeNovo={() => servicos.refetch()} />
-            : servicos.data?.length === 0 ? (
+            : servicos.data?.length === 0 && !f.servicoNota ? (
               <EstadoVazio icone={FileText} titulo="Esta empresa ainda não tem serviços"
                 acao={<Button variante="primario" onClick={() => setNovoServico(true)}><Plus /> Cadastrar serviço</Button>}>
                 Cadastre a descrição e os códigos uma vez e reaproveite nas próximas notas.
               </EstadoVazio>
             ) : (
               <div className="space-y-3">
-                <Campo rotulo="Serviço cadastrado" obrigatorio>
+                <Campo rotulo="Serviço" obrigatorio
+                  ajuda={usaNota ? "Códigos da nota original. Não precisa cadastrar o serviço para emitir." : undefined}>
                   {(p) => (
-                    <Select {...p} value={f.servicoId ?? ""} onChange={(ev) => escolherServico(servicos.data?.find((s) => s.id === Number(ev.target.value)))}>
-                      <option value="">Escolha o serviço…</option>
+                    <Select {...p} value={f.servicoId ?? (usaNota ? DA_NOTA : "")} onChange={(ev) => ev.target.value === DA_NOTA
+                      ? setF((a) => ({ ...a, servicoId: null }))
+                      : escolherServico(servicos.data?.find((s) => s.id === Number(ev.target.value)))}>
+                      {!f.servicoId && !usaNota && <option value="">Escolha o serviço…</option>}
+                      {f.servicoNota && (
+                        <option value={DA_NOTA}>Da nota original · {f.servicoNota.ctribnac_formatado ?? f.servicoNota.ctribnac}</option>
+                      )}
                       {servicos.data?.map((s) => <option key={s.id} value={s.id}>{s.ctribnac_formatado} · {s.descricao.slice(0, 90)}</option>)}
                     </Select>
                   )}
                 </Campo>
-                {f.servicoId && (() => {
-                  const s = servicos.data?.find((x) => x.id === f.servicoId);
-                  return s ? <p className="text-xs text-texto-2">Item <span className="font-mono">{s.ctribnac_formatado}</span> · {s.ctribnac_descricao} · NBS <span className="font-mono">{s.cnbs_formatado}</span></p> : null;
-                })()}
+                {codigosAtuais && (
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs text-texto-2">
+                      Item <span className="font-mono">{codigosAtuais.ctribnac_formatado ?? codigosAtuais.ctribnac}</span>
+                      {codigosAtuais.ctribnac_descricao && <> · {codigosAtuais.ctribnac_descricao}</>}
+                      {" "}· NBS <span className="font-mono">{codigosAtuais.cnbs_formatado ?? codigosAtuais.cnbs}</span>
+                      {codigosAtuais.ctribmun && <> · Municipal <span className="font-mono">{codigosAtuais.ctribmun}</span></>}
+                      {codigosAtuais.cclasstrib && <> · cClassTrib <span className="font-mono">{codigosAtuais.cclasstrib}</span></>}
+                    </p>
+                    {usaNota && !modoRec && (
+                      <Button type="button" tamanho="pequeno" variante="fantasma" onClick={() => setNovoServico(true)}>
+                        <Save /> Salvar como serviço
+                      </Button>
+                    )}
+                  </div>
+                )}
                 <Campo rotulo="Descrição nesta nota" obrigatorio
                   ajuda={modoRec ? "Use as variáveis abaixo para o texto mudar a cada mês." : "Pode ajustar só para esta nota (mês de referência, contrato…). O cadastro do serviço não muda."}>
                   {(p) => <textarea {...p} rows={3} maxLength={2000} value={f.descricao} onChange={(ev) => setF({ ...f, descricao: ev.target.value })} className={CLASSE_TEXTO} />}
+                </Campo>
+                <Campo rotulo="Local da prestação (código IBGE)" className="max-w-xs"
+                  ajuda={`Em branco: município da empresa${empresa.config?.cod_municipio ? ` (${empresa.config.cod_municipio})` : ""}.`}>
+                  {(p) => <Input {...p} value={f.localPrestacao} inputMode="numeric" maxLength={7} placeholder={empresa.config?.cod_municipio ?? ""}
+                    onChange={(ev) => setF({ ...f, localPrestacao: apenasDigitos(ev.target.value) })} />}
                 </Campo>
                 {modoRec && (
                   <div>
@@ -716,7 +762,8 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
       </Dialog>
 
       <ServicoDialog empresaId={empresa.id} servico={null} aberto={novoServico} canal={empresa.canal} aoFechar={() => setNovoServico(false)}
-        aoSalvar={(s) => escolherServico(s)} />
+        modelo={usaNota && f.servicoNota ? { ...f.servicoNota, descricao: f.descricao } : null}
+        aoSalvar={(s) => setF((a) => ({ ...a, servicoId: s.id, descricao: usaNota ? a.descricao : s.descricao }))} />
     </div>
   );
 }

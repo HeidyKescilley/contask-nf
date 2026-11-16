@@ -44,10 +44,11 @@ def test_marcar_em_lote_e_pendencias(cliente):
     assert itens[proc["id"]]["certificado"]["procuracao"] is True
     assert any("E0718" in p for p in itens[proc["id"]]["pendencias"])
     assert any("cancelamento por procuração" in a for a in itens[proc["id"]]["avisos"])
-    assert itens[prop["id"]]["certificado"]["procuracao"] is False and itens[prop["id"]]["avisos"] == []
+    assert itens[prop["id"]]["certificado"]["procuracao"] is False
+    # sem serviço cadastrado é só aviso: dá para emitir duplicando uma nota (os códigos vêm dela)
+    assert [a for a in itens[prop["id"]]["avisos"] if "Nenhum serviço" in a] == itens[prop["id"]]["avisos"] != []
     assert itens[prop["id"]]["certificado"]["titular_doc"] == OUTRO
-    assert itens[prop["id"]]["pendencias"] == ["Cadastre pelo menos um serviço.",
-                                               "Não foi possível descobrir o código IBGE do município da empresa. "
+    assert itens[prop["id"]]["pendencias"] == ["Não foi possível descobrir o código IBGE do município da empresa. "
                                                "Confira o município e a UF no cadastro da empresa ou informe o código "
                                                "nos dados do prestador."]
     assert not itens[prop["id"]]["pronta"]

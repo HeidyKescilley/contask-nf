@@ -203,7 +203,6 @@ export function EditarRecorrente() {
       {!carregando && !carregandoFonte && !erro && !erroFonte && (!id || existente.data) && (
         !empresa || !empresa.emite_nfse ? <SemEmissora selecionada={selecionada} /> : (
           <Formulario key={`${id}-${duplicar}-${duplicarAdn}-${empresa.id}`} empresa={empresa} inicial={inicial}
-            servicoOriginal={modelo.data && !modelo.data.servico_id ? modelo.data : null}
             recorrencia={{ dados, existente: existente.data ?? null }} />
         )
       )}
