@@ -8,6 +8,7 @@ import { Aviso, Campo, Input } from "@/components/ui/campos";
 import { api } from "@/lib/api";
 import { type TipoConta, type Usuario, useSessao } from "@/lib/sessao";
 import { MenuTema } from "@/layout/MenuTema";
+import { useCorDaConta } from "@/lib/tema";
 
 function Moldura({ titulo, descricao, children }: { titulo: string; descricao: string; children: ReactNode }) {
   return (
@@ -71,6 +72,9 @@ export function Entrar() {
   // "/" leva cada conta à sua tela inicial (emissor na conta de empresa, dashboard na de contador)
   const voltar = (local.state as { voltar?: string } | null)?.voltar || "/";
   const perfil = usePerfil();
+  const [params] = useSearchParams();
+  // Com ?perfil= no link, a cor segue o perfil; sem ele, fica a da última conta usada neste navegador
+  useCorDaConta(params.get("perfil") ? perfil : null);
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const entrar = useMutation({
@@ -132,6 +136,7 @@ export function Cadastrar() {
   const [confirma, setConfirma] = useState("");
   const [convite, setConvite] = useState("");
   const [tipo, setTipo] = useState<TipoConta>(usePerfil());
+  useCorDaConta(tipo);
   const pedeConvite = sessao.data?.cadastro === "convite";
   const diferentes = confirma.length > 0 && confirma !== senha;
   const cadastrar = useMutation({

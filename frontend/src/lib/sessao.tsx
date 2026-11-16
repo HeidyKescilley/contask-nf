@@ -3,6 +3,7 @@ import { useEffect, type ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { EstadoErro, Esqueleto } from "@/components/estados";
 import { api } from "./api";
+import { useCorDaConta } from "./tema";
 
 export interface Usuario {
   id: number;
@@ -84,6 +85,7 @@ function useOuvirSessao() {
 export function Protegido({ children }: { children: ReactNode }) {
   useOuvirSessao();
   const { data, isLoading, isError, refetch } = useSessao();
+  useCorDaConta(data?.escritorio?.tipo);
   const local = useLocation();
   if (isLoading)
     return (

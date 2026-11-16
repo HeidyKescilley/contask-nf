@@ -20,7 +20,11 @@ export function BarraLateral({ recolhida, alternar }: { recolhida: boolean; alte
       aria-label="Navegação principal"
     >
       <div className={cn("flex h-14 items-center gap-2.5 border-b border-borda", recolhida ? "justify-center" : "px-4")}>
-        <img src="/icone.svg" alt="" className="size-7" />
+        <svg viewBox="0 0 32 32" aria-hidden className="size-7 shrink-0">
+          <rect width="32" height="32" rx="8" className="fill-marca" />
+          <path d="M10 8h8l5 5v11a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2z" fill="none" stroke="#fff" strokeWidth="2" strokeLinejoin="round" />
+          <path d="M12 17l3 3 5-6" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
         {!recolhida && (
           <span className="text-[15px] font-semibold tracking-tight">
             Contask <span className="text-destaque">NF</span>

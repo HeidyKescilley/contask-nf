@@ -66,3 +66,24 @@ export function useTema() {
   if (!ctx) throw new Error("useTema fora do TemaProvider");
   return ctx;
 }
+
+// ---------------------------------------------------------------------------
+// Cor da conta: mesma identidade, destaque azul (contador) ou roxo (empresa)
+// ---------------------------------------------------------------------------
+
+export type CorConta = "contador" | "empresa";
+const CHAVE_CONTA = "contask-conta";
+
+/** Troca a cor de destaque e o ícone da aba; lembra a escolha para a próxima abertura (sem piscar). */
+export function aplicarCorDaConta(conta: CorConta) {
+  const el = document.documentElement;
+  if (el.dataset.conta !== conta) el.dataset.conta = conta;
+  gravarLocal(CHAVE_CONTA, conta);
+  const icone = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+  const href = conta === "empresa" ? "/icone-empresa.svg" : "/icone.svg";
+  if (icone && icone.getAttribute("href") !== href) icone.setAttribute("href", href);
+}
+
+export function useCorDaConta(conta: CorConta | null | undefined) {
+  useEffect(() => { if (conta) aplicarCorDaConta(conta); }, [conta]);
+}

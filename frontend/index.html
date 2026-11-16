@@ -16,6 +16,11 @@
         el.classList.toggle("dark", escuro);
         el.style.colorScheme = escuro ? "dark" : "light";
         el.dataset.tema = pref;
+        // Cor da conta (azul: contador; roxo: empresa) antes da primeira pintura
+        var conta = "contador";
+        try { conta = new URLSearchParams(location.search).get("perfil") === "empresa" ? "empresa" : (localStorage.getItem("contask-conta") || "contador"); } catch (e) {}
+        el.dataset.conta = conta;
+        if (conta === "empresa") document.querySelector('link[rel="icon"]').href = "/icone-empresa.svg";
       })();
     </script>
   </head>
