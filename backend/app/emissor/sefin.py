@@ -45,6 +45,12 @@ def descompactar(b64: str) -> bytes:
         return bruto
 
 
+def _xml(conteudo: str) -> bytes:
+    """XML que vem como texto puro ou em base64 (com ou sem gzip)."""
+    texto = conteudo.lstrip()
+    return texto.encode("utf-8") if texto.startswith("<") else descompactar(conteudo)
+
+
 def _erros(d: dict) -> list[dict]:
     brutos = d.get("erros") or d.get("Erros") or d.get("erro") or []
     if isinstance(brutos, dict):
@@ -124,8 +130,12 @@ class ClienteSefin:
         d = self._json(r)
         if r.status_code != 200:
             raise ErroSefin("; ".join(f"{e['codigo']}: {e['descricao']}" for e in _erros(d)) or f"HTTP {r.status_code}")
-        b64 = d.get("eventoXmlGZipB64") or next((v for k, v in d.items() if k.lower().endswith("xmlgzipb64") and v), None)
-        return descompactar(b64) if b64 else None
+        # formato visto em produção (16/11/2026): {"eventos": [{"tipoEvento": 101101, "arquivoXml": "<base64 gzip>"}]}
+        for ev in d.get("eventos") or []:
+            if isinstance(ev, dict) and ev.get("arquivoXml"):
+                return _xml(ev["arquivoXml"])
+        b64 = d.get("eventoXmlGZipB64")
+        return _xml(b64) if b64 else None
 
     def registrar_evento(self, chave: str, pedido_xml: bytes) -> Resposta:
         r = self._req("POST", f"/nfse/{chave}/eventos", json={"pedidoRegistroEventoXmlGZipB64": compactar(pedido_xml)})

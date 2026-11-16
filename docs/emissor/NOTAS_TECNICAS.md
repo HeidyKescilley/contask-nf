@@ -137,5 +137,6 @@ O teste foi feito com a CONTELB (ME/EPP do Simples) emitindo para um tomador do 
 - **Como ficou:**
   - a busca do ADN, ao recalcular o status por chave, também passa a nota emitida para cancelada (data, motivo `xMotivo` e XML do evento);
   - as listas do emissor fazem a mesma conciliação antes de mostrar, o que corrige notas antigas;
-  - o menu da nota tem **Verificar situação**: confere os eventos já baixados e consulta a Sefin (`GET /nfse/{chave}/eventos/{tipo}/1`, só leitura) para 101101, 105102 e 305101.
+  - o menu da nota tem **Verificar situação**: confere os eventos já baixados e consulta a Sefin (`GET /nfse/{chave}/eventos/{tipo}/1`, só leitura) para 101101, 105102 e 305101;
+  - resposta real da Sefin: 200 com `{"eventos": [{"tipoEvento", "dataHoraRecebimento", "arquivoXml"}]}` (XML em base64 com gzip) e 404 quando não há o evento. `GET /nfse/{chave}/eventos`, sem tipo, devolve 405.
 
