@@ -67,14 +67,17 @@ function Escolhido({ codigo, descricao, limpar }: { codigo: string; descricao: s
 const VAZIO = { descricao: "", ctribnac: "", ctribnac_formatado: "", ctribnac_descricao: null as string | null,
   cnbs: "", cnbs_formatado: "", cnbs_descricao: null as string | null, ctribmun: "", cindop: "", cclasstrib: "", ativo: true };
 
-export function ServicoDialog({ empresaId, servico, aberto, aoFechar, aoSalvar, canal = "nacional", modelo = null }: {
+export function ServicoDialog({ empresaId, servico, aberto, aoFechar, aoSalvar, canal = "nacional", modelo = null, exigeIbsCbs = false }: {
   empresaId: number; servico: Servico | null; aberto: boolean; aoFechar: () => void; aoSalvar?: (s: Servico) => void;
   /** serviço novo já preenchido (códigos e descrição de uma nota) */
   modelo?: (CodigosServico & { descricao: string }) | null;
   /** issnet_df: cTribMun do DF (até 10 dígitos), cIndOp e cClassTrib são obrigatórios */
   canal?: CanalEmissao;
+  /** empresa fora do Simples: cIndOp e cClassTrib obrigatórios (grupo IBS/CBS da nota) */
+  exigeIbsCbs?: boolean;
 }) {
   const issnet = canal === "issnet_df";
+  const ibsObrigatorio = issnet || exigeIbsCbs;
   const atualizar = useAtualizarEmissor();
   const [f, setF] = useState(VAZIO);
   useEffect(() => {
@@ -108,9 +111,9 @@ export function ServicoDialog({ empresaId, servico, aberto, aoFechar, aoSalvar, 
       cindop: s.cindop ?? a.cindop, cclasstrib: s.cclasstrib ?? a.cclasstrib }));
 
   const tamMun = apenasDigitos(f.ctribmun).length;
-  const valido = f.descricao.trim().length > 0 && f.ctribnac.length === 6 && f.cnbs.length === 9 && (issnet
-    ? tamMun >= 1 && tamMun <= 10 && f.cindop.length === 6 && f.cclasstrib.length === 6
-    : [0, 3].includes(tamMun));
+  const valido = f.descricao.trim().length > 0 && f.ctribnac.length === 6 && f.cnbs.length === 9
+    && (issnet ? tamMun >= 1 && tamMun <= 10 : [0, 3].includes(tamMun))
+    && (!ibsObrigatorio || (f.cindop.length === 6 && f.cclasstrib.length === 6));
 
   return (
     <Dialog open={aberto} onOpenChange={(v) => !v && aoFechar()}>
@@ -172,15 +175,16 @@ export function ServicoDialog({ empresaId, servico, aberto, aoFechar, aoSalvar, 
                   onChange={(e) => setF({ ...f, ctribmun: apenasDigitos(e.target.value) })} placeholder="Opcional" />}
               </Campo>
             )}
-            <Campo rotulo="cIndOp (IBS/CBS)" obrigatorio={issnet} ajuda="Sugerido pela NBS.">
+            <Campo rotulo="cIndOp (IBS/CBS)" obrigatorio={ibsObrigatorio} ajuda="Indicador da operação (Anexo VII). Sugerido pela NBS.">
               {(p) => <Input {...p} value={f.cindop} inputMode="numeric" maxLength={6}
-                onChange={(e) => setF({ ...f, cindop: apenasDigitos(e.target.value) })} placeholder={issnet ? "6 dígitos" : "Opcional"} />}
+                onChange={(e) => setF({ ...f, cindop: apenasDigitos(e.target.value) })} placeholder={ibsObrigatorio ? "6 dígitos" : "Opcional"} />}
             </Campo>
-            <Campo rotulo="cClassTrib (IBS/CBS)" obrigatorio={issnet} ajuda="Sugerido pela NBS.">
+            <Campo rotulo="cClassTrib (IBS/CBS)" obrigatorio={ibsObrigatorio} ajuda="Classificação tributária. O CST são os 3 primeiros dígitos (000001 = tributação integral). Sugerido pela NBS.">
               {(p) => <Input {...p} value={f.cclasstrib} inputMode="numeric" maxLength={6}
-                onChange={(e) => setF({ ...f, cclasstrib: apenasDigitos(e.target.value) })} placeholder={issnet ? "6 dígitos" : "Opcional"} />}
+                onChange={(e) => setF({ ...f, cclasstrib: apenasDigitos(e.target.value) })} placeholder={ibsObrigatorio ? "6 dígitos" : "Opcional"} />}
             </Campo>
           </div>
+          {exigeIbsCbs && !issnet && <Aviso tom="info">Empresa fora do Simples: a nota leva o grupo IBS/CBS com esses códigos. Os valores de IBS e CBS (em 2026, CBS 0,9% e IBS 0,1%, só informativos) são calculados pela Sefin na autorização.</Aviso>}
           {issnet && <Aviso tom="info">No ISSNet do DF, o código municipal e o grupo IBS/CBS (cIndOp e cClassTrib) são obrigatórios. A alíquota do ISS vem do cadastro da empresa no ISSNet.</Aviso>}
 
           {servico && (

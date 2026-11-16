@@ -34,6 +34,8 @@ def _dados(amb=RESTRITA, op="3", ap="1", retencoes=None, tomador=True, aliquota=
         ctribnac="171901", cnbs="113022100", descricao="Honorários contábeis", valor=Decimal("1000.00"),
         cod_municipio_prestacao="5300108", retencoes=retencoes or Retencoes(), aliquota_iss=aliquota,
         percentual_tributos_sn=Decimal("6.00"), emitido_em=datetime(2026, 11, 9, 10, 0, tzinfo=BRASILIA),
+        # fora do Simples a DPS leva o grupo IBS/CBS
+        cindop="100301" if op == "1" else None, cclasstrib="000001" if op == "1" else None,
     )
 
 
@@ -276,7 +278,8 @@ def test_bloqueios(cliente, sefin):
     proc = cliente.post("/api/empresas", data={"cnpj": CLIENTE, "razao_social": "Cliente", "modo_certificado": "contabilidade",
                                                "emite_nfse": "true"}).json()["empresa"]
     s = cliente.post(f"/api/emissor/empresas/{proc['id']}/servicos",
-                     json={"descricao": "X", "ctribnac": "171901", "cnbs": "113022100"}).json()
+                     json={"descricao": "X", "ctribnac": "171901", "cnbs": "113022100",
+                           "cindop": "100301", "cclasstrib": "000001"}).json()
     r = cliente.post("/api/emissor/notas", json=_emissao(proc, s))
     assert r.status_code == 422 and "E0718" in r.json()["detail"]  # homologação não aceita procuração
     cliente.put("/api/emissor/empresas/emissao", json={"empresa_ids": [proc["id"]], "emite": False})

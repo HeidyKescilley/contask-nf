@@ -99,7 +99,7 @@ function Detalhe({ e }: { e: EmpresaEmissora }) {
       {e.emite_nfse && e.canal === "issnet_df" && <PainelRps e={e} />}
       {e.config && (ultima.isLoading ? <Esqueleto className="h-64 w-full" />
         : <FormPrestador e={e} cfg={e.config} ultima={ultima.data ?? null} />)}
-      <ListaServicos empresaId={e.id} canal={e.canal} ultima={ultima.data ?? null} />
+      <ListaServicos empresaId={e.id} canal={e.canal} exigeIbsCbs={!!e.config?.exige_ibscbs} ultima={ultima.data ?? null} />
     </div>
   );
 }
@@ -331,7 +331,9 @@ function FormPrestador({ e, cfg, ultima }: { e: EmpresaEmissora; cfg: ConfigPres
   );
 }
 
-function ListaServicos({ empresaId, canal, ultima }: { empresaId: number; canal: CanalEmissao; ultima: UltimaNota | null }) {
+function ListaServicos({ empresaId, canal, exigeIbsCbs, ultima }: {
+  empresaId: number; canal: CanalEmissao; exigeIbsCbs: boolean; ultima: UltimaNota | null;
+}) {
   const [inativos, setInativos] = useState(false);
   const lista = useServicos(empresaId, inativos);
   const atualizar = useAtualizarEmissor();
@@ -397,7 +399,7 @@ function ListaServicos({ empresaId, canal, ultima }: { empresaId: number; canal:
           ))}
         </ul>
       )}
-      <ServicoDialog empresaId={empresaId} servico={dialogo.servico} aberto={dialogo.aberto} canal={canal}
+      <ServicoDialog empresaId={empresaId} servico={dialogo.servico} aberto={dialogo.aberto} canal={canal} exigeIbsCbs={exigeIbsCbs}
         modelo={dialogo.daNota ? servicoUltima : null} aoFechar={() => setDialogo({ aberto: false, servico: null })} />
     </Painel>
   );

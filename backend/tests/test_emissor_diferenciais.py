@@ -66,7 +66,13 @@ def test_textos_legais_na_nota(cliente, sefin):
                                                                     "cod_municipio": "3550308"})
     assert r.status_code == 200, r.text
     assert r.json()["config"]["op_simples"] == "1" and r.json()["config"]["simples"] is False
-    cliente.post("/api/emissor/notas", json=_emissao(e, s, texto_simples=True))
+    # fora do Simples o serviço precisa dos códigos do IBS/CBS
+    cliente.put(f"/api/emissor/servicos/{s['id']}", json={"descricao": "Honorários contábeis", "ctribnac": "171901",
+                                                         "cnbs": "113022100", "cindop": "100301", "cclasstrib": "000001"})
+    tomador = {"documento": CLIENTE, "nome": "Tomador Teste Ltda", "cep": "01310100", "cod_municipio": "3550308",
+               "logradouro": "Avenida Paulista", "numero": "1000", "bairro": "Bela Vista"}  # E0239: IBS/CBS no endereço do tomador
+    r = cliente.post("/api/emissor/notas", json=_emissao(e, s, texto_simples=True, tomador=tomador))
+    assert r.status_code == 201, r.text
     assert _xinfcomp(sefin) == textos.TEXTO_PROCON
     r = cliente.put(f"/api/emissor/empresas/{e['id']}/config", json={**base, "op_simples": "1", "regime_tributario": "simples"})
     assert r.status_code == 422 and "ME/EPP ou MEI" in r.json()["detail"]

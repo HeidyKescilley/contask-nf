@@ -15,6 +15,8 @@ export interface ConfigPrestador {
   regime_tributario: RegimeTributario | null;
   /** true quando a empresa é do Simples (regime escolhido ou, sem ele, MEI/ME-EPP): acrescenta o texto legal */
   simples: boolean;
+  /** fora do Simples (regime regular): a nota leva o grupo IBS/CBS, e o serviço precisa do cIndOp e do cClassTrib */
+  exige_ibscbs?: boolean;
 }
 
 export type RegimeTributario = "simples" | "presumido" | "real";

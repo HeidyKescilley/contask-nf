@@ -173,6 +173,13 @@ def _item_empresa(db: Session, e: Empresa) -> dict:
     if not e.ativa:
         pendencias.append("A empresa está inativa.")
     avisos = []
+    if regime_regular(cfg):
+        sem_codigos = db.scalar(select(func.count()).select_from(ServicoEmissor).where(
+            ServicoEmissor.empresa_id == e.id, ServicoEmissor.ativo,
+            or_(ServicoEmissor.cindop.is_(None), ServicoEmissor.cclasstrib.is_(None)))) or 0
+        if sem_codigos:
+            avisos.append(f"{sem_codigos} serviço(s) sem cIndOp e cClassTrib. Empresa fora do Simples precisa do grupo "
+                          "IBS/CBS na nota: edite o serviço para emitir com ele.")
     if e.emite_nfse and n_serv == 0:
         avisos.append("Nenhum serviço cadastrado. Cadastre um abaixo ou duplique uma nota já emitida: os códigos do "
                       "serviço vêm da própria nota.")
@@ -200,7 +207,7 @@ def _item_empresa(db: Session, e: Empresa) -> dict:
             "serie": cfg.serie, "proximo_numero": cfg.proximo_numero, "cod_municipio": cfg.cod_municipio,
             "percentual_tributos": float(cfg.percentual_tributos) if cfg.percentual_tributos is not None else None,
             "producao_liberada": cfg.producao_liberada, "regime_tributario": cfg.regime_tributario,
-            "simples": eh_simples(cfg)},
+            "simples": eh_simples(cfg), "exige_ibscbs": regime_regular(cfg)},
         "ambiente": ambiente(cfg),
         "canal": canal(cfg),
         "pendencias": pendencias,
@@ -395,10 +402,23 @@ def listar_servicos(empresa_id: int, inativos: bool = False, db: Session = Depen
 @router.post("/empresas/{empresa_id}/servicos", status_code=201)
 def criar_servico(empresa_id: int, dados: ServicoIn, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
     _empresa(db, empresa_id, esc)
-    s = ServicoEmissor(empresa_id=empresa_id, **_validar_servico(dados))
+    s = ServicoEmissor(empresa_id=empresa_id, **_exigir_ibscbs(db, empresa_id, _validar_servico(dados)))
     db.add(s)
     db.commit()
     return _servico_out(s)
+
+
+def regime_regular(cfg: EmissorEmpresa | None) -> bool:
+    """Fora do Simples: a DPS leva o grupo IBS/CBS (ver dps.exige_ibscbs)."""
+    return cfg is not None and cfg.op_simples == "1"
+
+
+def _exigir_ibscbs(db: Session, empresa_id: int, campos: dict) -> dict:
+    if regime_regular(db.get(EmissorEmpresa, empresa_id)) and campos.get("ativo", True) and not (
+            campos.get("cindop") and campos.get("cclasstrib")):
+        raise HTTPException(422, "Empresa fora do Simples: informe o cIndOp e o cClassTrib (IBS/CBS). "
+                                 "As sugestões vêm da NBS escolhida.")
+    return campos
 
 
 def _servico(db: Session, servico_id: int, esc: int) -> ServicoEmissor:
@@ -411,7 +431,7 @@ def _servico(db: Session, servico_id: int, esc: int) -> ServicoEmissor:
 @router.put("/servicos/{servico_id}")
 def editar_servico(servico_id: int, dados: ServicoIn, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
     s = _servico(db, servico_id, esc)
-    for k, v in _validar_servico(dados).items():
+    for k, v in _exigir_ibscbs(db, s.empresa_id, _validar_servico(dados)).items():
         setattr(s, k, v)
     db.commit()
     return _servico_out(s)

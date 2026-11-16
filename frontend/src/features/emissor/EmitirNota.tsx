@@ -761,7 +761,8 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
         </DialogContent>
       </Dialog>
 
-      <ServicoDialog empresaId={empresa.id} servico={null} aberto={novoServico} canal={empresa.canal} aoFechar={() => setNovoServico(false)}
+      <ServicoDialog empresaId={empresa.id} servico={null} aberto={novoServico} canal={empresa.canal}
+        exigeIbsCbs={!!empresa.config?.exige_ibscbs} aoFechar={() => setNovoServico(false)}
         modelo={usaNota && f.servicoNota ? { ...f.servicoNota, descricao: f.descricao } : null}
         aoSalvar={(s) => setF((a) => ({ ...a, servicoId: s.id, descricao: usaNota ? a.descricao : s.descricao }))} />
     </div>

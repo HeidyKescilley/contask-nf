@@ -116,7 +116,15 @@ O teste foi feito com a CONTELB (ME/EPP do Simples) emitindo para um tomador do 
 - **Última nota:** `GET /api/emissor/empresas/{id}/ultima-nota` lê a última NFS-e prestada do ADN e devolve regime, IM, município e serviço. A tela de configuração já abre com esses dados enquanto o regime nunca foi salvo. Série e número não são copiados: são do outro sistema, e repetir dá E0014.
 - **Datas no SQLite:** as notas do Contask ficam em UTC sem fuso, e as do ADN no horário de Brasília do XML. A API devolve as duas com fuso.
 
-**Grupo IBS/CBS:** ainda não é enviado. É opcional nos dois leiautes e foi aceito sem ele. Os códigos `cIndOp` e `cClassTrib` já ficam guardados no serviço para quando o grupo passar a ser exigido.
+**Grupo IBS/CBS (16/11/2026):**
+- **Quem leva:** só a empresa fora do Simples (`opSimpNac = 1`). O regime regular tem destaque desde 01/10/2026. Até 31/12/2026 a falta do grupo não rejeita, mas é desconformidade sujeita a sanção (Ato Conjunto RFB/CGIBS nº 4/2026). MEI e ME/EPP do Simples ficam para 2027 (NT 009).
+- **O que vai na DPS:** só a classificação: `cIndOp`, `indDest = 0` (o destinatário é o tomador), CST (3 primeiros dígitos do `cClassTrib`) e `cClassTrib`. A base e os valores de IBS e CBS (CBS 0,9% e IBS 0,1% em 2026) são calculados pela Sefin com a calculadora oficial.
+- **Leiautes:**
+  - produção (NT 004): `IBSCBS/finNFSe`, `cIndOp` obrigatório, `valores/trib/gIBSCBS/{CST, cClassTrib}`;
+  - produção restrita (NT 009): `finNFSe` no `infDPS`, `valores/trib/{CST, cClassTrib}`. Com CST 400, 410 ou 820 (sem tributação a detalhar), o `cIndOp` não vai.
+- **E0239 (produção restrita, 16/11/2026):** com cIndOp de incidência no endereço do tomador ou do destinatário (Anexo VII, coluna NFSeLocIncidIBS; ex.: 100301), o tomador precisa de CNPJ/CPF e endereço nacional. O sistema confere antes do envio.
+- **Teste real:** a DPS da CONTELB declarada fora do Simples passou pelas validações do grupo (E0239 resolvido com o endereço) e parou no E0160, porque a CONTELB é do Simples. A autorização com o grupo ainda não foi vista: nenhuma empresa fora do Simples tem certificado próprio, e a homologação não aceita procuração (E0718).
+- **Cadastro:** para empresa fora do Simples, o serviço só é salvo com `cIndOp` e `cClassTrib`, sugeridos pela NBS (Anexo VIII). A empresa mostra um aviso quando tem serviço ativo sem os códigos.
 
 ## Parâmetros municipais (somente leitura, também em produção)
 

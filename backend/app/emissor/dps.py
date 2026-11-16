@@ -114,8 +114,8 @@ class DadosDps:
     percentual_tributos_sn: Decimal | None = None
     info_complementar: str | None = None
     emitido_em: datetime | None = None
-    cindop: str | None = None                 # IBS/CBS: indicador da operação (ISSNet)
-    cclasstrib: str | None = None             # IBS/CBS: classificação tributária (ISSNet)
+    cindop: str | None = None                 # IBS/CBS: indicador da operação (Anexo VII)
+    cclasstrib: str | None = None             # IBS/CBS: classificação tributária (CST = 3 primeiros dígitos)
 
     @property
     def id_dps(self) -> str:
@@ -133,6 +133,29 @@ def precisa_aliquota(p: Prestador, iss_retido: bool) -> bool:
     da parametrização do município (E0617, E0635) e informar é rejeição. MEI e regime especial nunca
     informam (E0600, E0604)."""
     return p.op_simples == "3" and p.reg_ap_trib_sn == "1" and p.reg_esp_trib == "0" and iss_retido
+
+
+def exige_ibscbs(p: Prestador) -> bool:
+    """Grupo IBS/CBS na DPS: obrigatório para quem não é do Simples (regime regular) desde 01/10/2026.
+    Até 31/12/2026 a falta não rejeita a nota, mas é desconformidade sujeita a sanção (Ato Conjunto
+    RFB/CGIBS nº 4/2026). MEI e ME/EPP do Simples ficam para 2027 (NT 009)."""
+    return p.op_simples == "1"
+
+
+# CST sem detalhamento da tributação (ind_gIBSCBS = 0): isenção, imunidade/não incidência e
+# tributação em documento específico. Na NT 009 o cIndOp e o gIBSCBS não devem ir nesses casos.
+CST_SEM_TRIBUTACAO = {"400", "410", "820"}
+
+
+# cIndOp cujo local de incidência do IBS é o endereço do tomador/adquirente ou do destinatário (Anexo VII,
+# coluna NFSeLocIncidIBS, v1.03.00 da NT 009). Como a DPS vai com indDest = 0, o destinatário é o tomador.
+# Nesses casos a Sefin exige o tomador com CNPJ/CPF e endereço nacional (E0239, visto em 16/11/2026).
+INCIDENCIA_NO_TOMADOR = {"010106", "100101", "100301", "100501",
+                         "010103", "100102", "100201", "100302", "100401", "100502", "100601"}
+
+
+def codigos_ibscbs_validos(d: DadosDps) -> bool:
+    return (d.cindop or "").isdigit() and len(d.cindop) == 6 and (d.cclasstrib or "").isdigit() and len(d.cclasstrib) == 6
 
 
 def validar(d: DadosDps) -> None:
@@ -160,6 +183,13 @@ def validar(d: DadosDps) -> None:
         raise DpsInvalida("Informe a descrição do serviço.")
     if r.iss and (d.tomador is None or not d.tomador.tem_endereco):
         raise DpsInvalida("Com ISS retido, informe o tomador com endereço completo (E0237).")
+    if exige_ibscbs(d.prestador) and not codigos_ibscbs_validos(d):
+        raise DpsInvalida("Empresa fora do Simples: informe o cIndOp e o cClassTrib (IBS/CBS) no cadastro do serviço. "
+                          "O cadastro sugere os códigos pela NBS (Anexo VIII da NFS-e).")
+    if (exige_ibscbs(d.prestador) and d.cindop in INCIDENCIA_NO_TOMADOR and d.cclasstrib[:3] not in CST_SEM_TRIBUTACAO
+            and (d.tomador is None or not d.tomador.tem_endereco)):
+        raise DpsInvalida("Com IBS/CBS no endereço do tomador (cIndOp " + d.cindop + "), informe o tomador com CNPJ ou "
+                          "CPF e endereço completo (E0239).")
 
 
 def _e(pai, tag, texto=None):
@@ -263,7 +293,32 @@ def montar(d: DadosDps) -> etree._Element:
         _e(tt, "pTotTribSN", _dec(d.percentual_tributos_sn if d.percentual_tributos_sn is not None else Decimal("0")))
     else:
         _e(tt, "indTotTrib", 0)
+    if exige_ibscbs(d.prestador):
+        _ibscbs(inf, d, restrita)
     return raiz
+
+
+def _ibscbs(inf, d: DadosDps, restrita: bool) -> None:
+    """Grupo IBSCBS (último do infDPS). Só a classificação vai na DPS: a base e os valores de IBS e CBS
+    (alíquotas de teste de 2026: CBS 0,9% e IBS 0,1%) são calculados pela Sefin com a calculadora oficial.
+    - produção (NT 004): finNFSe aqui dentro; CST e cClassTrib dentro de trib/gIBSCBS; cIndOp obrigatório;
+    - produção restrita (NT 009): finNFSe no infDPS; CST e cClassTrib direto em trib; cIndOp e gIBSCBS só
+      quando o CST tem tributação a detalhar."""
+    cst = d.cclasstrib[:3]
+    ib = _e(inf, "IBSCBS")
+    if not restrita:
+        _e(ib, "finNFSe", 0)  # NFS-e regular
+    if not restrita or cst not in CST_SEM_TRIBUTACAO:
+        _e(ib, "cIndOp", d.cindop)
+    _e(ib, "indDest", 0)  # o destinatário é o próprio tomador
+    trib = _e(_e(ib, "valores"), "trib")
+    if restrita:
+        _e(trib, "CST", cst)
+        _e(trib, "cClassTrib", d.cclasstrib)
+    else:
+        g = _e(trib, "gIBSCBS")
+        _e(g, "CST", cst)
+        _e(g, "cClassTrib", d.cclasstrib)
 
 
 def validar_issnet(d: DadosDps) -> None:
@@ -274,7 +329,7 @@ def validar_issnet(d: DadosDps) -> None:
     if not (d.ctribmun or "").isdigit() or not 1 <= len(d.ctribmun) <= 10:
         raise DpsInvalida("Escolha o código de tributação municipal do DF (cTribMun) no cadastro do serviço: "
                           "o ISSNet exige.")
-    if not (d.cindop or "").isdigit() or len(d.cindop) != 6 or not (d.cclasstrib or "").isdigit() or len(d.cclasstrib) != 6:
+    if not codigos_ibscbs_validos(d):
         raise DpsInvalida("Informe o cIndOp e o cClassTrib (IBS/CBS) no cadastro do serviço: o ISSNet exige o grupo "
                           "IBSCBS desde 01/10/2026.")
     if d.tomador and len(d.tomador.documento) == 14 and not d.tomador.tem_endereco:

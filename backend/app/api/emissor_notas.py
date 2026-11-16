@@ -187,7 +187,8 @@ def modelo_do_xml(xml: bytes) -> dict:
     return {
         "tomador": tomador, "descricao": _t(cs, "n:xDescServ") or "", "ctribnac": _t(cs, "n:cTribNac"),
         "cnbs": _t(cs, "n:cNBS"), "ctribmun": _t(cs, "n:cTribMun"), "cindop": _t(ibs, "n:cIndOp"),
-        "cclasstrib": _t(ibs, "n:valores/n:trib/n:gIBSCBS/n:cClassTrib"),
+        # NT 004 (produção até a troca de leiaute): trib/gIBSCBS/cClassTrib; NT 009: trib/cClassTrib
+        "cclasstrib": _t(ibs, "n:valores/n:trib/n:gIBSCBS/n:cClassTrib") or _t(ibs, "n:valores/n:trib/n:cClassTrib"),
         "cod_municipio_prestacao": _t(dps, "n:serv/n:locPrest/n:cLocPrestacao"),
         "valor_servico": _num(_t(dps, "n:valores/n:vServPrest/n:vServ")),
         "desconto": _num(_t(dps, "n:valores/n:vDescCondIncond/n:vDescIncond")),
