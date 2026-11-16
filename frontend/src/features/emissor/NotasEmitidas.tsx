@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import {
   AlertTriangle, BadgeCheck, Ban, Building2, ChevronLeft, ChevronRight, Clock, Copy, Download, FilePen, FileText, Loader2,
-  Lock, MoreHorizontal, Plus, ReceiptText, Repeat, RotateCcw, Search, Trash2, X, XCircle,
+  Lock, MoreHorizontal, Plus, ReceiptText, RefreshCw, Repeat, RotateCcw, Search, Trash2, X, XCircle,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -35,10 +35,13 @@ const SITUACOES = [
   { id: "pendente", rotulo: "Pendentes" },
 ];
 
-export function SeloEmitida({ n }: { n: { situacao: string; mensagem: string | null } }) {
+export function SeloEmitida({ n }: { n: { situacao: string; mensagem: string | null; motivo_cancelamento?: string | null } }) {
   switch (n.situacao) {
     case "autorizada": return <Selo tom="ok" icone={BadgeCheck}>Autorizada</Selo>;
-    case "cancelada": return <Selo tom="erro" icone={Ban}>Cancelada</Selo>;
+    case "cancelada":
+      return n.motivo_cancelamento
+        ? <Dica texto={n.motivo_cancelamento} lado="left"><span><Selo tom="erro" icone={Ban}>Cancelada</Selo></span></Dica>
+        : <Selo tom="erro" icone={Ban}>Cancelada</Selo>;
     case "rejeitada":
       return <Dica texto={n.mensagem ?? "Recusada pela Sefin."} lado="left"><span><Selo tom="erro" icone={XCircle}>Rejeitada</Selo></span></Dica>;
     case "pendente":
@@ -248,6 +251,17 @@ function Linha({ n, comEmpresa, navegar, aoCancelar }: {
   const danfse = adn ? `/api/notas/${n.id}/pdf` : `/api/emissor/notas/${n.id}/danfse`;
   const xml = adn ? `/api/notas/${n.id}/xml` : `/api/emissor/notas/${n.id}/xml`;
   const temXml = adn ? n.tem_xml : !!n.chave;
+  const atualizar = useAtualizarEmissor();
+  const verificar = useMutation({
+    mutationFn: () => api<{ nota: NotaEmitida; mensagem: string }>(`/api/emissor/notas/${n.id}/verificar-situacao`, { method: "POST" }),
+    onMutate: () => toast.loading("Conferindo a situação na Sefin Nacional…", { id: `verificar-${n.id}` }),
+    onSuccess: (r) => {
+      atualizar();
+      const cancelada = r.nota.situacao === "cancelada";
+      toast[cancelada ? "warning" : "success"](r.mensagem, { id: `verificar-${n.id}` });
+    },
+    onError: (err) => toast.error((err as Error).message, { id: `verificar-${n.id}` }),
+  });
   return (
     <tr className="border-b border-borda last:border-0 hover:bg-superficie-2/60">
       <td className="px-4 py-2.5">
@@ -291,6 +305,11 @@ function Linha({ n, comEmpresa, navegar, aoCancelar }: {
                 <DropdownMenuItem onSelect={() => navegar(comEmpresa(`/emissor/emitir?${duplicar}`))}><Copy /> Duplicar</DropdownMenuItem>
                 {!emTeste && <DropdownMenuItem onSelect={() => navegar(comEmpresa(`/emissor/recorrentes/nova?${duplicar}`))}><Repeat /> Criar recorrência</DropdownMenuItem>}
               </>
+            )}
+            {!adn && n.situacao === "autorizada" && n.chave && (
+              <DropdownMenuItem disabled={verificar.isPending} onSelect={() => verificar.mutate()}>
+                <RefreshCw /> Verificar situação
+              </DropdownMenuItem>
             )}
             {!adn && n.situacao === "autorizada" && (
               <>

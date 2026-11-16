@@ -130,3 +130,12 @@ O teste foi feito com a CONTELB (ME/EPP do Simples) emitindo para um tomador do 
 - **Anexo B:** lista dos códigos de tributação nacional (6 dígitos) e das NBS.
 - **Anexo VIII** (tabela de correlação, v1.02.00 de 26/10/2026): relaciona item da LC 116, NBS, cIndOp e cClassTrib.
   - **Uso no sistema:** sugerir os códigos de um serviço automaticamente.
+
+## Nota cancelada fora do Contask (16/11/2026)
+
+- **Problema visto em produção:** a NFS-e foi cancelada no Emissor Nacional Web, o ADN trouxe o evento 101101 e a `Nota` ficou cancelada, mas a `NotaEmitida` continuava autorizada, porque só o cancelamento feito pelo próprio Contask mudava a situação dela.
+- **Como ficou:**
+  - a busca do ADN, ao recalcular o status por chave, também passa a nota emitida para cancelada (data, motivo `xMotivo` e XML do evento);
+  - as listas do emissor fazem a mesma conciliação antes de mostrar, o que corrige notas antigas;
+  - o menu da nota tem **Verificar situação**: confere os eventos já baixados e consulta a Sefin (`GET /nfse/{chave}/eventos/{tipo}/1`, só leitura) para 101101, 105102 e 305101.
+

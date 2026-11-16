@@ -85,6 +85,9 @@ def notas_da_empresa(empresa_id: int, inicio: date | None = None, fim: date | No
     def no_periodo(d: date | None) -> bool:
         return d is not None and (not inicio or d >= inicio) and (not fim or d <= fim)
 
+    from app.emissor.situacao import conciliar_com_adn
+    if conciliar_com_adn(db, e.id):
+        db.commit()
     itens = []
     chaves = set()
     for n in db.scalars(select(NotaEmitida).where(NotaEmitida.empresa_id == e.id, NotaEmitida.ambiente == amb)):

@@ -136,6 +136,7 @@ class SefinSimulada:
         self.modo = "ok"  # ok | rejeita | cai_depois | cai_antes
         self.recebidas: list[bytes] = []
         self.eventos = 0
+        self.eventos_fora: set[tuple[str, str]] = set()  # (chave, tipo) registrados fora do Contask
 
     def __call__(self, req: httpx.Request) -> httpx.Response:
         if req.method == "POST" and req.url.path.endswith("/nfse"):
@@ -160,6 +161,12 @@ class SefinSimulada:
         if req.method == "GET" and "/dps/" in req.url.path:
             chave = self.notas.get(req.url.path.rsplit("/", 1)[1])
             return httpx.Response(200, json={"chaveAcesso": chave}) if chave else httpx.Response(404, json={"erro": {"codigo": "E404"}})
+        if req.method == "GET" and "/eventos/" in req.url.path:  # /nfse/{chave}/eventos/{tipo}/{seq}
+            partes = req.url.path.split("/")
+            chave, tipo = partes[-4], partes[-2]
+            if (chave, tipo) not in self.eventos_fora:
+                return httpx.Response(404, json={"erro": {"codigo": "E404"}})
+            return httpx.Response(200, json={"eventoXmlGZipB64": base64.b64encode(gzip.compress(evento_xml(chave, tipo))).decode()})
         if req.method == "GET" and "/nfse/" in req.url.path:
             chave = req.url.path.rsplit("/", 1)[1]
             return httpx.Response(200, json={"nfseXmlGZipB64": self._nfse(chave, OUTRO)})

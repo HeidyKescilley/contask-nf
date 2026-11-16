@@ -576,6 +576,42 @@ def cancelar(db: Session, esc: int, nota_id: int, motivo: str, justificativa: st
     return nota
 
 
+# Eventos consultados na Sefin (leitura): cancelamento comum, por substituição e por ofício
+EVENTOS_CANCELAMENTO = ("101101", "105102", "305101")
+
+
+def verificar_situacao(db: Session, esc: int, nota_id: int) -> tuple[NotaEmitida, str]:
+    """Confere se a nota autorizada foi cancelada fora do Contask: primeiro pelos eventos do ADN já
+    baixados, depois consultando a Sefin Nacional (só leitura). Devolve a nota e uma mensagem."""
+    from app.api.emissor import certificado_emissor
+    from app.emissor.situacao import conciliar_com_adn, dados_do_evento, marcar_cancelada, motivo_do_evento
+    nota = _nota(db, esc, nota_id)
+    if nota.situacao != "autorizada" or not nota.chave:
+        return nota, "Só as notas autorizadas são conferidas."
+    if conciliar_com_adn(db, nota.empresa_id, {nota.chave}):
+        db.commit()
+        return nota, "A nota foi cancelada fora do Contask (evento do ADN). A situação foi atualizada."
+    e = db.get(Empresa, nota.empresa_id)
+    cert = certificado_emissor(db, e)
+    if cert is None:
+        raise ErroEmissao("Cadastre o certificado da empresa (ou a procuração) para consultar a Sefin.", 409)
+    pfx, senha = carregar_pfx(cert)
+    with fabrica_cliente(nota.ambiente, pfx, senha) as cli:
+        for tipo in EVENTOS_CANCELAMENTO:
+            try:
+                xml = cli.consultar_evento(nota.chave, tipo)
+            except ErroSefin as ex:
+                raise ErroEmissao(f"Não foi possível consultar a Sefin: {ex}", 502) from None
+            if xml is None:
+                continue
+            codigo, data = dados_do_evento(xml)
+            rel = _gravar(e, nota.ambiente, f"EVT_{nota.chave}_{codigo or tipo}.xml", xml)
+            marcar_cancelada(nota, codigo or tipo, data, rel, motivo_do_evento(xml))
+            db.commit()
+            return nota, "A nota foi cancelada fora do Contask. A situação foi atualizada."
+    return nota, "Nenhum cancelamento registrado para esta nota. Ela continua autorizada."
+
+
 def _cancelar_issnet(db: Session, e: Empresa, nota: NotaEmitida, cert, motivo: str, justificativa: str) -> NotaEmitida:
     if cert is None:
         raise ErroEmissao("Cadastre o certificado A1 da empresa ou use a procuração para cancelar pelo ISSNet.", 409)

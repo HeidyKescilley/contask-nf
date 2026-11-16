@@ -99,6 +99,10 @@ def recalcular_status(db: Session, empresa_id: int, chaves: set[str]) -> None:
         s = calcular_status(eventos.get(chave, []))
         nota.status, nota.status_detalhe = s.status, s.detalhe
         nota.em_analise_fiscal, nota.bloqueada = s.em_analise_fiscal, s.bloqueada
+    # nota emitida pelo Contask e cancelada fora dele (portal nacional, ofício): o emissor acompanha o ADN
+    from app.emissor.situacao import conciliar_com_adn
+    db.flush()
+    conciliar_com_adn(db, empresa_id, chaves)
 
 
 def contar_eventos_sem_nota(db: Session, empresa_id: int) -> int:

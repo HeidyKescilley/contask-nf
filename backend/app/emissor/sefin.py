@@ -116,6 +116,17 @@ class ClienteSefin:
             raise ErroSefin(f"Não foi possível baixar a NFS-e {chave} (HTTP {r.status_code}).")
         return descompactar(d["nfseXmlGZipB64"])
 
+    def consultar_evento(self, chave: str, tipo: str, seq: int = 1) -> bytes | None:
+        """Leitura: XML do evento registrado na nota, ou None se não existe (404)."""
+        r = self._req("GET", f"/nfse/{chave}/eventos/{tipo}/{seq}")
+        if r.status_code == 404:
+            return None
+        d = self._json(r)
+        if r.status_code != 200:
+            raise ErroSefin("; ".join(f"{e['codigo']}: {e['descricao']}" for e in _erros(d)) or f"HTTP {r.status_code}")
+        b64 = d.get("eventoXmlGZipB64") or next((v for k, v in d.items() if k.lower().endswith("xmlgzipb64") and v), None)
+        return descompactar(b64) if b64 else None
+
     def registrar_evento(self, chave: str, pedido_xml: bytes) -> Resposta:
         r = self._req("POST", f"/nfse/{chave}/eventos", json={"pedidoRegistroEventoXmlGZipB64": compactar(pedido_xml)})
         d = self._json(r)

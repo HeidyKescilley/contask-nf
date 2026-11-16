@@ -695,6 +695,9 @@ def emitir_nota(dados: EmissaoIn, request: Request, db: Session = Depends(sessao
 def listar_notas(empresa_id: int | None = None, situacao: str | None = None, ambiente: int | None = Query(None, ge=1, le=2),
                  limite: int = Query(100, ge=1, le=500),
                  db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
+    from app.emissor.situacao import conciliar_com_adn
+    if conciliar_com_adn(db, empresa_id) if empresa_id else _conciliar_escritorio(db, esc):
+        db.commit()
     stmt = select(NotaEmitida).where(NotaEmitida.escritorio_id == esc)
     if empresa_id:
         stmt = stmt.where(NotaEmitida.empresa_id == empresa_id)
@@ -703,6 +706,13 @@ def listar_notas(empresa_id: int | None = None, situacao: str | None = None, amb
     if situacao:
         stmt = stmt.where(NotaEmitida.situacao == situacao)
     return [_nota_out(db, n) for n in db.scalars(stmt.order_by(NotaEmitida.id.desc()).limit(limite))]
+
+
+def _conciliar_escritorio(db: Session, esc: int) -> int:
+    from app.emissor.situacao import conciliar_com_adn
+    ids = db.scalars(select(NotaEmitida.empresa_id).where(NotaEmitida.escritorio_id == esc,
+                                                          NotaEmitida.situacao == "autorizada").distinct())
+    return sum(conciliar_com_adn(db, i) for i in ids)
 
 
 def _nota(db: Session, nota_id: int, esc: int) -> NotaEmitida:
@@ -736,6 +746,17 @@ def cancelar_nota(nota_id: int, dados: CancelamentoIn, db: Session = Depends(ses
     except motor.ErroEmissao as ex:
         raise _erro_emissao(ex) from None
     return _nota_out(db, n)
+
+
+@router.post("/notas/{nota_id}/verificar-situacao")
+def verificar_situacao(nota_id: int, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
+    """Confere se a nota foi cancelada fora do Contask (eventos do ADN e consulta de leitura à Sefin)."""
+    from app.emissor import motor
+    try:
+        n, msg = motor.verificar_situacao(db, esc, nota_id)
+    except motor.ErroEmissao as ex:
+        raise _erro_emissao(ex) from None
+    return {"nota": _nota_out(db, n), "mensagem": msg}
 
 
 @router.get("/notas/{nota_id}/xml")
