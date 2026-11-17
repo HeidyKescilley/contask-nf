@@ -139,6 +139,7 @@ class SefinSimulada:
         self.recebidas: list[bytes] = []
         self.eventos = 0
         self.eventos_fora: set[tuple[str, str]] = set()  # (chave, tipo) registrados fora do Contask
+        self.leiaute_producao: str | None = None  # se definido, a produção recusa o outro leiaute com E1235
 
     def __call__(self, req: httpx.Request) -> httpx.Response:
         if req.method == "POST" and req.url.path.endswith("/nfse"):
@@ -150,6 +151,11 @@ class SefinSimulada:
             id_dps = inf.get("Id")
             if self.modo == "cai_antes":
                 raise httpx.ConnectError("sem rede")
+            if self.leiaute_producao and inf.find("n:tpAmb", NS).text == "1":
+                try:
+                    validar_xsd(raiz, PRODUCAO, leiaute=self.leiaute_producao)
+                except DpsInvalida:
+                    return httpx.Response(400, json={"erros": [{"Codigo": "E1235", "Descricao": "Falha no esquema XML do DF-e."}]})
             if self.modo == "rejeita":
                 return httpx.Response(400, json={"erros": [{"Codigo": "E0160", "Descricao": "Simples divergente."}]})
             if id_dps in self.notas:

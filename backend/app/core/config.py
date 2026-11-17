@@ -38,6 +38,9 @@ class Config(BaseSettings):
     # Emissor de NFS-e: falso = produção restrita (homologação, sem valor fiscal). Ligar só com
     # liberação expressa de quem é dono do projeto (CONTASK_EMISSOR_PRODUCAO=true).
     emissor_producao: bool = False
+    # Leiaute da DPS em produção (nt004 | nt009). Se a Sefin recusar o XML por esquema, o motor tenta o
+    # outro leiaute e grava o que foi aceito em dados/leiaute_producao.txt, que vale mais que esta opção.
+    leiaute_producao: str = "nt004"
 
     # Motor de busca
     adn_url: str = "https://adn.nfse.gov.br"

@@ -32,7 +32,7 @@ Resultado da Etapa 1, a prova técnica na **produção restrita**: uma NFS-e foi
      - `finNFSe` vai logo depois de `tpEmit`;
      - em `cServ`, a ordem é `cNBS` e depois `xDescServ`.
    - A produção ainda usa o XSD v1.01 de 09/02/2026, em que `xDescServ` vem antes de `cNBS` e não existe `finNFSe`.
-   - O gerador de XML precisa ter o leiaute versionado por ambiente.
+   - O gerador de XML escolhe o leiaute pela função `leiaute_do_ambiente` (veja "Troca do leiaute da produção").
 4. **Erro no XSD oficial de produção:** o padrão da série é `^0{0,4}\d{1,5}$`, e em XSD os caracteres `^` e `$` são literais. Na validação local, use o padrão sem eles.
 5. **Id da DPS:** `DPS` + código IBGE do município (7) + tipo de inscrição (`2` = CNPJ) + CNPJ (14) + série (5, com zeros à esquerda) + número (15).
    - A série vai de 00001 a 49999 para aplicativo próprio.
@@ -125,6 +125,13 @@ O teste foi feito com a CONTELB (ME/EPP do Simples) emitindo para um tomador do 
 - **E0239 (produção restrita, 16/11/2026):** com cIndOp de incidência no endereço do tomador ou do destinatário (Anexo VII, coluna NFSeLocIncidIBS; ex.: 100301), o tomador precisa de CNPJ/CPF e endereço nacional. O sistema confere antes do envio.
 - **Teste real:** a DPS da CONTELB declarada fora do Simples passou pelas validações do grupo (E0239 resolvido com o endereço) e parou no E0160, porque a CONTELB é do Simples. A autorização com o grupo ainda não foi vista: nenhuma empresa fora do Simples tem certificado próprio, e a homologação não aceita procuração (E0718).
 - **Cadastro:** para empresa fora do Simples, o serviço só é salvo com `cIndOp` e `cClassTrib`, sugeridos pela NBS (Anexo VIII). A empresa mostra um aviso quando tem serviço ativo sem os códigos.
+
+**Troca do leiaute da produção (16/11/2026):**
+- **Prazo:** o portal anuncia o leiaute da NT 004 em produção até 30/11/2026 e a NT 009 em seguida, sem data exata de virada.
+- **Escolha:** a produção restrita usa sempre a NT 009. A produção usa o leiaute gravado em `dados/leiaute_producao.txt` e, sem ele, `CONTASK_LEIAUTE_PRODUCAO` (`nt004` por padrão; no servidor, `LEIAUTE_PRODUCAO` no `contask.conf`).
+- **Troca automática:** a recusa por esquema vem como **E1235** ("Falha no esquema XML do DF-e"), visto na produção restrita em 16/11/2026 com uma DPS no leiaute da NT 004. Ela não gera nota. Quando a produção devolve E1235, o motor monta a DPS no outro leiaute, com o mesmo número, e envia uma vez. Se a Sefin aceitar o XML (autorizada ou com rejeição de negócio), grava o leiaute novo no arquivo e as próximas notas já saem nele.
+- **Para forçar:** apague `dados/leiaute_producao.txt` ou escreva `nt004`/`nt009` nele. O arquivo vale mais que a opção.
+- **O que muda na NT 009:** `finNFSe` sai do IBSCBS e vai para depois de `tpEmit`; em `cServ`, `cNBS` antes de `xDescServ`; no IBS/CBS, `CST` e `cClassTrib` direto em `trib`, e sem `cIndOp` com CST 400, 410 ou 820. O pedido de cancelamento é igual nos dois.
 
 ## Parâmetros municipais (somente leitura, também em produção)
 

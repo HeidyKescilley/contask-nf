@@ -1,9 +1,10 @@
 """Montagem e validação da DPS e do pedido de cancelamento.
 
-Há dois leiautes ativos ao mesmo tempo:
-- produção (XSD v1.01 de 09/02/2026): cServ = cTribNac, cTribMun, xDescServ, cNBS; sem finNFSe;
-- produção restrita (XSD de 20/10/2026, reforma tributária): finNFSe depois de tpEmit; cServ = cTribNac,
-  cTribMun, cNBS, cIntContrib, xDescServ.
+Há dois leiautes da Sefin Nacional (veja leiaute_do_ambiente):
+- NT 004 (XSD v1.01 de 09/02/2026), o da produção até a troca: cServ = cTribNac, cTribMun, xDescServ, cNBS;
+  finNFSe dentro do IBSCBS;
+- NT 009 (XSD de 20/10/2026), o da produção restrita e o da produção depois da troca: finNFSe depois de
+  tpEmit; cServ = cTribNac, cTribMun, cNBS, cIntContrib, xDescServ.
 E o leiaute do ISSNet do DF (schema_v101 da Nota Control), em montar_issnet: IM e cTribMun obrigatórios,
 sem pAliq (o ISSNet calcula) e com o grupo IBSCBS.
 Regras de negócio aplicadas aqui estão anotadas com o código de rejeição da Sefin.
@@ -24,6 +25,37 @@ BRASILIA = timezone(timedelta(hours=-3))
 VERSAO_APLICATIVO = "ContaskNF-1.0"
 
 PRODUCAO, RESTRITA = 1, 2
+NT004, NT009 = "nt004", "nt009"
+LEIAUTES = (NT004, NT009)
+_PASTA_XSD = {NT004: "producao", NT009: "restrita"}
+ARQUIVO_LEIAUTE = "leiaute_producao.txt"
+
+
+def leiaute_do_ambiente(ambiente: int) -> str:
+    """Produção restrita: sempre NT 009. Produção: o leiaute que a Sefin aceitou por último (gravado em
+    dados/leiaute_producao.txt pela troca automática do motor) ou CONTASK_LEIAUTE_PRODUCAO (padrão nt004).
+    O portal anuncia o leiaute da NT 004 em produção até 30/11/2026 e a NT 009 em seguida."""
+    if ambiente != PRODUCAO:
+        return NT009
+    from app.core.config import config
+    try:
+        gravado = (config().dados_dir / ARQUIVO_LEIAUTE).read_text(encoding="ascii").strip()
+    except OSError:
+        gravado = ""
+    if gravado in LEIAUTES:
+        return gravado
+    padrao = (config().leiaute_producao or "").strip().lower()
+    return padrao if padrao in LEIAUTES else NT004
+
+
+def gravar_leiaute_producao(leiaute: str) -> None:
+    from app.core.config import config
+    assert leiaute in LEIAUTES
+    arq = config().dados_dir / ARQUIVO_LEIAUTE
+    arq.parent.mkdir(parents=True, exist_ok=True)
+    tmp = arq.with_suffix(".tmp")
+    tmp.write_text(leiaute, encoding="ascii")
+    tmp.replace(arq)
 
 
 class DpsInvalida(ValueError):
@@ -199,9 +231,9 @@ def _e(pai, tag, texto=None):
     return el
 
 
-def montar(d: DadosDps) -> etree._Element:
+def montar(d: DadosDps, leiaute: str | None = None) -> etree._Element:
     validar(d)
-    restrita = d.ambiente == RESTRITA
+    nt009 = (leiaute or leiaute_do_ambiente(d.ambiente)) == NT009
     emitido = (d.emitido_em or datetime.now(BRASILIA)).astimezone(BRASILIA).replace(microsecond=0)
     raiz = etree.Element(f"{{{NS}}}DPS", nsmap={None: NS}, versao="1.01")
     inf = etree.SubElement(raiz, f"{{{NS}}}infDPS", Id=d.id_dps)
@@ -212,7 +244,7 @@ def montar(d: DadosDps) -> etree._Element:
     _e(inf, "nDPS", int(d.numero))
     _e(inf, "dCompet", d.competencia.isoformat())
     _e(inf, "tpEmit", 1)
-    if restrita:
+    if nt009:
         _e(inf, "finNFSe", 0)  # NFS-e regular
     _e(inf, "cLocEmi", d.prestador.cod_municipio)
 
@@ -255,7 +287,7 @@ def montar(d: DadosDps) -> etree._Element:
     _e(cs, "cTribNac", d.ctribnac)
     if d.ctribmun:
         _e(cs, "cTribMun", d.ctribmun)
-    if restrita:
+    if nt009:
         _e(cs, "cNBS", d.cnbs)
         _e(cs, "xDescServ", d.descricao[:2000])
     else:
@@ -294,25 +326,25 @@ def montar(d: DadosDps) -> etree._Element:
     else:
         _e(tt, "indTotTrib", 0)
     if exige_ibscbs(d.prestador):
-        _ibscbs(inf, d, restrita)
+        _ibscbs(inf, d, nt009)
     return raiz
 
 
-def _ibscbs(inf, d: DadosDps, restrita: bool) -> None:
+def _ibscbs(inf, d: DadosDps, nt009: bool) -> None:
     """Grupo IBSCBS (último do infDPS). Só a classificação vai na DPS: a base e os valores de IBS e CBS
     (alíquotas de teste de 2026: CBS 0,9% e IBS 0,1%) são calculados pela Sefin com a calculadora oficial.
-    - produção (NT 004): finNFSe aqui dentro; CST e cClassTrib dentro de trib/gIBSCBS; cIndOp obrigatório;
-    - produção restrita (NT 009): finNFSe no infDPS; CST e cClassTrib direto em trib; cIndOp e gIBSCBS só
+    - NT 004: finNFSe aqui dentro; CST e cClassTrib dentro de trib/gIBSCBS; cIndOp obrigatório;
+    - NT 009: finNFSe no infDPS; CST e cClassTrib direto em trib; cIndOp e gIBSCBS só
       quando o CST tem tributação a detalhar."""
     cst = d.cclasstrib[:3]
     ib = _e(inf, "IBSCBS")
-    if not restrita:
+    if not nt009:
         _e(ib, "finNFSe", 0)  # NFS-e regular
-    if not restrita or cst not in CST_SEM_TRIBUTACAO:
+    if not nt009 or cst not in CST_SEM_TRIBUTACAO:
         _e(ib, "cIndOp", d.cindop)
     _e(ib, "indDest", 0)  # o destinatário é o próprio tomador
     trib = _e(_e(ib, "valores"), "trib")
-    if restrita:
+    if nt009:
         _e(trib, "CST", cst)
         _e(trib, "cClassTrib", d.cclasstrib)
     else:
@@ -481,13 +513,12 @@ def montar_cancelamento(c: Cancelamento) -> etree._Element:
 
 
 @lru_cache
-def _schema(ambiente: int, arquivo: str) -> etree.XMLSchema:
-    pasta = XSD / ("restrita" if ambiente == RESTRITA else "producao")
-    return etree.XMLSchema(etree.parse(str(pasta / arquivo)))
+def _schema(leiaute: str, arquivo: str) -> etree.XMLSchema:
+    return etree.XMLSchema(etree.parse(str(XSD / _PASTA_XSD[leiaute] / arquivo)))
 
 
-def validar_xsd(raiz, ambiente: int, arquivo: str = "DPS_v1.01.xsd") -> None:
-    schema = _schema(ambiente, arquivo)
+def validar_xsd(raiz, ambiente: int, arquivo: str = "DPS_v1.01.xsd", leiaute: str | None = None) -> None:
+    schema = _schema(leiaute or leiaute_do_ambiente(ambiente), arquivo)
     if not schema.validate(raiz):
         erros = "; ".join(f"{e.message}" for e in list(schema.error_log)[:3])
         raise DpsInvalida(f"O XML não passou na validação do esquema oficial: {erros}")

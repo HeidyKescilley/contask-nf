@@ -28,8 +28,9 @@ from app.core.certificados import carregar_pfx, situacao_validade
 from app.core.config import config
 from app.emissor import assinatura, textos
 from app.emissor.dps import (
-    BRASILIA, PRODUCAO, RESTRITA, Cancelamento, DadosDps, DpsInvalida, Prestador, Retencoes, TomadorDps,
-    centavos, id_dps, montar, montar_cancelamento, montar_issnet, serializar, validar_xsd, validar_xsd_issnet,
+    BRASILIA, NT004, NT009, PRODUCAO, RESTRITA, Cancelamento, DadosDps, DpsInvalida, Prestador, Retencoes,
+    TomadorDps, centavos, gravar_leiaute_producao, id_dps, leiaute_do_ambiente, montar, montar_cancelamento,
+    montar_issnet, serializar, validar_xsd, validar_xsd_issnet,
 )
 from app.emissor.issnet import mensagens as issnet_msg
 from app.emissor.issnet import rps as issnet_rps
@@ -227,7 +228,7 @@ def _preencher(db: Session, nota: NotaEmitida, e: Empresa, cfg: EmissorEmpresa, 
         raise ErroEmissao(str(ex)) from None
 
 
-def _xml_assinado(db: Session, e: Empresa, cfg: EmissorEmpresa, nota: NotaEmitida) -> bytes:
+def _xml_assinado(db: Session, e: Empresa, cfg: EmissorEmpresa, nota: NotaEmitida, leiaute: str | None = None) -> bytes:
     from app.api.emissor import certificado_emissor
     if nota.canal == ISSNET_DF:
         raiz = montar_issnet(_dados(e, cfg, nota))
@@ -236,11 +237,11 @@ def _xml_assinado(db: Session, e: Empresa, cfg: EmissorEmpresa, nota: NotaEmitid
         assinatura.assinar(raiz, raiz[0], chave, cert, perfil=PERFIS_ISSNET[0])
         validar_xsd_issnet(etree.fromstring(issnet_msg.gerar_nfse(raiz).encode("utf-8")))
         return serializar(raiz)
-    raiz = montar(_dados(e, cfg, nota))
+    raiz = montar(_dados(e, cfg, nota), leiaute)
     pfx, senha = carregar_pfx(certificado_emissor(db, e))
     chave, cert = assinatura.carregar_chave(pfx, senha)
     assinatura.assinar(raiz, raiz[0], chave, cert)
-    validar_xsd(raiz, nota.ambiente)
+    validar_xsd(raiz, nota.ambiente, leiaute=leiaute)
     return serializar(raiz)
 
 
@@ -285,7 +286,19 @@ def _autorizar(db: Session, e: Empresa, nota: NotaEmitida, xml: bytes, chave: st
     nota.autorizado_em = agora()
 
 
-def _enviar(db: Session, e: Empresa, nota: NotaEmitida, xml: bytes) -> None:
+ERROS_ESQUEMA = {"E1235"}
+
+
+def erro_de_esquema(erros: list[dict]) -> bool:
+    """Recusa do XML pelo esquema da Sefin (nenhuma nota é gerada)."""
+    for x in erros:
+        texto = f"{x.get('descricao') or ''} {x.get('complemento') or ''}".lower()
+        if x.get("codigo") in ERROS_ESQUEMA or "schema" in texto or "esquema" in texto:
+            return True
+    return False
+
+
+def _enviar(db: Session, e: Empresa, nota: NotaEmitida, xml: bytes, cfg: EmissorEmpresa | None = None) -> None:
     from app.api.emissor import certificado_emissor
     pfx, senha = carregar_pfx(certificado_emissor(db, e))
     nota.enviado_em = agora()
@@ -296,6 +309,28 @@ def _enviar(db: Session, e: Empresa, nota: NotaEmitida, xml: bytes) -> None:
             log.warning("Emissão %s sem resposta: %s", nota.id_dps, ex)
             _recuperar(cli, db, e, nota, motivo=str(ex))
             return
+        if not r.ok and cfg is not None and nota.ambiente == PRODUCAO and erro_de_esquema(r.erros):
+            # A produção troca da NT 004 para a NT 009 (anunciado para depois de 30/11/2026). Recusa por
+            # esquema não gera nota: monta no outro leiaute e envia uma vez, com o mesmo número.
+            outro = NT009 if leiaute_do_ambiente(PRODUCAO) == NT004 else NT004
+            try:
+                xml2 = _xml_assinado(db, e, cfg, nota, outro)
+            except DpsInvalida:
+                xml2 = None
+            if xml2 is not None:
+                log.warning("Produção recusou a DPS %s por esquema; tentando o leiaute %s.", nota.id_dps, outro)
+                try:
+                    r2 = cli.emitir(xml2)
+                except ErroSefin as ex:
+                    log.warning("Emissão %s sem resposta: %s", nota.id_dps, ex)
+                    nota.xml_dps_path = _gravar(e, nota.ambiente, f"{nota.id_dps}.xml", xml2)
+                    _recuperar(cli, db, e, nota, motivo=str(ex))
+                    return
+                if r2.ok or not erro_de_esquema(r2.erros):
+                    gravar_leiaute_producao(outro)
+                    log.warning("Leiaute da produção passou a ser %s.", outro)
+                    nota.xml_dps_path = _gravar(e, nota.ambiente, f"{nota.id_dps}.xml", xml2)
+                    r = r2
         if r.ok:
             _autorizar(db, e, nota, r.xml, r.chave)
             return
@@ -484,7 +519,7 @@ def emitir(db: Session, esc: int, usuario_id: int | None, ent: Entrada) -> NotaE
 
     xml = _xml_assinado(db, e, cfg, nota)
     nota.xml_dps_path = _gravar(e, amb, f"{nota.id_dps}.xml", xml)
-    _enviar(db, e, nota, xml)
+    _enviar(db, e, nota, xml, cfg)
     db.commit()
     return nota
 
@@ -535,7 +570,7 @@ def reenviar(db: Session, esc: int, nota_id: int, ent: Entrada | None) -> NotaEm
     if nota.canal == ISSNET_DF:
         _enviar_issnet(db, e, cfg, nota, xml)
     else:
-        _enviar(db, e, nota, xml)
+        _enviar(db, e, nota, xml, cfg)
     db.commit()
     return nota
 
@@ -558,7 +593,7 @@ def cancelar(db: Session, esc: int, nota_id: int, motivo: str, justificativa: st
         pfx, senha = carregar_pfx(cert)
         chave, c = assinatura.carregar_chave(pfx, senha)
         assinatura.assinar(raiz, raiz[0], chave, c)
-        validar_xsd(raiz, nota.ambiente, "pedRegEvento_v1.01.xsd")
+        validar_xsd(raiz, nota.ambiente, "pedRegEvento_v1.01.xsd")  # igual nos dois leiautes
     except DpsInvalida as ex:
         raise ErroEmissao(str(ex)) from None
     with fabrica_cliente(nota.ambiente, pfx, senha) as cli:

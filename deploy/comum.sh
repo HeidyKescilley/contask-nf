@@ -33,7 +33,7 @@ subir_app() {
     --env-file "$SEGREDOS/chave.env" \
     -e CONTASK_HOSTS="$SUBDOMINIO.$DOMINIO_BASE" \
     -e CONTASK_CADASTRO="${CADASTRO:-fechado}" \
-    -e CONTASK_EMISSOR_PRODUCAO="${EMISSOR_PRODUCAO:-false}" \
+    -e CONTASK_EMISSOR_PRODUCAO="${EMISSOR_PRODUCAO:-false}"     -e CONTASK_LEIAUTE_PRODUCAO="${LEIAUTE_PRODUCAO:-nt004}" \
     -e CONTASK_LIMITE_XMLS_MES="${LIMITE_XMLS_MES:-0}" \
     -v "$DADOS:/app/dados" -v "$BACKUPS:/backups" \
     --log-opt max-size=10m --log-opt max-file=5 \
