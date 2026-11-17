@@ -126,6 +126,24 @@ class Retencoes:
         return self.contribuicoes + self.irrf + self.cp
 
 
+MOTIVOS_SUBSTITUICAO = {
+    "01": "Desenquadramento de NFS-e do Simples Nacional",
+    "02": "Enquadramento de NFS-e no Simples Nacional",
+    "03": "Inclusão retroativa de imunidade/isenção",
+    "04": "Exclusão retroativa de imunidade/isenção",
+    "05": "Rejeição da NFS-e pelo tomador ou intermediário",
+    "99": "Outros",
+}
+
+
+@dataclass
+class Substituicao:
+    """Grupo subst da DPS: a Sefin autoriza a nova nota e cancela a original (evento 105102)."""
+    chave: str
+    motivo: str
+    justificativa: str
+
+
 @dataclass
 class DadosDps:
     ambiente: int
@@ -148,6 +166,7 @@ class DadosDps:
     emitido_em: datetime | None = None
     cindop: str | None = None                 # IBS/CBS: indicador da operação (Anexo VII)
     cclasstrib: str | None = None             # IBS/CBS: classificação tributária (CST = 3 primeiros dígitos)
+    subst: Substituicao | None = None         # NFS-e substituta
 
     @property
     def id_dps(self) -> str:
@@ -192,6 +211,14 @@ def codigos_ibscbs_validos(d: DadosDps) -> bool:
 
 def validar(d: DadosDps) -> None:
     """Regras que dá para conferir antes de enviar, com mensagens em português."""
+    if d.subst is not None:
+        s = d.subst
+        if not (s.chave.isdigit() and len(s.chave) == 50):
+            raise DpsInvalida("A chave da NFS-e substituída deve ter 50 dígitos.")
+        if s.motivo not in MOTIVOS_SUBSTITUICAO:
+            raise DpsInvalida("Escolha o motivo da substituição.")
+        if not 15 <= len(" ".join(s.justificativa.split())) <= 255:
+            raise DpsInvalida("Explique o motivo da substituição com 15 a 255 caracteres.")
     if d.valor <= 0:
         raise DpsInvalida("Informe o valor do serviço.")
     if d.desconto_incondicionado < 0 or d.desconto_incondicionado >= d.valor:
@@ -247,6 +274,7 @@ def montar(d: DadosDps, leiaute: str | None = None) -> etree._Element:
     if nt009:
         _e(inf, "finNFSe", 0)  # NFS-e regular
     _e(inf, "cLocEmi", d.prestador.cod_municipio)
+    _subst(inf, d)
 
     p = _e(inf, "prest")
     _e(p, "CNPJ", d.prestador.cnpj)
@@ -330,6 +358,16 @@ def montar(d: DadosDps, leiaute: str | None = None) -> etree._Element:
     return raiz
 
 
+def _subst(inf, d: DadosDps) -> None:
+    """Logo depois de cLocEmi, nos dois leiautes da Sefin e no ISSNet do DF."""
+    if d.subst is None:
+        return
+    s = _e(inf, "subst")
+    _e(s, "chSubstda", d.subst.chave)
+    _e(s, "cMotivo", d.subst.motivo)
+    _e(s, "xMotivo", " ".join(d.subst.justificativa.split())[:255])
+
+
 def _ibscbs(inf, d: DadosDps, nt009: bool) -> None:
     """Grupo IBSCBS (último do infDPS). Só a classificação vai na DPS: a base e os valores de IBS e CBS
     (alíquotas de teste de 2026: CBS 0,9% e IBS 0,1%) são calculados pela Sefin com a calculadora oficial.
@@ -386,6 +424,7 @@ def montar_issnet(d: DadosDps) -> etree._Element:
     _e(inf, "dCompet", d.competencia.isoformat())
     _e(inf, "tpEmit", 1)
     _e(inf, "cLocEmi", d.prestador.cod_municipio)
+    _subst(inf, d)
 
     p = _e(inf, "prest")
     _e(p, "CNPJ", d.prestador.cnpj)

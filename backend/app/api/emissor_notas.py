@@ -215,7 +215,8 @@ def modelo_nota_adn(empresa_id: int, nota_id: int, db: Session = Depends(sessao)
                 if not v and getattr(salvo, k, None):
                     m["tomador"][k] = getattr(salvo, k)
     serv = servico_igual(db, e.id, m)
-    return {**m, **_rotulos(m), "servico_id": serv.id if serv else None, "numero_nfse": n.numero, "empresa_id": e.id}
+    return {**m, **_rotulos(m), "servico_id": serv.id if serv else None, "numero_nfse": n.numero, "empresa_id": e.id,
+            "competencia": n.competencia or m.get("competencia"), "chave": n.chave, "situacao": n.status}
 
 
 def servico_igual(db: Session, empresa_id: int, m: dict) -> ServicoEmissor | None:

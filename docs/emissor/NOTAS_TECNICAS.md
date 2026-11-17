@@ -126,6 +126,13 @@ O teste foi feito com a CONTELB (ME/EPP do Simples) emitindo para um tomador do 
 - **Teste real:** a DPS da CONTELB declarada fora do Simples passou pelas validações do grupo (E0239 resolvido com o endereço) e parou no E0160, porque a CONTELB é do Simples. A autorização com o grupo ainda não foi vista: nenhuma empresa fora do Simples tem certificado próprio, e a homologação não aceita procuração (E0718).
 - **Cadastro:** para empresa fora do Simples, o serviço só é salvo com `cIndOp` e `cClassTrib`, sugeridos pela NBS (Anexo VIII). A empresa mostra um aviso quando tem serviço ativo sem os códigos.
 
+**Substituição de NFS-e (17/11/2026):**
+- **Como é:** uma DPS nova com o grupo `subst` (`chSubstda`, `cMotivo`, `xMotivo` de 15 a 255 caracteres), logo depois de `cLocEmi`. Posição igual nos leiautes da NT 004, da NT 009 e do ISSNet do DF. Motivos (`TSCodJustSubst`): 01 a 05 e 99 (Outros).
+- **Teste real (produção restrita, CONTELB, 17/11/2026):** a substituta foi autorizada com cStat 101 ("NFS-e de Substituição Gerada"), e a Sefin registrou sozinha o evento 105102 na original, com `chSubstituta`. Nenhum pedido de evento é enviado pelo Contask.
+- **No Contask:** a tela de emissão abre com todos os dados da original, inclusive a competência. Dá para substituir nota do Contask e nota prestada que veio do ADN (só em produção). Autorizada a substituta, a original do Contask fica cancelada, com `substituida_por_id` e a marca d'água SUBSTITUÍDA no DANFSe. A do ADN muda pelo evento 105102 na próxima busca.
+- **Carta de correção:** não existe na NFS-e nacional nem no ISSNet do DF (só cancelamento e substituição). Decisão de 17/11/2026: corrigir é substituir.
+- **Em aberto:** substituição por procuração em produção e pelo ISSNet do DF ainda não foram vistas.
+
 **Troca do leiaute da produção (16/11/2026):**
 - **Prazo:** o portal anuncia o leiaute da NT 004 em produção até 30/11/2026 e a NT 009 em seguida, sem data exata de virada.
 - **Escolha:** a produção restrita usa sempre a NT 009. A produção usa o leiaute gravado em `dados/leiaute_producao.txt` e, sem ele, `CONTASK_LEIAUTE_PRODUCAO` (`nt004` por padrão; no servidor, `LEIAUTE_PRODUCAO` no `contask.conf`).

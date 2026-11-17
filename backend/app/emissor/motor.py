@@ -29,7 +29,7 @@ from app.core.config import config
 from app.emissor import assinatura, textos
 from app.emissor.dps import (
     BRASILIA, NT004, NT009, PRODUCAO, RESTRITA, Cancelamento, DadosDps, DpsInvalida, Prestador, Retencoes,
-    TomadorDps, centavos, gravar_leiaute_producao, id_dps, leiaute_do_ambiente, montar, montar_cancelamento,
+    Substituicao, TomadorDps, centavos, gravar_leiaute_producao, id_dps, leiaute_do_ambiente, montar, montar_cancelamento,
     montar_issnet, serializar, validar_xsd, validar_xsd_issnet,
 )
 from app.emissor.issnet import mensagens as issnet_msg
@@ -140,6 +140,9 @@ class Entrada:
     recorrente_id: int | None = None
     servico_codigos: dict | None = None  # sem serviço cadastrado: ctribnac, cnbs, ctribmun, cindop, cclasstrib
     extras: dict = field(default_factory=dict)
+    # Substituição: {"nota_id": nota do Contask} ou {"nota_adn_id": nota prestada vinda do ADN}, mais motivo e
+    # justificativa (ver dps.MOTIVOS_SUBSTITUICAO)
+    substituicao: dict | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -192,7 +195,59 @@ def _dados(e: Empresa, cfg: EmissorEmpresa, nota: NotaEmitida) -> DadosDps:
                             csll=centavos(nota.ret_csll), irrf=centavos(nota.ret_irrf), cp=centavos(nota.ret_cp)),
         percentual_tributos_sn=cfg.percentual_tributos, info_complementar=nota.info_complementar,
         cindop=nota.cindop, cclasstrib=nota.cclasstrib,
+        subst=Substituicao(nota.subst_chave, nota.subst_motivo or "", nota.subst_justificativa or "")
+        if nota.subst_chave else None,
     )
+
+
+def _substituida(db: Session, esc: int, e: Empresa, amb: int, sub: dict) -> tuple[str, NotaEmitida | None]:
+    """Chave da NFS-e a substituir (e a nota do Contask, quando é dele). Só nota autorizada da mesma empresa."""
+    from sqlalchemy import select
+    from app.models import Nota
+    original = None
+    if sub.get("nota_id"):
+        original = db.get(NotaEmitida, sub["nota_id"])
+        if original is None or original.escritorio_id != esc or original.empresa_id != e.id:
+            raise ErroEmissao("Nota a substituir não encontrada para esta empresa.", 404)
+        if original.situacao != "autorizada" or not original.chave:
+            raise ErroEmissao("Só dá para substituir uma nota autorizada.", 409)
+        if original.ambiente != amb:
+            raise ErroEmissao("A nota a substituir é de outro ambiente (homologação x produção).", 409)
+        chave = original.chave
+    elif sub.get("nota_adn_id"):
+        n = db.get(Nota, sub["nota_adn_id"])
+        if n is None or n.empresa_id != e.id or n.papel != "prestada":
+            raise ErroEmissao("Nota a substituir não encontrada entre as prestadas desta empresa.", 404)
+        if n.status != "autorizada":
+            raise ErroEmissao("Só dá para substituir uma nota autorizada.", 409)
+        if amb != PRODUCAO:
+            raise ErroEmissao("As notas do ADN são de produção: passe a empresa para produção para substituir.", 409)
+        chave = n.chave
+        original = db.scalar(select(NotaEmitida).where(NotaEmitida.chave == chave, NotaEmitida.empresa_id == e.id))
+    else:
+        raise ErroEmissao("Informe a nota a substituir.")
+    andamento = db.scalar(select(NotaEmitida).where(
+        NotaEmitida.subst_chave == chave, NotaEmitida.situacao.in_(("enviando", "pendente", "autorizada"))))
+    if andamento is not None:
+        raise ErroEmissao("Esta nota já tem uma substituta em andamento ou autorizada. Veja a lista de notas emitidas.", 409)
+    return chave, original
+
+
+def _concluir_substituicao(db: Session, nota: NotaEmitida) -> None:
+    """Substituta autorizada: a Sefin cancela a original (evento 105102); a do Contask é marcada já."""
+    if not nota.subst_chave:
+        return
+    from sqlalchemy import select
+    original = db.scalar(select(NotaEmitida).where(
+        NotaEmitida.chave == nota.subst_chave, NotaEmitida.empresa_id == nota.empresa_id,
+        NotaEmitida.ambiente == nota.ambiente, NotaEmitida.id != nota.id))
+    if original is None or original.situacao == "cancelada":
+        return
+    original.situacao, original.cancelado_em = "cancelada", agora()
+    original.substituida_por_id = nota.id
+    original.motivo_cancelamento = (f"Substituída pela NFS-e nº {nota.numero_nfse or '-'}: "
+                                    f"{' '.join((nota.subst_justificativa or '').split())}")
+    original.mensagem = None
 
 
 def _preencher(db: Session, nota: NotaEmitida, e: Empresa, cfg: EmissorEmpresa, ent: Entrada) -> None:
@@ -284,6 +339,7 @@ def _autorizar(db: Session, e: Empresa, nota: NotaEmitida, xml: bytes, chave: st
     nota.xml_nfse_path = _gravar(e, nota.ambiente, f"NFSe_{nota.chave}.xml", xml)
     nota.situacao, nota.erros, nota.mensagem = "autorizada", None, None
     nota.autorizado_em = agora()
+    _concluir_substituicao(db, nota)
 
 
 ERROS_ESQUEMA = {"E1235"}
@@ -473,7 +529,9 @@ def _reservar_rps(db: Session, e: Empresa, cfg: EmissorEmpresa, amb: int, nota: 
 
 def emitir(db: Session, esc: int, usuario_id: int | None, ent: Entrada) -> NotaEmitida:
     from app.core.escritorios import em_teste, emissoes_do_escritorio
-    if em_teste(db, esc) and emissoes_do_escritorio(db, esc) >= config().teste_max_emissoes:
+    # No teste grátis, substituir a nota já emitida pelo Contask não conta como emissão nova
+    corrige = bool(ent.substituicao and ent.substituicao.get("nota_id"))
+    if not corrige and em_teste(db, esc) and emissoes_do_escritorio(db, esc) >= config().teste_max_emissoes:
         from app.core.escritorios import CONTRATE
         raise ErroEmissao(f"O teste grátis permite emitir {config().teste_max_emissoes} nota, e ela já foi usada. "
                           f"{CONTRATE}", 402)
@@ -482,6 +540,10 @@ def emitir(db: Session, esc: int, usuario_id: int | None, ent: Entrada) -> NotaE
     nota = NotaEmitida(escritorio_id=esc, empresa_id=e.id, usuario_id=usuario_id, ambiente=amb, serie=cfg.serie,
                        numero=0, id_dps="", situacao="enviando", recorrente_id=ent.recorrente_id, canal=canal(cfg))
     _preencher(db, nota, e, cfg, ent)
+    if ent.substituicao:
+        nota.subst_chave, _ = _substituida(db, esc, e, amb, ent.substituicao)
+        nota.subst_motivo = ent.substituicao.get("motivo")
+        nota.subst_justificativa = " ".join((ent.substituicao.get("justificativa") or "").split())
     # Valida tudo (regras e XSD) antes de gastar um número
     try:
         nota.numero = cfg.proximo_numero if nota.canal == NACIONAL else 1

@@ -183,6 +183,12 @@ class NotaEmitida(Base):
     autorizado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     cancelado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     recorrente_id: Mapped[int | None] = mapped_column(ForeignKey("nota_recorrente.id", ondelete="SET NULL"))
+    # Substituição: esta nota substitui a NFS-e subst_chave (grupo subst da DPS). Autorizada a substituta, a
+    # original do Contask fica cancelada com substituida_por_id apontando para cá.
+    subst_chave: Mapped[str | None] = mapped_column(String(50), index=True)
+    subst_motivo: Mapped[str | None] = mapped_column(String(2))
+    subst_justificativa: Mapped[str | None] = mapped_column(Text)
+    substituida_por_id: Mapped[int | None] = mapped_column(ForeignKey("nota_emitida.id", ondelete="SET NULL"))
 
 
 class RpsDisponivel(Base):

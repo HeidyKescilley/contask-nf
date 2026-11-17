@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import {
   AlertTriangle, BadgeCheck, Ban, Building2, ChevronLeft, ChevronRight, Clock, Copy, Download, FilePen, FileText, Loader2,
-  Lock, MoreHorizontal, Plus, ReceiptText, RefreshCw, Repeat, RotateCcw, Search, Trash2, X, XCircle,
+  Lock, MoreHorizontal, Plus, ReceiptText, RefreshCw, Repeat, Replace, RotateCcw, Search, Trash2, X, XCircle,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -38,10 +38,13 @@ const SITUACOES = [
 export function SeloEmitida({ n }: { n: { situacao: string; mensagem: string | null; motivo_cancelamento?: string | null } }) {
   switch (n.situacao) {
     case "autorizada": return <Selo tom="ok" icone={BadgeCheck}>Autorizada</Selo>;
-    case "cancelada":
-      return n.motivo_cancelamento
-        ? <Dica texto={n.motivo_cancelamento} lado="left"><span><Selo tom="erro" icone={Ban}>Cancelada</Selo></span></Dica>
-        : <Selo tom="erro" icone={Ban}>Cancelada</Selo>;
+    case "cancelada": {
+      const motivo = n.motivo_cancelamento ?? n.mensagem;
+      const rotulo = /substitu/i.test(motivo ?? "") ? "Substituída" : "Cancelada";
+      return motivo
+        ? <Dica texto={motivo} lado="left"><span><Selo tom="erro" icone={Ban}>{rotulo}</Selo></span></Dica>
+        : <Selo tom="erro" icone={Ban}>{rotulo}</Selo>;
+    }
     case "rejeitada":
       return <Dica texto={n.mensagem ?? "Recusada pela Sefin."} lado="left"><span><Selo tom="erro" icone={XCircle}>Rejeitada</Selo></span></Dica>;
     case "pendente":
@@ -248,6 +251,9 @@ function Linha({ n, comEmpresa, navegar, aoCancelar }: {
   const { emTeste } = useTesteGratis();
   const adn = n.origem === "adn";
   const duplicar = adn ? `duplicar_adn=${n.id}` : `duplicar=${n.id}`;
+  const substituir = adn ? `substituir_adn=${n.id}` : `substituir=${n.id}`;
+  // da nota do ADN os dados vêm do XML baixado
+  const podeSubstituir = n.situacao === "autorizada" && (adn ? n.tem_xml : !!n.chave);
   const danfse = adn ? `/api/notas/${n.id}/pdf` : `/api/emissor/notas/${n.id}/danfse`;
   const xml = adn ? `/api/notas/${n.id}/xml` : `/api/emissor/notas/${n.id}/xml`;
   const temXml = adn ? n.tem_xml : !!n.chave;
@@ -305,6 +311,9 @@ function Linha({ n, comEmpresa, navegar, aoCancelar }: {
                 <DropdownMenuItem onSelect={() => navegar(comEmpresa(`/emissor/emitir?${duplicar}`))}><Copy /> Duplicar</DropdownMenuItem>
                 {!emTeste && <DropdownMenuItem onSelect={() => navegar(comEmpresa(`/emissor/recorrentes/nova?${duplicar}`))}><Repeat /> Criar recorrência</DropdownMenuItem>}
               </>
+            )}
+            {podeSubstituir && (
+              <DropdownMenuItem onSelect={() => navegar(comEmpresa(`/emissor/emitir?${substituir}`))}><Replace /> Substituir nota</DropdownMenuItem>
             )}
             {!adn && n.situacao === "autorizada" && n.chave && (
               <DropdownMenuItem disabled={verificar.isPending} onSelect={() => verificar.mutate()}>

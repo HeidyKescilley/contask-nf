@@ -15,6 +15,7 @@ import { api } from "@/lib/api";
 import {
   TEXTO_PROCON, TEXTO_SIMPLES, VARIAVEIS, aplicarVariaveis, apenasDigitos, arredondar, codigosIguais, escreverValor, lerValor, mascararCep,
   proximaData, useAtualizarEmissor, useEmpresasEmissoras, useServicos, variaveisDesconhecidas,
+  MOTIVOS_SUBSTITUICAO,
   type CodigosServico, type ConsultaTomador, type CorpoEmissao, type EmpresaEmissora, type ModeloAdn, type NotaEmitida, type Rascunho,
   type Recorrente, type Servico, type Tomador,
 } from "@/lib/emissor";
@@ -89,7 +90,7 @@ export function daNota(n: NotaEmitida | ModeloAdn, duplicar = false): Form {
   // Nota sem nenhum texto legal (anterior a eles ou de outro emissor): ao duplicar, vale o padrão (marcados)
   const padrao = duplicar && !n.texto_simples && !n.texto_procon;
   return { servicoId: n.servico_id, servicoNota: codigosDe(n), localPrestacao: n.cod_municipio_prestacao ?? "",
-    descricao: n.descricao, competencia: duplicar || !("competencia" in n) ? hoje() : n.competencia,
+    descricao: n.descricao, competencia: duplicar || !n.competencia ? hoje() : n.competencia,
     valor: escreverValor(n.valor_servico), desconto: v2(n.desconto), semTomador: !n.tomador, tomador: doTomador(n.tomador),
     salvarTomador: true, issRetido: n.iss_retido, aliquota: n.aliquota_iss ? escreverValor(n.aliquota_iss) : "",
     ret: { ret_pis: v2(n.ret_pis), ret_cofins: v2(n.ret_cofins), ret_csll: v2(n.ret_csll), ret_irrf: v2(n.ret_irrf), ret_cp: v2(n.ret_cp) },
@@ -115,6 +116,15 @@ export function doCorpo(d: CorpoEmissao): Form {
 
 const num = (s: string) => { const n = lerValor(s); return isNaN(n) ? 0 : n; };
 
+/** Nota que a emissão vai substituir (grupo subst da DPS). */
+export interface AlvoSubstituicao {
+  nota_id?: number;
+  nota_adn_id?: number;
+  numero_nfse: string | null;
+  chave: string | null;
+  situacao: string | null;
+}
+
 export function EmitirNota() {
   const [params] = useSearchParams();
   const id = (k: string) => Number(params.get(k)) || null;
@@ -122,19 +132,22 @@ export function EmitirNota() {
   const duplicarId = id("duplicar");  // nota do Contask
   const duplicarAdn = id("duplicar_adn");
   const rascunhoId = id("rascunho");
+  const substituirId = id("substituir");          // substituir nota do Contask
+  const substituirAdn = id("substituir_adn");     // substituir nota emitida fora do Contask (ADN)
   const { empresa: selecionada, carregando } = useEmpresaSelecionada();
   const empresas = useEmpresasEmissoras();
 
-  const fonteId = notaId ?? duplicarId;
+  const fonteId = notaId ?? duplicarId ?? substituirId;
+  const adnId = duplicarAdn ?? substituirAdn;
   const original = useQuery({
     queryKey: ["emissor", "nota", fonteId],
     queryFn: () => api<NotaEmitida>(`/api/emissor/notas/${fonteId}`),
     enabled: fonteId !== null,
   });
   const modelo = useQuery({
-    queryKey: ["emissor", "modelo-adn", selecionada?.id, duplicarAdn],
-    queryFn: () => api<ModeloAdn>(`/api/emissor/empresas/${selecionada!.id}/notas/adn/${duplicarAdn}/modelo`),
-    enabled: duplicarAdn !== null && !!selecionada,
+    queryKey: ["emissor", "modelo-adn", selecionada?.id, adnId],
+    queryFn: () => api<ModeloAdn>(`/api/emissor/empresas/${selecionada!.id}/notas/adn/${adnId}/modelo`),
+    enabled: adnId !== null && !!selecionada,
   });
   const rascunho = useQuery({
     queryKey: ["emissor", "rascunho", rascunhoId],
@@ -151,13 +164,20 @@ export function EmitirNota() {
 
   const inicial = useMemo(() => {
     if (original.data) return daNota(original.data, !!duplicarId);
-    if (modelo.data) return daNota(modelo.data, true);
+    // Na substituição vem tudo da original, inclusive a competência
+    if (modelo.data) return daNota(modelo.data, !substituirAdn);
     if (rascunho.data) return doCorpo(rascunho.data.dados);
     return vazio();
-  }, [original.data, modelo.data, rascunho.data, duplicarId]);
+  }, [original.data, modelo.data, rascunho.data, duplicarId, substituirAdn]);
 
-  const chave = `${notaId}-${duplicarId}-${duplicarAdn}-${rascunhoId}-${empresaId}`;
-  const titulo = notaId ? "Corrigir e reenviar" : rascunhoId ? "Continuar rascunho" : duplicarId || duplicarAdn ? "Duplicar nota" : undefined;
+  const substituir: AlvoSubstituicao | null =
+    substituirId && original.data ? { nota_id: original.data.id, numero_nfse: original.data.numero_nfse, chave: original.data.chave, situacao: original.data.situacao }
+    : substituirAdn && modelo.data ? { nota_adn_id: substituirAdn, numero_nfse: modelo.data.numero_nfse, chave: modelo.data.chave ?? null, situacao: modelo.data.situacao ?? null }
+    : null;
+
+  const chave = `${notaId}-${duplicarId}-${duplicarAdn}-${substituirId}-${substituirAdn}-${rascunhoId}-${empresaId}`;
+  const titulo = notaId ? "Corrigir e reenviar" : rascunhoId ? "Continuar rascunho" : duplicarId || duplicarAdn ? "Duplicar nota"
+    : substituir ? `Substituir a NFS-e nº ${substituir.numero_nfse ?? "-"}: confira os dados, corrija o que precisar e emita a substituta.` : undefined;
 
   return (
     <>
@@ -169,7 +189,7 @@ export function EmitirNota() {
       {empresas.data && !carregando && !carregandoFonte && !erroFonte && (
         !empresa || !empresa.emite_nfse ? <SemEmpresa id={empresaId} /> : (
           <Formulario key={chave} empresa={empresa} inicial={inicial} notaInicial={notaId ? original.data ?? null : null}
-            rascunhoId={rascunhoId} />
+            rascunhoId={rascunhoId} substituir={substituir} />
         )
       )}
     </>
@@ -204,11 +224,13 @@ function Secao({ n, titulo, children, acao }: { n: number; titulo: string; child
 const CLASSE_TEXTO = "w-full rounded-xl border border-borda bg-superficie px-3 py-2 text-sm outline-none hover:border-borda-forte focus-visible:border-destaque focus-visible:ring-2 focus-visible:ring-destaque/25";
 const dataBR = (d: Date) => d.toLocaleDateString("pt-BR");
 
-export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = null, recorrencia }: {
+export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = null, recorrencia, substituir = null }: {
   empresa: EmpresaEmissora;
   inicial: Form;
   notaInicial?: NotaEmitida | null;
   rascunhoId?: number | null;
+  /** a nota sai como substituta desta */
+  substituir?: AlvoSubstituicao | null;
   /** modo recorrência: dados da agenda e a recorrência em edição (se houver) */
   recorrencia?: { dados: DadosRecorrencia; existente: Recorrente | null };
 }) {
@@ -223,8 +245,9 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
   const navegar = useNavigate();
   const modoRec = !!recorrencia;
   const teste = useTesteGratis();
-  // No teste grátis só uma nota pode ser emitida; corrigir e reenviar a mesma continua valendo
-  const semEmissao = !modoRec && !nota && teste.emTeste && teste.emissoesRestantes === 0;
+  const [sub, setSub] = useState({ motivo: "99", justificativa: "" });
+  // No teste grátis só uma nota pode ser emitida; corrigir e reenviar ou substituir a mesma continua valendo
+  const semEmissao = !modoRec && !nota && !substituir?.nota_id && teste.emTeste && teste.emissoesRestantes === 0;
 
   const producao = empresa.ambiente === 1;
   const servicos = useServicos(empresa.id);
@@ -297,6 +320,12 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
   if (precisaAliquota && !(num(f.aliquota) > 0 && num(f.aliquota) <= 5)) problemas.push("Informe a alíquota efetiva de ISS do Simples (até 5%).");
   if (federais + desconto >= valor && valor > 0) problemas.push("As retenções não podem chegar ao valor do serviço.");
   if (!modoRec && f.competencia > hoje()) problemas.push("A competência não pode ser futura.");
+  const chaveOriginal = substituir?.chave ?? nota?.subst_chave ?? null;
+  const justificativa = sub.justificativa.trim().replace(/\s+/g, " ");
+  if (substituir && !nota) {
+    if (substituir.situacao && substituir.situacao !== "autorizada") problemas.push("A nota a substituir não está autorizada.");
+    if (justificativa.length < 15) problemas.push("Explique o motivo da substituição (mínimo de 15 caracteres).");
+  }
 
   const fixo = (s: string) => { const n = lerValor(s); return isNaN(n) ? "" : n.toFixed(2); };
   const corpo = (): CorpoEmissao & { empresa_id: number } => ({
@@ -316,7 +345,9 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
   const emitir = useMutation({
     mutationFn: () => nota
       ? api<NotaEmitida>(`/api/emissor/notas/${nota.id}/reenviar`, { method: "POST", body: JSON.stringify(corpo()) })
-      : api<NotaEmitida>("/api/emissor/notas", { method: "POST", body: JSON.stringify({ ...corpo(), rascunho_id: rascunho }) }),
+      : api<NotaEmitida>("/api/emissor/notas", { method: "POST", body: JSON.stringify({ ...corpo(), rascunho_id: rascunho,
+          substituicao: substituir ? { nota_id: substituir.nota_id ?? null, nota_adn_id: substituir.nota_adn_id ?? null,
+            motivo: sub.motivo, justificativa } : null }) }),
     onSuccess: (n) => {
       atualizar();
       setRevisar(false);
@@ -373,6 +404,11 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
             <CheckCircle2 className="size-6" aria-hidden />
           </div>
           <h2 className="text-lg font-semibold">NFS-e nº {resultado.numero_nfse} autorizada{resultado.homologacao && " (homologação)"}</h2>
+          {resultado.subst_chave && (
+            <p className="mt-1 text-sm text-texto-2">
+              Substitui a NFS-e{resultado.substitui?.numero_nfse ? ` nº ${resultado.substitui.numero_nfse}` : ""}, que a Sefin cancelou por substituição.
+            </p>
+          )}
           <p className="mt-1 text-sm text-texto-2">{resultado.empresa_nome} · {resultado.tomador?.nome ?? "sem tomador"} · {moeda(resultado.valor_servico)}</p>
           {resultado.chave && <div className="mt-3 text-sm"><Copiar texto={resultado.chave} exibir={resultado.chave} className="font-mono text-xs" /></div>}
           <div className="mt-6 flex flex-wrap justify-center gap-2">
@@ -402,6 +438,40 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
             ) : <p className="mt-1">{nota.mensagem}</p>}
             <p className="mt-2 text-texto-2">Corrija abaixo e envie de novo: a nota usa o mesmo número da DPS.</p>
           </Aviso>
+        )}
+
+        {(substituir || nota?.subst_chave) && (
+          <Secao n={++n} titulo="Substituição">
+            <p className="text-sm text-texto-2">
+              Esta nota substitui a NFS-e{" "}
+              <strong className="text-texto">nº {(substituir?.numero_nfse ?? nota?.substitui?.numero_nfse) || "-"}</strong>.
+              Quando a substituta for autorizada, a Sefin cancela a original sozinha (cancelamento por substituição).
+              Os dados abaixo vieram da nota original: corrija só o que precisar.
+            </p>
+            {chaveOriginal && (
+              <p className="mt-2 text-xs text-texto-2">Chave da original: <Copiar texto={chaveOriginal} exibir={chaveOriginal} className="font-mono" /></p>
+            )}
+            {substituir && !nota ? (
+              <div className="mt-4 grid gap-4">
+                {substituir.situacao && substituir.situacao !== "autorizada" && (
+                  <Aviso tom="erro">A nota original está {substituir.situacao}: só dá para substituir uma nota autorizada.</Aviso>
+                )}
+                <Campo rotulo="Motivo">
+                  {(p) => (
+                    <Select {...p} value={sub.motivo} onChange={(ev) => setSub({ ...sub, motivo: ev.target.value })}>
+                      {MOTIVOS_SUBSTITUICAO.map((m) => <option key={m.codigo} value={m.codigo}>{m.codigo} – {m.rotulo}</option>)}
+                    </Select>
+                  )}
+                </Campo>
+                <Campo rotulo="Justificativa" ajuda={`Vai na nota substituta e no evento de cancelamento da original. ${justificativa.length}/255 caracteres (mínimo 15).`}>
+                  {(p) => <textarea {...p} rows={2} maxLength={255} value={sub.justificativa} placeholder="Ex.: CNPJ do tomador informado errado na nota original."
+                    onChange={(ev) => setSub({ ...sub, justificativa: ev.target.value })} className={CLASSE_TEXTO} />}
+                </Campo>
+              </div>
+            ) : nota?.subst_justificativa && (
+              <p className="mt-2 text-sm">Justificativa: {nota.subst_justificativa}</p>
+            )}
+          </Secao>
         )}
 
         {teste.emTeste && !modoRec && (
@@ -702,9 +772,9 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
           ) : (
             <>
               <Button variante="primario" className="mt-4 w-full" disabled={emitir.isPending} onClick={() => setRevisar(true)}>
-                {nota ? <><RotateCcw /> Revisar e reenviar</> : <><Send /> Revisar e emitir</>}
+                {nota ? <><RotateCcw /> Revisar e reenviar</> : substituir ? <><Send /> Revisar e substituir</> : <><Send /> Revisar e emitir</>}
               </Button>
-              {!nota && (
+              {!nota && !substituir && (
                 <Button className="mt-2 w-full" disabled={salvarRascunho.isPending} onClick={() => salvarRascunho.mutate()}>
                   {salvarRascunho.isPending ? <Loader2 className="animate-spin" /> : <Save />} {rascunho ? "Atualizar rascunho" : "Salvar rascunho"}
                 </Button>
@@ -718,11 +788,12 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
       </aside>
 
       <Dialog open={revisar} onOpenChange={(v) => !emitir.isPending && !salvarRecorrencia.isPending && setRevisar(v)}>
-        <DialogContent titulo={modoRec ? "Salvar a recorrência?" : nota ? "Reenviar a nota?" : "Emitir a nota?"}
+        <DialogContent titulo={modoRec ? "Salvar a recorrência?" : nota ? "Reenviar a nota?" : substituir ? "Emitir a nota substituta?" : "Emitir a nota?"}
           descricao={modoRec
             ? (producao ? `Produção: todo mês, no dia ${diaRec}, uma nota com valor fiscal será emitida sem nova confirmação.` : `Homologação: todo mês, no dia ${diaRec}, uma nota de teste será emitida.`)
             : producao ? "Produção: a nota terá valor fiscal. Confira antes de emitir." : "Ambiente de homologação: a nota não tem valor fiscal."}>
           <dl className="space-y-1.5 text-sm">
+            {substituir && !nota && <Linha rotulo="Substitui" valor={`NFS-e nº ${substituir.numero_nfse ?? "-"} (será cancelada)`} />}
             <Linha rotulo="Prestador" valor={`${empresa.razao_social} (${formatarDoc(empresa.cnpj)})`} />
             <Linha rotulo="Tomador" valor={f.semTomador ? "Sem tomador" : `${t.nome} (${formatarDoc(doc)})`} />
             {modoRec

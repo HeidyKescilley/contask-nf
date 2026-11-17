@@ -586,6 +586,13 @@ def excluir_tomador(tomador_id: int, db: Session = Depends(sessao), esc: int = D
 # Emissão
 # ---------------------------------------------------------------------------
 
+class SubstituicaoIn(BaseModel):
+    nota_id: int | None = None       # nota emitida pelo Contask
+    nota_adn_id: int | None = None   # nota prestada que veio do ADN (emitida fora do Contask)
+    motivo: str = Field(pattern="^(01|02|03|04|05|99)$")
+    justificativa: str = Field(min_length=15, max_length=255)
+
+
 class EmissaoIn(BaseModel):
     empresa_id: int
     servico_id: int | None = None
@@ -608,6 +615,7 @@ class EmissaoIn(BaseModel):
     texto_simples: bool = True
     texto_procon: bool = True
     rascunho_id: int | None = None   # rascunho que vira esta nota (é apagado depois da emissão)
+    substituicao: SubstituicaoIn | None = None  # a nota sai como substituta (grupo subst da DPS)
 
 
 class CancelamentoIn(BaseModel):
@@ -628,7 +636,16 @@ def _entrada(d: EmissaoIn):
         cod_municipio_prestacao=mun or None, info_complementar=d.info_complementar,
         texto_simples=d.texto_simples, texto_procon=d.texto_procon,
         servico_codigos=_validar_codigos(d.servico) if d.servico and not d.servico_id else None,
+        substituicao=_substituicao(d.substituicao),
     )
+
+
+def _substituicao(s: SubstituicaoIn | None) -> dict | None:
+    if s is None:
+        return None
+    if bool(s.nota_id) == bool(s.nota_adn_id):
+        raise HTTPException(422, "Informe a nota a substituir.")
+    return s.model_dump()
 
 
 def _utc(dt):
@@ -661,7 +678,16 @@ def _nota_out(db: Session, n: NotaEmitida) -> dict:
         "mensagem": n.mensagem, "motivo_cancelamento": n.motivo_cancelamento,
         "criado_em": _utc(n.criado_em), "enviado_em": _utc(n.enviado_em), "autorizado_em": _utc(n.autorizado_em),
         "cancelado_em": _utc(n.cancelado_em),
+        "subst_chave": n.subst_chave, "subst_motivo": n.subst_motivo, "subst_justificativa": n.subst_justificativa,
+        "substitui": _ref(db, NotaEmitida.chave == n.subst_chave, n) if n.subst_chave else None,
+        "substituida_por": _ref(db, NotaEmitida.id == n.substituida_por_id, n) if n.substituida_por_id else None,
     }
+
+
+def _ref(db: Session, cond, n: NotaEmitida) -> dict | None:
+    """Nota ligada pela substituição (substituta ou substituída), se for do Contask."""
+    o = db.scalar(select(NotaEmitida).where(cond, NotaEmitida.empresa_id == n.empresa_id, NotaEmitida.id != n.id))
+    return {"id": o.id, "numero_nfse": o.numero_nfse, "situacao": o.situacao} if o else None
 
 
 def _erro_emissao(ex) -> HTTPException:
@@ -804,7 +830,7 @@ def danfse_nota(nota_id: int, download: int = 0, db: Session = Depends(sessao), 
     n = _nota(db, nota_id, esc)
     if not n.xml_nfse_path or not (config().dados_dir / n.xml_nfse_path).is_file():
         raise HTTPException(404, "A nota ainda não foi autorizada.")
-    marca = "CANCELADA" if n.situacao == "cancelada" else None
+    marca = ("SUBSTITUÍDA" if n.substituida_por_id else "CANCELADA") if n.situacao == "cancelada" else None
     pdf = gerar_danfse((config().dados_dir / n.xml_nfse_path).read_bytes(), marca_dagua=marca)
     disp = "attachment" if download else "inline"
     return Response(pdf, media_type="application/pdf",

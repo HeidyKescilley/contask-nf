@@ -283,7 +283,25 @@ export interface NotaEmitida {
   info_usuario: string;
   texto_simples: boolean;
   texto_procon: boolean;
+  /** substituição: chave da NFS-e que esta substitui e a ligação com a outra nota do Contask */
+  subst_chave: string | null;
+  subst_motivo: string | null;
+  subst_justificativa: string | null;
+  substitui: RefNota | null;
+  substituida_por: RefNota | null;
 }
+
+export interface RefNota { id: number; numero_nfse: string | null; situacao: SituacaoEmitida }
+
+/** Códigos de justificativa da substituição (TSCodJustSubst do leiaute da NFS-e). */
+export const MOTIVOS_SUBSTITUICAO = [
+  { codigo: "99", rotulo: "Outros (erro de preenchimento, tomador, valor, descrição…)" },
+  { codigo: "05", rotulo: "Rejeição da NFS-e pelo tomador ou intermediário" },
+  { codigo: "01", rotulo: "Desenquadramento de NFS-e do Simples Nacional" },
+  { codigo: "02", rotulo: "Enquadramento de NFS-e no Simples Nacional" },
+  { codigo: "03", rotulo: "Inclusão retroativa de imunidade/isenção" },
+  { codigo: "04", rotulo: "Exclusão retroativa de imunidade/isenção" },
+] as const;
 
 /** Nota prestada que veio do ADN (emitida fora do Contask). */
 export interface NotaAdn {
@@ -397,6 +415,9 @@ export function useRecorrentes(empresaId: number | null) {
 export interface ModeloAdn {
   empresa_id: number;
   numero_nfse: string | null;
+  competencia?: string | null;
+  chave?: string | null;
+  situacao?: string;
   servico_id: number | null;
   ctribnac: string | null;
   cnbs: string | null;
