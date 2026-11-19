@@ -35,6 +35,10 @@ class Config(BaseSettings):
     teste_max_exportacoes: int = 1
     teste_max_dias_exportacao: int = 30
     teste_max_emissoes: int = 1  # NFS-e que o teste grátis pode emitir
+    # Servidor online: o teste do escritório (situação "teste") libera tudo até teste_ate, sem os limites acima
+    teste_completo: bool = False
+    # Dias de teste de quem se cadastra pela tela (0 = a conta nasce ativa, como na instalação local)
+    cadastro_teste_dias: int = 0
     # Emissor de NFS-e: falso = produção restrita (homologação, sem valor fiscal). Ligar só com
     # liberação expressa de quem é dono do projeto (CONTASK_EMISSOR_PRODUCAO=true).
     emissor_producao: bool = False

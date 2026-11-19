@@ -1,8 +1,9 @@
 """Situação e plano de cada escritório (painel de administração).
 
 - suspenso: ninguém do escritório entra; as buscas automáticas e as notas recorrentes param.
-- teste: teste grátis (contabilidade e mais 1 empresa, busca completa, XML avulso fechado, 1 exportação
-  de até 30 dias e 1 emissão); com `teste_ate` vencido, o acesso fica bloqueado.
+- teste: teste grátis até `teste_ate`; vencido, o acesso fica bloqueado (os dados continuam guardados).
+  Com CONTASK_TESTE_COMPLETO (servidor online), tudo liberado no período. Sem ele, o teste limitado:
+  contabilidade e mais 1 empresa, busca completa, XML avulso fechado, 1 exportação de até 30 dias e 1 emissão.
 - ativo: uso normal, com o limite de XMLs do escritório (ou o padrão do sistema).
 O administrador do sistema nunca é bloqueado, para não perder o acesso ao painel.
 """
@@ -64,11 +65,28 @@ def exigir_conta_contador(db: Session, escritorio_id: int) -> None:
 
 
 def em_teste(db: Session, escritorio_id: int) -> bool:
-    """Teste grátis: o modo geral (CONTASK_TESTE, instalação de um escritório só) ou o do escritório."""
+    """Teste com limites: o modo geral (CONTASK_TESTE, instalação de um escritório só) ou o do escritório,
+    quando o servidor não libera tudo no teste (CONTASK_TESTE_COMPLETO)."""
     if config().teste:
         return True
+    if config().teste_completo:
+        return False
     esc = db.get(Escritorio, escritorio_id)
     return esc is not None and esc.situacao == "teste"
+
+
+def periodo_de_teste(db: Session, escritorio_id: int) -> dict | None:
+    """Fim do teste grátis do escritório e os dias que faltam (contando hoje)."""
+    esc = db.get(Escritorio, escritorio_id)
+    if esc is None or esc.situacao != "teste" or esc.teste_ate is None:
+        return None
+    return {"ate": esc.teste_ate.isoformat(), "dias_restantes": max((esc.teste_ate - hoje()).days + 1, 0)}
+
+
+def iniciar_teste(esc: Escritorio, dias: int) -> None:
+    """Cadastro pela tela: `dias` dias de teste contando hoje; no dia seguinte ao último, o acesso fecha."""
+    esc.situacao = "teste"
+    esc.teste_ate = hoje() + timedelta(days=dias - 1)
 
 
 def limite_xmls(db: Session, escritorio_id: int) -> int:

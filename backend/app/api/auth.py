@@ -10,6 +10,8 @@ from app.core.db import sessao
 from app.models import Empresa, Escritorio
 
 router = APIRouter(prefix="/api/auth", tags=["login"])
+# Cadastro aberto ao público: no máximo 3 contas novas por IP a cada hora
+limitador_cadastro = auth.Limitador(maximo=3, janela=60 * 60)
 
 
 class Entrada(BaseModel):
@@ -42,7 +44,7 @@ def _eu(db: Session, u) -> dict:
     if u is None:
         # Sem login: a tela de entrada precisa saber se mostra o cadastro e se ele pede convite
         return {"usuario": None, "escritorio": None, "tem_contabilidade": False, "empresas": 0,
-                "cadastro": config().cadastro}
+                "cadastro": config().cadastro, "teste_dias": config().cadastro_teste_dias}
     esc = db.get(Escritorio, u.escritorio_id)
     empresas = int(db.scalar(select(func.count()).select_from(Empresa).where(Empresa.escritorio_id == u.escritorio_id)) or 0)
     tem = db.scalar(select(Empresa.id).where(Empresa.escritorio_id == u.escritorio_id, Empresa.is_contabilidade))
@@ -76,6 +78,9 @@ def cadastrar(dados: Cadastro, request: Request, response: Response, db: Session
     modo = config().cadastro
     if modo == "fechado":
         raise HTTPException(403, "O cadastro de novos escritórios está fechado. Fale com o suporte do Contask NF.")
+    ip = f"cadastro:{ip_cliente(request)}"
+    if limitador_cadastro.bloqueado(ip):
+        raise HTTPException(429, "Muitos cadastros feitos daqui na última hora. Tente de novo mais tarde.")
     convite = None
     if modo == "convite":
         convite = convites.valido(db, dados.convite or "")
@@ -85,7 +90,11 @@ def cadastrar(dados: Cadastro, request: Request, response: Response, db: Session
         u = auth.criar_usuario(db, dados.email, dados.nome, dados.senha, trocar_senha=False, tipo=dados.tipo)
         if convite is not None:
             convites.marcar_usado(convite, u.escritorio_id)
+        if config().cadastro_teste_dias > 0:
+            from app.core.escritorios import iniciar_teste
+            iniciar_teste(db.get(Escritorio, u.escritorio_id), config().cadastro_teste_dias)
         db.commit()
+        limitador_cadastro.falhou(ip)  # conta o cadastro feito
         u, token = auth.entrar(db, dados.email, dados.senha, ip_cliente(request))
     except auth.ErroLogin as e:
         db.rollback()

@@ -18,6 +18,18 @@ function AvisoUso() {
   const { data } = useUso();
   const contaEmpresa = useContaEmpresa();
   const n = (v: number) => v.toLocaleString("pt-BR");
+  const periodo = data?.periodo_teste;
+  const fim = periodo ? periodo.ate.split("-").reverse().join("/") : null;
+  if (periodo && !data?.teste)
+    return (
+      <div className="mb-5">
+        <Aviso tom={periodo.dias_restantes <= 5 ? "alerta" : "info"}>
+          <strong>Teste grátis com tudo liberado</strong> até {fim}{" "}
+          ({periodo.dias_restantes === 1 ? "último dia" : `faltam ${periodo.dias_restantes} dias`}).
+          Para continuar depois, é só assinar: fale com a gente pelo botão Ajuda, no topo.
+        </Aviso>
+      </div>
+    );
   if (data?.teste)
     return (
       <div className="mb-5">
@@ -26,7 +38,7 @@ function AvisoUso() {
           {contaEmpresa ? "sua empresa" : <>o escritório e mais {data.teste.max_empresas} empresa</>}, com todas as notas buscadas
           ({n(data.usados)} até agora). Dá para ver cada nota e abrir o PDF, fazer{" "}
           {Math.max(data.teste.max_exportacoes - data.teste.exportacoes, 0)} exportação de até {data.teste.max_dias_exportacao} dias
-          e {Math.max(data.teste.max_emissoes - data.teste.emissoes, 0)} emissão de nota. <strong>{CONTRATE}</strong>
+          e {Math.max(data.teste.max_emissoes - data.teste.emissoes, 0)} emissão de nota{fim ? `, até ${fim}` : ""}. <strong>{CONTRATE}</strong>
         </Aviso>
       </div>
     );

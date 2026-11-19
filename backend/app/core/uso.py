@@ -11,7 +11,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import config
-from app.core.escritorios import conta_empresa, em_teste, emissoes_do_escritorio, exportacoes_do_escritorio, limite_xmls
+from app.core.escritorios import (conta_empresa, em_teste, emissoes_do_escritorio, exportacoes_do_escritorio, limite_xmls,
+                                   periodo_de_teste)
 from app.models import BuscaJob, DocumentoDfe, Empresa
 
 BRASILIA = timezone(timedelta(hours=-3))  # sem horário de verão desde 2019
@@ -71,7 +72,8 @@ def resumo(db: Session, escritorio_id: int) -> dict:
                           "max_emissoes": cfg.teste_max_emissoes, "emissoes": emissoes_do_escritorio(db, escritorio_id),
                           "max_exportacoes": cfg.teste_max_exportacoes,
                           "exportacoes": exportacoes_do_escritorio(db, escritorio_id),
-                          "max_dias_exportacao": cfg.teste_max_dias_exportacao}}
+                          "max_dias_exportacao": cfg.teste_max_dias_exportacao},
+                "periodo_teste": periodo_de_teste(db, escritorio_id)}
     limite = limite_xmls(db, escritorio_id)
     usados = xmls_no_mes(db, escritorio_id)
     pct = (usados / limite) if limite > 0 else 0.0
@@ -83,4 +85,5 @@ def resumo(db: Session, escritorio_id: int) -> dict:
         "situacao": "sem_limite" if limite <= 0 else ("atingido" if usados >= limite else
                                                        ("aviso" if pct >= AVISO else "ok")),
         "teste": None,
+        "periodo_teste": periodo_de_teste(db, escritorio_id),
     }

@@ -24,6 +24,8 @@ export interface Sessao {
   empresas: number;
   /** só sem login: aberto (local) | convite | fechado (servidor: contas criadas pelo suporte) */
   cadastro?: "aberto" | "convite" | "fechado";
+  /** só sem login: dias de teste grátis de quem se cadastra pela tela (0 = conta já ativa) */
+  teste_dias?: number;
 }
 
 export interface Uso {
@@ -36,6 +38,8 @@ export interface Uso {
     max_empresas: number; max_emissoes: number; emissoes: number;
     max_exportacoes: number; exportacoes: number; max_dias_exportacao: number;
   } | null;
+  /** teste grátis do escritório: último dia (aaaa-mm-dd) e dias que faltam, contando hoje */
+  periodo_teste?: { ate: string; dias_restantes: number } | null;
 }
 
 /** Frase única de todo recurso fechado no teste grátis. */

@@ -6,7 +6,11 @@ source "$(dirname "$0")/comum.sh"
 exigir_root
 
 echo "==> Código"
-git -C "$CODIGO" pull --ff-only
+if [ "${1:-}" != "--depois-do-pull" ]; then
+  git -C "$CODIGO" pull --ff-only
+  # Roda de novo com os scripts recém-baixados (este processo já leu as versões antigas)
+  exec bash "$CODIGO/deploy/atualizar.sh" --depois-do-pull
+fi
 
 echo "==> Backup antes de atualizar"
 bash "$CODIGO/deploy/backup.sh"

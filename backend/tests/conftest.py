@@ -36,6 +36,15 @@ def cliente(app_teste):
 
 
 @pytest.fixture(autouse=True)
+def _limite_de_cadastro_zerado():
+    """Todo teste se cadastra do mesmo IP: o limite de cadastros por hora começa zerado."""
+    from app.api.auth import limitador_cadastro
+    limitador_cadastro._erros.clear()
+    yield
+    limitador_cadastro._erros.clear()
+
+
+@pytest.fixture(autouse=True)
 def _sem_rede_ibge(monkeypatch):
     """Testes nunca saem para a internet atrás de municípios."""
     from app.core import ibge

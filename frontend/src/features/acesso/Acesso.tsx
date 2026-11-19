@@ -119,6 +119,7 @@ export function Entrar() {
             <Link to={perfil === "empresa" ? "/cadastrar?perfil=empresa" : "/cadastrar"} className="text-destaque hover:underline">
               {perfil === "empresa" ? "Cadastre sua empresa" : "Cadastre o escritório"}
             </Link>
+            {(sessao.data?.teste_dias ?? 0) > 0 && <> e use {sessao.data?.teste_dias} dias grátis</>}
           </p>
         )}
       </form>
@@ -138,6 +139,7 @@ export function Cadastrar() {
   const [tipo, setTipo] = useState<TipoConta>(usePerfil());
   useCorDaConta(tipo);
   const pedeConvite = sessao.data?.cadastro === "convite";
+  const diasTeste = sessao.data?.teste_dias ?? 0;
   const diferentes = confirma.length > 0 && confirma !== senha;
   const cadastrar = useMutation({
     mutationFn: () => api<{ usuario: Usuario }>("/api/auth/cadastrar", {
@@ -167,10 +169,16 @@ export function Cadastrar() {
     if (!diferentes) cadastrar.mutate();
   };
   return (
-    <Moldura titulo="Cadastrar" descricao={tipo === "empresa"
+    <Moldura titulo={diasTeste > 0 ? `${diasTeste} dias grátis` : "Cadastrar"} descricao={tipo === "empresa"
       ? "Crie o acesso da sua empresa para emitir as notas fiscais de serviço. A conta tem um CNPJ: o da sua empresa."
       : "Crie o escritório e o primeiro acesso. Você vê todas as empresas dele."}>
       <form onSubmit={enviar} className="space-y-4">
+        {diasTeste > 0 && (
+          <Aviso tom="info">
+            Tudo liberado por {diasTeste} dias, sem cartão de crédito. Ao fim do teste, o acesso fica pausado até você
+            assinar, e nada do que foi cadastrado se perde.
+          </Aviso>
+        )}
         <div role="radiogroup" aria-label="Tipo de conta" className="grid grid-cols-2 gap-1 rounded-xl border border-borda bg-fundo p-1">
           {([["contador", "Sou contador"], ["empresa", "Sou empresa"]] as const).map(([v, r]) => (
             <button key={v} type="button" role="radio" aria-checked={tipo === v} onClick={() => setTipo(v)}
