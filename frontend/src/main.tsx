@@ -19,6 +19,7 @@ import { EmitirNota } from "@/features/emissor/EmitirNota";
 import { NotasEmitidas } from "@/features/emissor/NotasEmitidas";
 import { EditarRecorrente, Recorrentes } from "@/features/emissor/Recorrentes";
 import { Administracao } from "@/features/admin/Administracao";
+import { Monitoramento } from "@/features/admin/Monitoramento";
 import { Notificacoes } from "@/layout/Notificacoes";
 import { Cadastrar, Entrar, TrocarSenha } from "@/features/acesso/Acesso";
 import { Protegido } from "@/lib/sessao";
@@ -61,6 +62,7 @@ const rotas = createBrowserRouter([
       { path: "minha-empresa", element: <MinhaEmpresa /> },
       { path: "configuracoes", element: <Configuracoes /> },
       { path: "admin", element: <Administracao /> },
+      { path: "admin/monitoramento", element: <Monitoramento /> },
       { path: "*", element: <NaoEncontrada /> },
     ],
   },

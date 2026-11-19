@@ -1,5 +1,8 @@
-import { useState } from "react";
-import { Outlet } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Outlet, useLocation } from "react-router-dom";
+import { monitor } from "@/lib/monitoramento";
+import { useSessao } from "@/lib/sessao";
+import { PesquisaNoApp } from "./Pesquisa";
 import { CentralBuscas } from "@/features/buscas/CentralBuscas";
 import { CentralProvider, useEventosTempoReal } from "@/lib/buscas";
 import { Aviso } from "@/components/ui/campos";
@@ -49,8 +52,26 @@ export function Estrutura() {
   );
 }
 
+/** Monitoramento do uso: liga para quem não é o suporte do Contask (o admin não é medido nem gravado). */
+function useMonitoramento() {
+  const sessao = useSessao();
+  const local = useLocation();
+  const usuario = sessao.data?.usuario;
+  const medir = !!usuario && !usuario.admin_sistema;
+  useEffect(() => {
+    if (!medir) return;
+    monitor.iniciar(true);
+    return () => monitor.parar();
+  }, [medir]);
+  useEffect(() => {
+    if (medir) monitor.pagina(local.pathname);
+  }, [medir, local.pathname]);
+  return medir;
+}
+
 function EstruturaInterna() {
   useEventosTempoReal();
+  const medido = useMonitoramento();
   const [recolhida, setRecolhida] = useState(() => lerLocal(CHAVE) === "1");
   const alternar = () =>
     setRecolhida((r) => {
@@ -67,6 +88,7 @@ function EstruturaInterna() {
           <AvisoUso />
           <Outlet />
         </main>
+        {medido && <PesquisaNoApp />}
       </div>
     </div>
   );

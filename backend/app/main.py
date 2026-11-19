@@ -7,7 +7,9 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import admin, auth, buscas, dashboard, emissor, emissor_notas, empresas, exportacoes, importacao, notas, sistema
+from app.api import (
+    admin, auth, buscas, dashboard, emissor, emissor_notas, empresas, exportacoes, importacao, monitoramento, notas, sistema, uso,
+)
 from app.core import cripto
 from app.core.config import config
 from app.core.migracao import migrar
@@ -76,6 +78,8 @@ def criar_app() -> FastAPI:
     app.add_middleware(ProtecaoLocalMiddleware)
     app.include_router(auth.router)
     app.include_router(admin.router)
+    app.include_router(monitoramento.router)
+    app.include_router(uso.router)
     app.include_router(sistema.router)
     app.include_router(empresas.router)
     app.include_router(buscas.router)

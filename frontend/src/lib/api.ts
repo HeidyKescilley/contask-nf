@@ -4,8 +4,13 @@ export class ErroApi extends Error {
   }
 }
 
+function avisarErro(status: number, caminho: string) {
+  if (status === 0 || status >= 500) window.dispatchEvent(new CustomEvent("contask:erro-api", { detail: { status, caminho } }));
+}
+
 async function tratar<T>(r: Response): Promise<T> {
   if (!r.ok) {
+    avisarErro(r.status, new URL(r.url, window.location.origin).pathname);
     let msg = `Erro ${r.status}`;
     try {
       const d = await r.json();
@@ -26,6 +31,7 @@ async function chamar(caminho: string, init: RequestInit) {
   try {
     return await fetch(caminho, init);
   } catch {
+    avisarErro(0, caminho);
     throw new ErroApi(0, "Não foi possível falar com o servidor. Verifique a conexão e tente de novo.");
   }
 }

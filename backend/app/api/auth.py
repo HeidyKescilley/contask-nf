@@ -102,6 +102,9 @@ def entrar(dados: Entrada, request: Request, response: Response, db: Session = D
     except auth.ErroLogin as e:
         raise HTTPException(401, str(e)) from None
     _cookie(response, token)
+    from app.api.uso import registrar
+    registrar(db, u, "login", "login")
+    db.commit()
     return {"usuario": _usuario_json(u)}
 
 

@@ -3,14 +3,14 @@ import { NavLink, useLocation } from "react-router-dom";
 import { Dica } from "@/components/ui/tooltip";
 import { useContaEmpresa, useSessao } from "@/lib/sessao";
 import { cn } from "@/lib/utils";
-import { NAV_ADMIN, NAVEGACAO, NAVEGACAO_EMPRESA } from "./navegacao";
+import { NAV_ADMIN, NAV_MONITORAMENTO, NAVEGACAO, NAVEGACAO_EMPRESA } from "./navegacao";
 
 export function BarraLateral({ recolhida, alternar }: { recolhida: boolean; alternar: () => void }) {
   // Rota ativa calculada aqui: o Slot do tooltip não aceita className em forma de função.
   const { search, pathname } = useLocation();
   const admin = !!useSessao().data?.usuario?.admin_sistema;
   const base = useContaEmpresa() ? NAVEGACAO_EMPRESA : NAVEGACAO;
-  const itens = admin ? [...base, NAV_ADMIN] : base;
+  const itens = admin ? [...base, NAV_ADMIN, NAV_MONITORAMENTO] : base;
   return (
     <aside
       className={cn(
@@ -34,7 +34,9 @@ export function BarraLateral({ recolhida, alternar }: { recolhida: boolean; alte
 
       <nav className="flex-1 space-y-0.5 p-2">
         {itens.map(({ rota, rotulo, icone: Icone }) => {
-          const ativa = pathname === rota || pathname.startsWith(`${rota}/`);
+          const casa = (r: string) => pathname === r || pathname.startsWith(`${r}/`);
+          // /admin/monitoramento acende só o Monitoramento, não a Administração
+          const ativa = casa(rota) && !itens.some((o) => o.rota.length > rota.length && o.rota.startsWith(rota) && casa(o.rota));
           return (
           <Dica key={rota} texto={rotulo} ativo={recolhida}>
             <NavLink

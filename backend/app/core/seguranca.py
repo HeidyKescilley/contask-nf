@@ -57,8 +57,15 @@ class ProtecaoLocalMiddleware(BaseHTTPMiddleware):
             request.state.usuario = u
 
         resposta = await call_next(request)
+        u = getattr(request.state, "usuario", None)
+        if u is not None and resposta.status_code < 400:
+            from app.api.uso import acao_da_rota, gravar_acao
+            acao = acao_da_rota(request.method, caminho)
+            if acao:
+                await run_in_threadpool(gravar_acao, u, acao)
         resposta.headers.setdefault("X-Content-Type-Options", "nosniff")
-        resposta.headers.setdefault("X-Frame-Options", "DENY")
+        # Telas: SAMEORIGIN (o mapa de calor do Monitoramento abre a própria tela num iframe); API: DENY
+        resposta.headers.setdefault("X-Frame-Options", "DENY" if caminho.startswith("/api/") else "SAMEORIGIN")
         resposta.headers.setdefault("Referrer-Policy", "no-referrer")
         if cfg.cookie_secure:
             resposta.headers.setdefault("Strict-Transport-Security", "max-age=31536000")

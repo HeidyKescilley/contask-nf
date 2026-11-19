@@ -1,4 +1,4 @@
-import { ArrowDownToLine, ArrowUpFromLine, Building2, FileArchive, LayoutDashboard, ReceiptText, Settings, ShieldCheck, type LucideIcon } from "lucide-react";
+import { Activity, ArrowDownToLine, ArrowUpFromLine, Building2, FileArchive, LayoutDashboard, ReceiptText, Settings, ShieldCheck, type LucideIcon } from "lucide-react";
 
 export interface ItemNav {
   rota: string;
@@ -30,3 +30,4 @@ export const NAVEGACAO_EMPRESA: ItemNav[] = [
 
 /** Só para o administrador do sistema. */
 export const NAV_ADMIN: ItemNav = { rota: "/admin", rotulo: "Administração", icone: ShieldCheck, descricao: "Escritórios e usuários do sistema" };
+export const NAV_MONITORAMENTO: ItemNav = { rota: "/admin/monitoramento", rotulo: "Monitoramento", icone: Activity, descricao: "Uso da plataforma, gravações e suporte" };

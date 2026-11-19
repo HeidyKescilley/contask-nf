@@ -5,6 +5,7 @@ import { BuscaRapida } from "./BuscaRapida";
 import { MenuTema } from "./MenuTema";
 import { MenuUsuario } from "./MenuUsuario";
 import { SeletorEmpresa } from "./SeletorEmpresa";
+import { BotaoSuporte } from "./Suporte";
 
 /** Indicador da Central de Buscas: abre o painel lateral em qualquer tela. */
 function IndicadorBuscas() {
@@ -31,12 +32,14 @@ function IndicadorBuscas() {
 export function Topo() {
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-borda bg-superficie/90 px-5 backdrop-blur">
-      <SeletorEmpresa />
+      {/* data-privado: nomes de empresa e de usuário nunca viram rótulo de clique no monitoramento */}
+      <div data-privado className="min-w-0"><SeletorEmpresa /></div>
       <div className="flex-1" />
-      <BuscaRapida />
+      <div data-privado><BuscaRapida /></div>
       <IndicadorBuscas />
+      <BotaoSuporte />
       <MenuTema />
-      <MenuUsuario />
+      <div data-privado><MenuUsuario /></div>
     </header>
   );
 }

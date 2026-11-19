@@ -434,3 +434,64 @@ class SessaoUsuario(Base):
     usuario_id: Mapped[int] = mapped_column(ForeignKey("usuario.id", ondelete="CASCADE"), index=True)
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
     expira_em: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+# ---------------------------------------------------------------------------
+# Monitoramento do uso (painel do administrador). Nada sai do servidor, e os textos das telas são
+# mascarados no navegador antes de qualquer envio (frontend/src/lib/monitoramento.ts).
+# ---------------------------------------------------------------------------
+
+class UsoEvento(Base):
+    """Evento de uso: pagina | tempo | clique | rolagem | erro | acao | login."""
+    __tablename__ = "uso_evento"
+    __table_args__ = (Index("ix_uso_evento_tipo_momento", "tipo", "momento"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    escritorio_id: Mapped[int] = mapped_column(ForeignKey("escritorio.id", ondelete="CASCADE"), index=True)
+    usuario_id: Mapped[int] = mapped_column(ForeignKey("usuario.id", ondelete="CASCADE"), index=True)
+    sessao: Mapped[str] = mapped_column(String(40), index=True)  # aba do navegador (id gerado lá)
+    momento: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora, index=True)
+    tipo: Mapped[str] = mapped_column(String(12))
+    nome: Mapped[str] = mapped_column(String(120))  # rota normalizada (/empresas/:id) ou nome da ação
+    dados: Mapped[dict | None] = mapped_column(JSON)
+
+
+class Gravacao(Base):
+    """Gravação da sessão (rrweb, com todo texto e campo mascarado). Apagada depois de 30 dias."""
+    __tablename__ = "gravacao"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    escritorio_id: Mapped[int] = mapped_column(ForeignKey("escritorio.id", ondelete="CASCADE"), index=True)
+    usuario_id: Mapped[int] = mapped_column(ForeignKey("usuario.id", ondelete="CASCADE"), index=True)
+    sessao: Mapped[str] = mapped_column(String(40), unique=True)
+    iniciado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora, index=True)
+    atualizado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
+    pagina_inicial: Mapped[str | None] = mapped_column(String(120))
+    paginas: Mapped[list | None] = mapped_column(JSON)  # rotas visitadas, na ordem
+    tamanho: Mapped[int] = mapped_column(Integer, default=0)  # bytes gravados (comprimidos)
+    arquivo: Mapped[str] = mapped_column(String(300))  # relativo a dados/
+
+
+class PesquisaResposta(Base):
+    """Pesquisa no app: decepção (Sean Ellis), horas economizadas e NPS. adiada = respondo depois."""
+    __tablename__ = "pesquisa_resposta"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    escritorio_id: Mapped[int] = mapped_column(ForeignKey("escritorio.id", ondelete="CASCADE"), index=True)
+    usuario_id: Mapped[int] = mapped_column(ForeignKey("usuario.id", ondelete="CASCADE"), index=True)
+    momento: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
+    adiada: Mapped[bool] = mapped_column(Boolean, default=False)
+    decepcao: Mapped[str | None] = mapped_column(String(10))  # muito | pouco | nada
+    horas: Mapped[int | None] = mapped_column(Integer)  # horas economizadas por mês
+    nps: Mapped[int | None] = mapped_column(Integer)  # 0 a 10
+    comentario: Mapped[str | None] = mapped_column(Text)
+
+
+class PedidoSuporte(Base):
+    __tablename__ = "pedido_suporte"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    escritorio_id: Mapped[int] = mapped_column(ForeignKey("escritorio.id", ondelete="CASCADE"), index=True)
+    usuario_id: Mapped[int | None] = mapped_column(ForeignKey("usuario.id", ondelete="SET NULL"))
+    momento: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora, index=True)
+    assunto: Mapped[str] = mapped_column(String(20))
+    mensagem: Mapped[str] = mapped_column(Text)
+    pagina: Mapped[str | None] = mapped_column(String(120))
+    situacao: Mapped[str] = mapped_column(String(10), default="aberto")  # aberto | resolvido
+    resolvido_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

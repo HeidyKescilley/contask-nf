@@ -119,12 +119,21 @@ class Gerenciador:
         self.acordar()
         return n
 
+    def _limpar_monitoramento(self) -> None:
+        from app.api.uso import limpar_antigos
+        try:
+            with self._sf() as db:
+                limpar_antigos(db)
+        except Exception:  # noqa: BLE001
+            log.exception("Erro ao limpar o monitoramento")
+
     def _laco(self) -> None:
         while not self._parar.is_set():
             try:
                 if datetime.now(timezone.utc) >= self._proxima_periodica:
                     self._proxima_periodica = datetime.now(timezone.utc) + self._intervalo
                     self.enfileirar_incrementais()
+                    self._limpar_monitoramento()
                 self._despachar()
             except Exception:  # noqa: BLE001
                 log.exception("Erro no laço da fila")
