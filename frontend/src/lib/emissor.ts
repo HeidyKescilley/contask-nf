@@ -17,6 +17,8 @@ export interface ConfigPrestador {
   simples: boolean;
   /** fora do Simples (regime regular): a nota leva o grupo IBS/CBS, e o serviço precisa do cIndOp e do cClassTrib */
   exige_ibscbs?: boolean;
+  /** texto fixo das informações complementares (dados bancários, observações), em toda nota da empresa */
+  texto_fixo?: string | null;
 }
 
 export type RegimeTributario = "simples" | "presumido" | "real";
@@ -283,6 +285,7 @@ export interface NotaEmitida {
   info_usuario: string;
   texto_simples: boolean;
   texto_procon: boolean;
+  texto_fixo?: boolean;
   /** substituição: chave da NFS-e que esta substitui e a ligação com a outra nota do Contask */
   subst_chave: string | null;
   subst_motivo: string | null;
@@ -362,6 +365,7 @@ export interface CorpoEmissao {
   info_complementar?: string | null;
   texto_simples?: boolean;
   texto_procon?: boolean;
+  texto_fixo?: boolean;
 }
 
 export interface Rascunho {
@@ -439,6 +443,7 @@ export interface ModeloAdn {
   info_usuario: string;
   texto_simples: boolean;
   texto_procon: boolean;
+  texto_fixo?: boolean;
 }
 
 // ---------------------------------------------------------------------------

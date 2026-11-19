@@ -1,23 +1,34 @@
-import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { Dica } from "@/components/ui/tooltip";
 import { useContaEmpresa, useSessao } from "@/lib/sessao";
-import { cn } from "@/lib/utils";
+import { cn, useCelular } from "@/lib/utils";
 import { NAV_ADMIN, NAV_MONITORAMENTO, NAVEGACAO, NAVEGACAO_EMPRESA } from "./navegacao";
 
-export function BarraLateral({ recolhida, alternar }: { recolhida: boolean; alternar: () => void }) {
+export function BarraLateral({ recolhida: recolhidaDesktop, alternar, aberta, fechar }: {
+  recolhida: boolean; alternar: () => void; aberta: boolean; fechar: () => void;
+}) {
+  // No celular o menu é uma gaveta (sempre com os nomes); no computador, recolhe para os ícones
+  const celular = useCelular();
+  const recolhida = recolhidaDesktop && !celular;
   // Rota ativa calculada aqui: o Slot do tooltip não aceita className em forma de função.
   const { search, pathname } = useLocation();
   const admin = !!useSessao().data?.usuario?.admin_sistema;
   const base = useContaEmpresa() ? NAVEGACAO_EMPRESA : NAVEGACAO;
   const itens = admin ? [...base, NAV_ADMIN, NAV_MONITORAMENTO] : base;
   return (
+    <>
+    {celular && aberta && <div className="fixed inset-0 z-40 bg-black/40" onClick={fechar} aria-hidden />}
     <aside
       className={cn(
-        "sticky top-0 flex h-screen shrink-0 flex-col border-r border-borda bg-superficie transition-[width] duration-150",
-        recolhida ? "w-[60px]" : "w-60",
+        "flex h-dvh shrink-0 flex-col border-r border-borda bg-superficie",
+        celular
+          ? cn("fixed inset-y-0 left-0 z-50 w-[min(16rem,85vw)] transition-transform duration-200", aberta ? "translate-x-0 shadow-xl" : "-translate-x-full")
+          : cn("sticky top-0 transition-[width] duration-150", recolhida ? "w-[60px]" : "w-60"),
       )}
       aria-label="Navegação principal"
+      aria-hidden={celular && !aberta ? true : undefined}
+      inert={celular && !aberta ? true : undefined}
     >
       <div className={cn("flex h-14 items-center gap-2.5 border-b border-borda", recolhida ? "justify-center" : "px-4")}>
         <svg viewBox="0 0 32 32" aria-hidden className="size-7 shrink-0">
@@ -30,9 +41,14 @@ export function BarraLateral({ recolhida, alternar }: { recolhida: boolean; alte
             Contask <span className="text-destaque">NF</span>
           </span>
         )}
+        {celular && (
+          <button onClick={fechar} aria-label="Fechar menu" className="ml-auto rounded-lg p-2 text-texto-2 hover:bg-superficie-2">
+            <X className="size-4" />
+          </button>
+        )}
       </div>
 
-      <nav className="flex-1 space-y-0.5 p-2">
+      <nav className="flex-1 space-y-0.5 overflow-y-auto p-2">
         {itens.map(({ rota, rotulo, icone: Icone }) => {
           const casa = (r: string) => pathname === r || pathname.startsWith(`${r}/`);
           // /admin/monitoramento acende só o Monitoramento, não a Administração
@@ -58,7 +74,7 @@ export function BarraLateral({ recolhida, alternar }: { recolhida: boolean; alte
         })}
       </nav>
 
-      <div className="border-t border-borda p-2">
+      <div className={cn("border-t border-borda p-2", celular && "hidden")}>
         <Dica texto="Expandir menu" ativo={recolhida}>
           <button
             onClick={alternar}
@@ -75,5 +91,6 @@ export function BarraLateral({ recolhida, alternar }: { recolhida: boolean; alte
         </Dica>
       </div>
     </aside>
+    </>
   );
 }

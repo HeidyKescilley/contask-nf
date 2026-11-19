@@ -18,8 +18,8 @@ export function BotaoSuporte() {
     <>
       <Dica texto="Ajuda e suporte" lado="bottom">
         <button onClick={() => setAberto(true)} aria-label="Ajuda e suporte"
-          className="flex h-9 items-center gap-2 rounded-xl px-3 text-sm text-texto-2 hover:bg-superficie-2 hover:text-texto">
-          <LifeBuoy className="size-4" aria-hidden /><span className="hidden md:inline">Ajuda</span>
+          className="flex h-9 shrink-0 items-center gap-2 rounded-xl px-2 text-sm text-texto-2 hover:bg-superficie-2 hover:text-texto lg:px-3">
+          <LifeBuoy className="size-4" aria-hidden /><span className="hidden lg:inline">Ajuda</span>
         </button>
       </Dica>
       <Dialog open={aberto} onOpenChange={setAberto}>

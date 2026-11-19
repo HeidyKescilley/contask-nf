@@ -1,4 +1,4 @@
-import { RefreshCw } from "lucide-react";
+import { Menu, RefreshCw } from "lucide-react";
 import { Dica } from "@/components/ui/tooltip";
 import { useBuscas, useCentral } from "@/lib/buscas";
 import { BuscaRapida } from "./BuscaRapida";
@@ -18,28 +18,31 @@ function IndicadorBuscas() {
     <Dica texto={texto} lado="bottom">
       <button
         onClick={() => abrir()}
-        className="flex h-9 items-center gap-2 rounded-xl px-3 text-sm text-texto-2 hover:bg-superficie-2 hover:text-texto"
+        className="flex h-9 shrink-0 items-center gap-2 rounded-xl px-2 text-sm text-texto-2 hover:bg-superficie-2 hover:text-texto lg:px-3"
         aria-label={`Central de Buscas: ${texto}`}
       >
         <RefreshCw className={ativas ? "size-4 animate-spin text-destaque" : "size-4"} aria-hidden />
-        <span>Buscas</span>
+        <span className="hidden lg:inline">Buscas</span>
         <span className="rounded-full bg-superficie-2 px-1.5 font-mono text-[11px] tabular-nums">{ativas || naFila}</span>
       </button>
     </Dica>
   );
 }
 
-export function Topo() {
+export function Topo({ abrirMenu }: { abrirMenu: () => void }) {
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-borda bg-superficie/90 px-5 backdrop-blur">
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-1 border-b border-borda bg-superficie/90 px-2 backdrop-blur sm:gap-2 md:gap-3 md:px-5">
+      <button onClick={abrirMenu} aria-label="Abrir menu" className="flex size-9 shrink-0 items-center justify-center rounded-xl text-texto-2 hover:bg-superficie-2 md:hidden">
+        <Menu className="size-5" aria-hidden />
+      </button>
       {/* data-privado: nomes de empresa e de usuário nunca viram rótulo de clique no monitoramento */}
-      <div data-privado className="min-w-0"><SeletorEmpresa /></div>
-      <div className="flex-1" />
-      <div data-privado><BuscaRapida /></div>
+      <div data-privado className="min-w-0 flex-1 md:flex-none"><SeletorEmpresa /></div>
+      <div className="hidden flex-1 md:block" />
+      <div data-privado className="shrink-0"><BuscaRapida /></div>
       <IndicadorBuscas />
       <BotaoSuporte />
       <MenuTema />
-      <div data-privado><MenuUsuario /></div>
+      <div data-privado className="shrink-0"><MenuUsuario /></div>
     </header>
   );
 }

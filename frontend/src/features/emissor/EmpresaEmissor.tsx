@@ -184,8 +184,9 @@ function PainelAmbiente({ e }: { e: EmpresaEmissora }) {
   );
 }
 
-type DadosPrestador = Omit<ConfigPrestador, "inscricao_municipal" | "cod_municipio" | "reg_ap_trib_sn" | "proximo_numero" | "regime_tributario"> & {
+type DadosPrestador = Omit<ConfigPrestador, "inscricao_municipal" | "cod_municipio" | "reg_ap_trib_sn" | "proximo_numero" | "regime_tributario" | "texto_fixo"> & {
   inscricao_municipal: string; cod_municipio: string; reg_ap_trib_sn: string; proximo_numero: string; regime_tributario: RegimeTributario | "";
+  texto_fixo: string;
 };
 
 /** Dados do prestador da última nota por cima do formulário. Série e número não: são de outro sistema. */
@@ -210,6 +211,7 @@ function FormPrestador({ e, cfg, ultima }: { e: EmpresaEmissora; cfg: ConfigPres
   const issnet = e.canal === "issnet_df";
   const inicial: DadosPrestador = {
     ...cfg, inscricao_municipal: cfg.inscricao_municipal ?? "", cod_municipio: cfg.cod_municipio ?? "", reg_ap_trib_sn: cfg.reg_ap_trib_sn ?? "", proximo_numero: String(cfg.proximo_numero),
+    texto_fixo: cfg.texto_fixo ?? "",
     // Sem regime gravado: Simples se a DPS já dizia MEI/ME-EPP; senão, a pessoa escolhe
     regime_tributario: (cfg.regime_tributario ?? (cfg.op_simples === "1" ? "" : "simples")) as RegimeTributario | "",
   };
@@ -319,6 +321,12 @@ function FormPrestador({ e, cfg, ultima }: { e: EmpresaEmissora; cfg: ConfigPres
             </Campo>
           </>
         )}
+        <Campo rotulo="Texto fixo das informações complementares" className="sm:col-span-2"
+          ajuda={`Entra em toda nota desta empresa, inclusive nas duplicadas e recorrentes (dá para desmarcar na nota). Ex.: dados bancários, PIX, observações. ${d.texto_fixo.length}/1000`}>
+          {(p) => <textarea {...p} rows={3} maxLength={1000} value={d.texto_fixo} placeholder="Ex.: Dados para pagamento: Banco 001, Ag. 1234, C/C 56789-0. PIX: CNPJ."
+            onChange={(ev) => setD({ ...d, texto_fixo: ev.target.value })}
+            className="w-full rounded-xl border border-borda bg-superficie px-3 py-2 text-sm outline-none focus:border-destaque focus:ring-2 focus:ring-destaque/20" />}
+        </Campo>
         {salvar.isError && <div className="sm:col-span-2"><Aviso tom="erro">{(salvar.error as Error).message}</Aviso></div>}
         <div className="flex justify-end gap-2 sm:col-span-2">
           {mudou && <Button type="button" variante="fantasma" onClick={() => { setD(inicial); setDaUltima(false); }}>Desfazer</Button>}

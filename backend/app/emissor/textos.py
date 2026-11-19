@@ -18,23 +18,30 @@ def _limpar(v: str | None) -> str:
     return " ".join((v or "").split())
 
 
-def compor(info: str | None, simples: bool, procon: bool) -> str | None:
-    """Texto do usuário + Simples + PROCON, numa linha só."""
-    partes = [p for p in (_limpar(info), TEXTO_SIMPLES if simples else "", TEXTO_PROCON if procon else "") if p]
+def compor(info: str | None, simples: bool, procon: bool, fixo: str | None = None) -> str | None:
+    """Texto do usuário + texto fixo da empresa + Simples + PROCON, numa linha só."""
+    partes = [p for p in (_limpar(info), _limpar(fixo), TEXTO_SIMPLES if simples else "", TEXTO_PROCON if procon else "") if p]
     texto = " ".join(partes)
     if len(texto) > LIMITE_INFO:
         raise ValueError(f"As informações complementares, com os textos legais, passam de {LIMITE_INFO} caracteres.")
     return texto or None
 
 
-def separar(info: str | None) -> tuple[str, bool, bool]:
-    """Inverso de compor: (texto do usuário, tinha Simples, tinha PROCON). Usado ao duplicar ou corrigir."""
+def separar(info: str | None, fixo: str | None = None) -> tuple[str, bool, bool]:
+    """Inverso de compor: (texto do usuário, tinha Simples, tinha PROCON). Usado ao duplicar ou corrigir.
+    O texto fixo da empresa também sai do texto do usuário (ele volta pela marcação do texto fixo)."""
     texto = _limpar(info)
     tem_simples = TEXTO_SIMPLES in texto
     tem_procon = TEXTO_PROCON in texto
-    for t in (TEXTO_SIMPLES, TEXTO_PROCON):
-        texto = texto.replace(t, " ")
+    for t in (TEXTO_SIMPLES, TEXTO_PROCON, _limpar(fixo)):
+        if t:
+            texto = texto.replace(t, " ")
     return _limpar(texto), tem_simples, tem_procon
+
+
+def tem_fixo(info: str | None, fixo: str | None) -> bool:
+    f = _limpar(fixo)
+    return bool(f) and f in _limpar(info)
 
 
 # ---------------------------------------------------------------------------

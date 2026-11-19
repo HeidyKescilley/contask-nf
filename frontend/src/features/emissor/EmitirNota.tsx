@@ -60,6 +60,8 @@ export interface Form {
   info: string;
   textoSimples: boolean;
   textoProcon: boolean;
+  /** texto fixo da empresa (cadastro do emissor) */
+  textoFixo: boolean;
 }
 
 export function hoje() {
@@ -70,7 +72,7 @@ export function hoje() {
 export function vazio(): Form {
   return { servicoId: null, servicoNota: null, localPrestacao: "", descricao: "", competencia: hoje(), valor: "", desconto: "", semTomador: false,
     tomador: TOMADOR_VAZIO, salvarTomador: true, issRetido: false, aliquota: "",
-    ret: { ret_pis: "", ret_cofins: "", ret_csll: "", ret_irrf: "", ret_cp: "" }, info: "", textoSimples: true, textoProcon: true };
+    ret: { ret_pis: "", ret_cofins: "", ret_csll: "", ret_irrf: "", ret_cp: "" }, info: "", textoSimples: true, textoProcon: true, textoFixo: true };
 }
 
 const doTomador = (t: Partial<Tomador> | null | undefined): Tomador =>
@@ -94,7 +96,9 @@ export function daNota(n: NotaEmitida | ModeloAdn, duplicar = false): Form {
     valor: escreverValor(n.valor_servico), desconto: v2(n.desconto), semTomador: !n.tomador, tomador: doTomador(n.tomador),
     salvarTomador: true, issRetido: n.iss_retido, aliquota: n.aliquota_iss ? escreverValor(n.aliquota_iss) : "",
     ret: { ret_pis: v2(n.ret_pis), ret_cofins: v2(n.ret_cofins), ret_csll: v2(n.ret_csll), ret_irrf: v2(n.ret_irrf), ret_cp: v2(n.ret_cp) },
-    info: n.info_usuario ?? "", textoSimples: padrao || n.texto_simples, textoProcon: padrao || n.texto_procon };
+    info: n.info_usuario ?? "", textoSimples: padrao || n.texto_simples, textoProcon: padrao || n.texto_procon,
+    // Duplicar: o texto fixo vale (inclusive de notas anteriores a ele); corrigir ou substituir: como estava
+    textoFixo: duplicar || (n.texto_fixo ?? true) };
 }
 
 /** Corpo salvo (rascunho ou recorrência) -> formulário. */
@@ -111,6 +115,7 @@ export function doCorpo(d: CorpoEmissao): Form {
     salvarTomador: d.salvar_tomador ?? true, issRetido: !!d.iss_retido, aliquota: v(d.aliquota_iss),
     ret: { ret_pis: v(d.ret_pis), ret_cofins: v(d.ret_cofins), ret_csll: v(d.ret_csll), ret_irrf: v(d.ret_irrf), ret_cp: v(d.ret_cp) },
     info: d.info_complementar ?? "", textoSimples: d.texto_simples ?? true, textoProcon: d.texto_procon ?? true,
+    textoFixo: d.texto_fixo ?? true,
   };
 }
 
@@ -339,7 +344,7 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
     aliquota_iss: precisaAliquota && num(f.aliquota) ? num(f.aliquota).toFixed(2) : null,
     ...Object.fromEntries(RETENCOES.map((r) => [r.id, mei ? "0" : num(f.ret[r.id]).toFixed(2)])),
     info_complementar: f.info.trim() || null,
-    texto_simples: simples && f.textoSimples, texto_procon: f.textoProcon,
+    texto_simples: simples && f.textoSimples, texto_procon: f.textoProcon, texto_fixo: f.textoFixo,
   });
 
   const emitir = useMutation({
@@ -741,6 +746,14 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
             {(p) => <textarea {...p} rows={2} maxLength={1700} value={f.info} onChange={(ev) => setF({ ...f, info: ev.target.value })} className={CLASSE_TEXTO} />}
           </Campo>
           <div className="mt-4 space-y-3">
+            {cfg?.texto_fixo ? (
+              <TextoLegal marcado={f.textoFixo} aoMudar={(v) => setF({ ...f, textoFixo: v })} titulo="Texto fixo da empresa" texto={cfg.texto_fixo} />
+            ) : (
+              <p className="text-xs text-texto-2">
+                Dados bancários ou observações que vão em toda nota? Cadastre o texto fixo em{" "}
+                <Link to={`/emissor/empresas/${empresa.id}?empresa=${empresa.id}`} className="text-destaque hover:underline">Dados do prestador</Link>.
+              </p>
+            )}
             {simples && (
               <TextoLegal marcado={f.textoSimples} aoMudar={(v) => setF({ ...f, textoSimples: v })} titulo="Texto do Simples Nacional" texto={TEXTO_SIMPLES} />
             )}

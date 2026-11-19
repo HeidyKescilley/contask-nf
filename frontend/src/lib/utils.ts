@@ -1,5 +1,21 @@
 import { clsx, type ClassValue } from "clsx";
+import { useSyncExternalStore } from "react";
 import { twMerge } from "tailwind-merge";
+
+const CELULAR = "(max-width: 767px)";
+
+/** true abaixo de 768 px (o menu lateral vira gaveta). */
+export function useCelular(): boolean {
+  return useSyncExternalStore(
+    (avisar) => {
+      const m = window.matchMedia(CELULAR);
+      m.addEventListener("change", avisar);
+      return () => m.removeEventListener("change", avisar);
+    },
+    () => window.matchMedia(CELULAR).matches,
+    () => false,
+  );
+}
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));

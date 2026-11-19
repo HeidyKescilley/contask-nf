@@ -137,6 +137,7 @@ class Entrada:
     info_complementar: str | None = None
     texto_simples: bool = True    # só vale para empresa do Simples
     texto_procon: bool = True
+    texto_fixo: bool = True       # texto fixo da empresa (dados bancários etc.), quando houver
     recorrente_id: int | None = None
     servico_codigos: dict | None = None  # sem serviço cadastrado: ctribnac, cnbs, ctribmun, cindop, cclasstrib
     extras: dict = field(default_factory=dict)
@@ -278,7 +279,8 @@ def _preencher(db: Session, nota: NotaEmitida, e: Empresa, cfg: EmissorEmpresa, 
     nota.ret_pis, nota.ret_cofins, nota.ret_csll = centavos(ent.ret_pis), centavos(ent.ret_cofins), centavos(ent.ret_csll)
     nota.ret_irrf, nota.ret_cp = centavos(ent.ret_irrf), centavos(ent.ret_cp)
     try:
-        nota.info_complementar = textos.compor(ent.info_complementar, ent.texto_simples and eh_simples(cfg), ent.texto_procon)
+        nota.info_complementar = textos.compor(ent.info_complementar, ent.texto_simples and eh_simples(cfg), ent.texto_procon,
+                                               cfg.texto_fixo if ent.texto_fixo else None)
     except ValueError as ex:
         raise ErroEmissao(str(ex)) from None
 

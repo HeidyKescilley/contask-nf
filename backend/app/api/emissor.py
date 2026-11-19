@@ -41,6 +41,7 @@ class ConfigIn(BaseModel):
     cod_municipio: str | None = None
     percentual_tributos: Decimal | None = Field(None, ge=0, le=100)
     regime_tributario: str | None = None
+    texto_fixo: str | None = Field(None, max_length=1000)
 
 
 REGIMES = {"simples", "presumido", "real"}
@@ -207,7 +208,7 @@ def _item_empresa(db: Session, e: Empresa) -> dict:
             "serie": cfg.serie, "proximo_numero": cfg.proximo_numero, "cod_municipio": cfg.cod_municipio,
             "percentual_tributos": float(cfg.percentual_tributos) if cfg.percentual_tributos is not None else None,
             "producao_liberada": cfg.producao_liberada, "regime_tributario": cfg.regime_tributario,
-            "simples": eh_simples(cfg), "exige_ibscbs": regime_regular(cfg)},
+            "simples": eh_simples(cfg), "exige_ibscbs": regime_regular(cfg), "texto_fixo": cfg.texto_fixo},
         "ambiente": ambiente(cfg),
         "canal": canal(cfg),
         "pendencias": pendencias,
@@ -379,6 +380,8 @@ def salvar_config(empresa_id: int, dados: ConfigIn, db: Session = Depends(sessao
     c.cod_municipio = mun or c.cod_municipio
     c.percentual_tributos = dados.percentual_tributos
     c.regime_tributario = regime
+    if "texto_fixo" in dados.model_fields_set:
+        c.texto_fixo = " ".join((dados.texto_fixo or "").split()) or None
     c.inscricao_municipal, c.op_simples, c.reg_ap_trib_sn = im, dados.op_simples, ap
     c.reg_esp_trib, c.serie, c.proximo_numero = dados.reg_esp_trib, str(int(serie)), dados.proximo_numero
     db.commit()
@@ -614,6 +617,7 @@ class EmissaoIn(BaseModel):
     info_complementar: str | None = Field(None, max_length=2000)
     texto_simples: bool = True
     texto_procon: bool = True
+    texto_fixo: bool = True
     rascunho_id: int | None = None   # rascunho que vira esta nota (é apagado depois da emissão)
     substituicao: SubstituicaoIn | None = None  # a nota sai como substituta (grupo subst da DPS)
 
@@ -634,7 +638,7 @@ def _entrada(d: EmissaoIn):
         desconto=d.desconto, iss_retido=d.iss_retido, aliquota_iss=d.aliquota_iss, ret_pis=d.ret_pis,
         ret_cofins=d.ret_cofins, ret_csll=d.ret_csll, ret_irrf=d.ret_irrf, ret_cp=d.ret_cp,
         cod_municipio_prestacao=mun or None, info_complementar=d.info_complementar,
-        texto_simples=d.texto_simples, texto_procon=d.texto_procon,
+        texto_simples=d.texto_simples, texto_procon=d.texto_procon, texto_fixo=d.texto_fixo,
         servico_codigos=_validar_codigos(d.servico) if d.servico and not d.servico_id else None,
         substituicao=_substituicao(d.substituicao),
     )
@@ -657,10 +661,13 @@ def _utc(dt):
 def _nota_out(db: Session, n: NotaEmitida) -> dict:
     e = db.get(Empresa, n.empresa_id)
     f = lambda v: float(v) if v is not None else None  # noqa: E731
-    info_usuario, tem_simples, tem_procon = textos.separar(n.info_complementar)
+    cfg_e = db.get(EmissorEmpresa, n.empresa_id)
+    fixo = cfg_e.texto_fixo if cfg_e else None
+    info_usuario, tem_simples, tem_procon = textos.separar(n.info_complementar, fixo)
     return {
         "origem": "contask", "data": _utc(n.autorizado_em or n.criado_em), "recorrente_id": n.recorrente_id,
         "info_usuario": info_usuario, "texto_simples": tem_simples, "texto_procon": tem_procon,
+        "texto_fixo": textos.tem_fixo(n.info_complementar, fixo),
         "id": n.id, "empresa_id": n.empresa_id, "empresa_nome": e.apelido or e.nome_fantasia or e.razao_social,
         "empresa_cnpj": e.cnpj, "servico_id": n.servico_id, "ambiente": n.ambiente,
         "cancela_pela_api": certificado_proprio(db, e) is not None or (n.canal == ISSNET_DF and certificado_emissor(db, e) is not None),

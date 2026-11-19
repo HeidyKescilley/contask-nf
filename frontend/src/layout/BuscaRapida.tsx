@@ -46,11 +46,12 @@ export function BuscaRapida() {
     <>
       <button
         onClick={abrir}
-        className="flex h-9 w-56 shrink-0 items-center xl:w-72 gap-2 rounded-xl border border-borda bg-fundo px-3 text-sm text-texto-2 transition-colors duration-150 hover:border-borda-forte"
+        aria-label="Busca rápida"
+        className="flex size-9 shrink-0 items-center justify-center gap-2 rounded-xl text-sm text-texto-2 transition-colors duration-150 hover:bg-superficie-2 lg:w-56 lg:justify-start lg:border lg:border-borda lg:bg-fundo lg:px-3 lg:hover:border-borda-forte xl:w-72"
       >
         <Search className="size-4" aria-hidden />
-        <span className="flex-1 text-left">Buscar…</span>
-        <kbd className="rounded-md border border-borda bg-superficie px-1.5 font-mono text-[11px]">Ctrl K</kbd>
+        <span className="hidden flex-1 text-left lg:inline">Buscar…</span>
+        <kbd className="hidden rounded-md border border-borda bg-superficie px-1.5 font-mono text-[11px] lg:inline">Ctrl K</kbd>
       </button>
 
       <dialog

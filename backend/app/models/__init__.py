@@ -128,6 +128,8 @@ class EmissorEmpresa(Base):
     producao_liberada: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
     # simples | presumido | real (o Simples acrescenta o texto legal nas informações complementares)
     regime_tributario: Mapped[str | None] = mapped_column(String(10))
+    # Texto fixo das informações complementares (dados bancários, observações): entra em toda nota da empresa
+    texto_fixo: Mapped[str | None] = mapped_column(Text)
     atualizado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora, onupdate=agora)
 
 

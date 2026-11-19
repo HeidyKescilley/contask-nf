@@ -43,8 +43,8 @@ export function EstadoErro({ mensagem, tentarDeNovo }: { mensagem: string; tenta
 
 export function Cabecalho({ titulo, descricao, acoes }: { titulo: string; descricao?: string; acoes?: ReactNode }) {
   return (
-    <div className="mb-6 flex items-end justify-between gap-4">
-      <div>
+    <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+      <div className="min-w-0">
         <h1 className="text-xl font-semibold tracking-tight">{titulo}</h1>
         {descricao && <p className="mt-1 text-sm text-texto-2">{descricao}</p>}
       </div>

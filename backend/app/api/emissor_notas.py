@@ -18,7 +18,7 @@ from app.core.db import sessao
 from app.emissor import tabelas, textos
 from app.emissor.dps import BRASILIA, PRODUCAO
 from app.emissor.motor import ambiente
-from app.models import Empresa, Nota, NotaEmitida, NotaRascunho, NotaRecorrente, ServicoEmissor, Tomador
+from app.models import EmissorEmpresa, Empresa, Nota, NotaEmitida, NotaRascunho, NotaRecorrente, ServicoEmissor, Tomador
 
 router = APIRouter(prefix="/api/emissor", tags=["emissor"])
 
@@ -145,7 +145,7 @@ def _num(v: str | None) -> float:
         return 0.0
 
 
-def modelo_do_xml(xml: bytes) -> dict:
+def modelo_do_xml(xml: bytes, fixo: str | None = None) -> dict:
     raiz = etree.fromstring(xml, parser=etree.XMLParser(resolve_entities=False, no_network=True))
     dps = raiz.find(".//n:infDPS", N)
     if dps is None:
@@ -182,7 +182,7 @@ def modelo_do_xml(xml: bytes) -> dict:
                 ret[f"ret_{k}"] = float(v)
     elif contrib > 0:
         ret["ret_csll"] = float(contrib)
-    info, tem_simples, tem_procon = textos.separar(_t(dps, "n:serv/n:infoCompl/n:xInfComp"))
+    info, tem_simples, tem_procon = textos.separar(_t(dps, "n:serv/n:infoCompl/n:xInfComp"), fixo)
     ibs = dps.find("n:IBSCBS", N)
     return {
         "tomador": tomador, "descricao": _t(cs, "n:xDescServ") or "", "ctribnac": _t(cs, "n:cTribNac"),
@@ -196,6 +196,7 @@ def modelo_do_xml(xml: bytes) -> dict:
         "aliquota_iss": _num(_t(trib, "n:tribMun/n:pAliq")) or None,
         "ret_irrf": _num(_t(fed, "n:vRetIRRF")), "ret_cp": _num(_t(fed, "n:vRetCP")), **ret,
         "info_usuario": info, "texto_simples": tem_simples, "texto_procon": tem_procon,
+        "texto_fixo": textos.tem_fixo(_t(dps, "n:serv/n:infoCompl/n:xInfComp"), fixo),
     }
 
 
@@ -207,7 +208,8 @@ def modelo_nota_adn(empresa_id: int, nota_id: int, db: Session = Depends(sessao)
         raise HTTPException(404, "Nota não encontrada.")
     if not n.xml_path or not (config().dados_dir / n.xml_path).is_file():
         raise HTTPException(404, "O XML desta nota não está no computador: rode a busca de novo para baixá-lo.")
-    m = modelo_do_xml((config().dados_dir / n.xml_path).read_bytes())
+    cfg = db.get(EmissorEmpresa, e.id)
+    m = modelo_do_xml((config().dados_dir / n.xml_path).read_bytes(), cfg.texto_fixo if cfg else None)
     if m["tomador"] and m["tomador"]["documento"]:
         salvo = db.scalar(select(Tomador).where(Tomador.escritorio_id == esc, Tomador.documento == m["tomador"]["documento"]))
         if salvo:  # completa município/UF e o que faltar com o cadastro salvo
