@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 export function Passos({ passos, atual }: { passos: string[]; atual: number }) {
   return (
-    <ol className="mb-6 flex items-center gap-3" aria-label="Etapas">
+    <ol className="mb-6 flex flex-wrap items-center gap-x-3 gap-y-2" aria-label="Etapas">
       {passos.map((p, i) => {
         const feito = i < atual;
         const ativo = i === atual;

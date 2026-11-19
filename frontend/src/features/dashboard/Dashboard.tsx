@@ -88,7 +88,7 @@ export function Dashboard() {
             </EstadoVazio>
           )}
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Indicador icone={FileStack} rotulo="Total de XMLs" valor={num(d.total_xmls)}
               dica="Notas com competência no mês + eventos (cancelamentos, manifestações…) registrados no mês."
               detalhe={`${num(d.total_nfse)} nota${d.total_nfse === 1 ? "" : "s"} + ${num(d.eventos_mes)} evento${d.eventos_mes === 1 ? "" : "s"}`} />
@@ -101,7 +101,7 @@ export function Dashboard() {
               detalhe={`${moeda(d.prestados.valor)} prestados · ${moeda(d.tomados.valor)} tomados`} />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <CardPapel titulo="Serviços Prestados" icone={ArrowUpFromLine} b={d.prestados} mes={mes}
               href={linkLista("prestados", d, empresa.id, "autorizada")} />
             <CardPapel titulo="Serviços Tomados" icone={ArrowDownToLine} b={d.tomados} mes={mes}
@@ -110,7 +110,7 @@ export function Dashboard() {
 
           <section aria-labelledby="titulo-especiais">
             <h2 id="titulo-especiais" className="mb-2 text-sm font-semibold">Status especiais</h2>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <CardEspecial titulo="Canceladas" icone={XCircle} tom="cancelada" e={d.canceladas}
                 hrefP={linkLista("prestados", d, empresa.id, "cancelada")} hrefT={linkLista("tomados", d, empresa.id, "cancelada")}
                 dica="Inclui canceladas por substituição, por análise fiscal e por ofício." />
@@ -203,7 +203,7 @@ function CardPapel({ titulo, icone: Icone, b, mes, href }: { titulo: string; ico
   return (
     <div className="flex flex-col rounded-xl border border-borda bg-superficie p-4">
       <div className="flex items-center gap-2 text-sm font-semibold"><Icone className="size-4 text-texto-2" aria-hidden /> {titulo}</div>
-      <div className="mt-2 flex items-baseline gap-2">
+      <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
         <span className="text-2xl font-semibold tabular-nums">{num(b.quantidade)}</span>
         <span className="text-sm text-texto-2">nota{b.quantidade === 1 ? "" : "s"} autorizada{b.quantidade === 1 ? "" : "s"} ·</span>
         <span className="font-mono text-lg tabular-nums">{moeda(b.valor)}</span>
@@ -227,12 +227,12 @@ function CardEspecial({ titulo, icone: Icone, tom, e, hrefP, hrefT, dica }: {
           <Icone className="size-4" aria-hidden /> {titulo}
         </div>
       </Dica>
-      <div className="mt-2 flex items-baseline gap-2">
+      <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
         <span className="text-2xl font-semibold tabular-nums">{num(e.quantidade)}</span>
         <span className="text-sm text-texto-2">nota{e.quantidade === 1 ? "" : "s"} ·</span>
         <span className="font-mono text-lg tabular-nums">{moeda(e.valor)}</span>
       </div>
-      <div className="mt-3 flex gap-4 text-sm">
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
         <Link to={hrefP} className="inline-flex items-center gap-1 font-medium text-destaque hover:underline">{num(e.prestadas)} prestada(s) <ArrowRight className="size-3.5" aria-hidden /></Link>
         <Link to={hrefT} className="inline-flex items-center gap-1 font-medium text-destaque hover:underline">{num(e.tomadas)} tomada(s) <ArrowRight className="size-3.5" aria-hidden /></Link>
       </div>
@@ -243,9 +243,9 @@ function CardEspecial({ titulo, icone: Icone, tom, e, hrefP, hrefT, dica }: {
 function EsqueletoDashboard() {
   return (
     <div className="space-y-4" aria-label="Carregando indicadores">
-      <div className="grid grid-cols-3 gap-4">{[0, 1, 2].map((i) => <Esqueleto key={i} className="h-28" />)}</div>
-      <div className="grid grid-cols-2 gap-4">{[0, 1].map((i) => <Esqueleto key={i} className="h-56" />)}</div>
-      <div className="grid grid-cols-2 gap-4">{[0, 1].map((i) => <Esqueleto key={i} className="h-28" />)}</div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">{[0, 1, 2].map((i) => <Esqueleto key={i} className="h-28" />)}</div>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">{[0, 1].map((i) => <Esqueleto key={i} className="h-56" />)}</div>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">{[0, 1].map((i) => <Esqueleto key={i} className="h-28" />)}</div>
     </div>
   );
 }

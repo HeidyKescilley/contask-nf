@@ -126,7 +126,7 @@ export function Exportacoes() {
           </Aviso>
         </div>
       )}
-      <div className="grid grid-cols-[minmax(0,560px)_minmax(0,1fr)] items-start gap-6">
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,560px)_minmax(0,1fr)]">
         <form onSubmit={(e) => { e.preventDefault(); gerar.mutate(); }} className="rounded-xl border border-borda bg-superficie p-5">
           <Grupo rotulo="Empresas" ajuda={f.escopo === "todas" ? "Um único ZIP com uma pasta por empresa (CNPJ seguido do nome), cada uma com os XMLs e o relatório dela, e um resumo geral na raiz." : undefined}>
             <Opcoes nome="Empresas" valor={f.escopo} aoMudar={(v) => set("escopo", v)}

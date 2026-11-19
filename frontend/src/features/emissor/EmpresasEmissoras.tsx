@@ -120,7 +120,7 @@ export function EmpresasEmissoras() {
               <Search className="pointer-events-none absolute left-3 top-2.5 size-4 text-texto-2" aria-hidden />
               <Input value={q} onChange={(ev) => setQ(ev.target.value)} placeholder="Nome, apelido ou CNPJ" className="pl-9" aria-label="Filtrar empresas" />
             </div>
-            <div className="flex gap-1 rounded-xl border border-borda bg-superficie p-1" role="group" aria-label="Filtro rápido">
+            <div className="flex max-w-full gap-1 overflow-x-auto rounded-xl border border-borda bg-superficie p-1" role="group" aria-label="Filtro rápido">
               {FILTROS.map((f) => (
                 <button key={f.id} onClick={() => setFiltro(f.id)} aria-pressed={filtro === f.id}
                   className={cn("h-7 rounded-lg px-2.5 text-[13px]", filtro === f.id ? "bg-destaque-suave font-medium text-destaque" : "text-texto-2 hover:text-texto")}>

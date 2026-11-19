@@ -65,7 +65,7 @@ export function PassoDados({ inicial, aoContinuar, cnpjBloqueado, rotuloContinua
 
   return (
     <form onSubmit={handleSubmit((d) => aoContinuar({ ...d, cnpj: limparCnpj(d.cnpj) }))} className="space-y-5" noValidate>
-      <div className="grid grid-cols-[260px_1fr] items-start gap-4">
+      <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-[260px_1fr]">
         <Campo rotulo="CNPJ" obrigatorio erro={errors.cnpj?.message} ajuda="Aceita o CNPJ alfanumérico.">
           {(p) => (
             <Input
@@ -84,7 +84,7 @@ export function PassoDados({ inicial, aoContinuar, cnpjBloqueado, rotuloContinua
             />
           )}
         </Campo>
-        <div className="pt-6" aria-live="polite">
+        <div className="sm:pt-6" aria-live="polite">
           {valido && consulta.isFetching && (
             <span className="inline-flex items-center gap-2 text-sm text-texto-2">
               <Loader2 className="size-4 animate-spin" aria-hidden /> Consultando a BrasilAPI…
@@ -116,7 +116,7 @@ export function PassoDados({ inicial, aoContinuar, cnpjBloqueado, rotuloContinua
         <Campo rotulo="Apelido" ajuda="Como a empresa aparece no seletor.">
           {(p) => <Input {...p} {...register("apelido")} placeholder="Opcional" />}
         </Campo>
-        <div className="grid grid-cols-[110px_1fr] gap-4">
+        <div className="grid grid-cols-[90px_1fr] gap-4 sm:grid-cols-[110px_1fr]">
           <Campo rotulo="UF">
             {(p) => (
               <Select {...p} {...register("uf")}>

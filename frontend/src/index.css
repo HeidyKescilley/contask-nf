@@ -93,7 +93,6 @@ html.dark[data-conta="empresa"] {
   body {
     @apply font-sans antialiased;
     font-feature-settings: "tnum" 1;
-    min-width: 1024px;
   }
   :focus-visible {
     outline: 2px solid var(--foco);
@@ -101,6 +100,15 @@ html.dark[data-conta="empresa"] {
   }
   ::selection {
     background: var(--destaque-suave);
+  }
+}
+
+/* Celular: campos com 16px. Abaixo disso o iPhone dá zoom ao tocar no campo e a tela fica deslocada. */
+@media (max-width: 639px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px !important;
   }
 }
 

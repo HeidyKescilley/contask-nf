@@ -115,7 +115,7 @@ function OpcaoAmbiente({ marcada, icone: Icone, titulo, descricao, desabilitada,
         marcada ? "border-destaque" : "border-borda-forte")} aria-hidden>
         {marcada && <span className="size-2 rounded-full bg-destaque" />}
       </span>
-      <span>
+      <span className="min-w-0">
         <span className="flex items-center gap-1.5 text-sm font-medium"><Icone className="size-4" aria-hidden /> {titulo}</span>
         <span className="mt-0.5 block text-sm text-texto-2">{descricao}</span>
       </span>
@@ -151,7 +151,7 @@ function PainelAmbiente({ e }: { e: EmpresaEmissora }) {
           : <Aviso tom="alerta">O ISSNet do DF só tem produção, e a produção está desligada neste sistema (CONTASK_EMISSOR_PRODUCAO): esta empresa não emite.</Aviso>
       )}
       {sistema.data && e.canal !== "issnet_df" && (
-        <div role="radiogroup" aria-label="Ambiente de emissão" className="grid gap-3 sm:grid-cols-2">
+        <div role="radiogroup" aria-label="Ambiente de emissão" className="grid gap-3 lg:grid-cols-2">
           <OpcaoAmbiente marcada={!liberada} icone={FlaskConical} titulo="Homologação"
             descricao="Produção restrita da Sefin. As notas não têm valor fiscal: serve para testar."
             desabilitada={mudar.isPending} aoEscolher={() => liberada && mudar.mutate(false)} />

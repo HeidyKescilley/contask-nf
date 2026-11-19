@@ -74,9 +74,9 @@ export function PaginaNotas({ papel }: { papel: Papel }) {
     <>
       <Cabecalho titulo={titulo} descricao={descricao} />
 
-      <div className="sticky top-14 z-20 -mx-6 mb-4 space-y-3 border-b border-borda bg-fundo/95 px-6 pb-3 pt-1 backdrop-blur">
+      <div className="sticky top-14 z-20 -mx-4 mb-4 space-y-3 border-b border-borda bg-fundo/95 px-4 pb-3 pt-1 backdrop-blur sm:-mx-6 sm:px-6">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="relative w-[340px]">
+          <div className="relative w-full sm:w-[340px]">
             <Search className="pointer-events-none absolute left-3 top-2.5 size-4 text-texto-2" aria-hidden />
             <Input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Chave, número, valor (1.234,56) ou nome"
               className="pl-9 pr-8" aria-label="Buscar notas" />
@@ -86,15 +86,15 @@ export function PaginaNotas({ papel }: { papel: Papel }) {
               </button>
             )}
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
             <select value={f.campo_data} onChange={(e) => f.definir({ campo_data: e.target.value === "emissao" ? null : e.target.value })}
               aria-label="Data usada no período" className="h-9 rounded-xl border border-borda bg-superficie px-2 text-sm">
               <option value="emissao">Emissão</option>
               <option value="competencia">Competência</option>
             </select>
-            <Input type="date" value={f.inicio} onChange={(e) => f.definir({ inicio: e.target.value || null })} className="w-[150px]" aria-label="Início" />
+            <Input type="date" value={f.inicio} onChange={(e) => f.definir({ inicio: e.target.value || null })} className="w-[140px] sm:w-[150px]" aria-label="Início" />
             <span className="text-texto-2">a</span>
-            <Input type="date" value={f.fim} onChange={(e) => f.definir({ fim: e.target.value || null })} className="w-[150px]" aria-label="Fim" />
+            <Input type="date" value={f.fim} onChange={(e) => f.definir({ fim: e.target.value || null })} className="w-[140px] sm:w-[150px]" aria-label="Fim" />
           </div>
           <div className="flex gap-1" role="group" aria-label="Atalhos de período">
             {ATALHOS.map((a) => (
@@ -107,7 +107,7 @@ export function PaginaNotas({ papel }: { papel: Papel }) {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex gap-1 rounded-xl border border-borda bg-superficie p-1" role="group" aria-label="Status">
+          <div className="flex max-w-full gap-1 overflow-x-auto rounded-xl border border-borda bg-superficie p-1" role="group" aria-label="Status">
             {STATUS.map((s) => (
               <button key={s.id} onClick={() => f.definir({ status: s.id || null })} aria-pressed={f.status === s.id}
                 className={cn("h-7 rounded-lg px-2.5 text-[13px]", f.status === s.id ? "bg-destaque-suave font-medium text-destaque" : "text-texto-2 hover:text-texto")}>

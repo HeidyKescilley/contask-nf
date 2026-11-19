@@ -54,11 +54,11 @@ export function SeletorEmpresa() {
       normalizar(`${e.razao_social} ${e.nome_fantasia ?? ""} ${e.apelido ?? ""}`).includes(t) || (doc && e.cnpj.includes(doc)));
   }, [empresas, termo]);
 
-  if (carregando) return <Esqueleto className="h-10 w-full md:w-64 lg:w-80" />;
+  if (carregando) return <Esqueleto className="h-10 w-full md:w-48 lg:w-64 xl:w-80" />;
 
   if (empresas.length === 0) {
     return (
-      <Link to="/contabilidade" className="flex h-10 w-full min-w-0 shrink items-center md:w-64 lg:w-80 gap-3 rounded-xl border border-dashed border-borda-forte px-3 hover:border-destaque">
+      <Link to="/contabilidade" className="flex h-10 w-full min-w-0 shrink items-center md:w-48 lg:w-64 xl:w-80 gap-3 rounded-xl border border-dashed border-borda-forte px-3 hover:border-destaque">
         <Building2 className="size-4 shrink-0 text-texto-2" aria-hidden />
         <div className="min-w-0 leading-tight">
           <div className="truncate text-sm font-medium">Nenhuma empresa cadastrada</div>
@@ -71,7 +71,7 @@ export function SeletorEmpresa() {
   return (
     <DM.Root open={aberto} onOpenChange={(a) => { setAberto(a); if (!a) setTermo(""); }}>
       <DM.Trigger
-        className="flex h-10 w-full min-w-0 shrink items-center gap-2 rounded-xl md:w-64 md:gap-3 lg:w-80 border border-borda bg-superficie px-3 text-left transition-colors duration-150 hover:border-borda-forte data-[state=open]:border-destaque"
+        className="flex h-10 w-full min-w-0 shrink items-center gap-2 rounded-xl md:w-48 md:gap-3 lg:w-64 xl:w-80 border border-borda bg-superficie px-3 text-left transition-colors duration-150 hover:border-borda-forte data-[state=open]:border-destaque"
         aria-label={`Empresa selecionada: ${empresa ? nomeExibicao(empresa) : "nenhuma"}. Trocar empresa`}
         data-testid="seletor-empresa"
       >

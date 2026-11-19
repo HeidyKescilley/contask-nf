@@ -1,5 +1,6 @@
 import { Menu, RefreshCw } from "lucide-react";
 import { Dica } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 import { useBuscas, useCentral } from "@/lib/buscas";
 import { BuscaRapida } from "./BuscaRapida";
 import { MenuTema } from "./MenuTema";
@@ -18,12 +19,12 @@ function IndicadorBuscas() {
     <Dica texto={texto} lado="bottom">
       <button
         onClick={() => abrir()}
-        className="flex h-9 shrink-0 items-center gap-2 rounded-xl px-2 text-sm text-texto-2 hover:bg-superficie-2 hover:text-texto lg:px-3"
+        className="flex h-9 shrink-0 items-center gap-2 rounded-xl px-2 text-sm text-texto-2 hover:bg-superficie-2 hover:text-texto xl:px-3"
         aria-label={`Central de Buscas: ${texto}`}
       >
         <RefreshCw className={ativas ? "size-4 animate-spin text-destaque" : "size-4"} aria-hidden />
-        <span className="hidden lg:inline">Buscas</span>
-        <span className="rounded-full bg-superficie-2 px-1.5 font-mono text-[11px] tabular-nums">{ativas || naFila}</span>
+        <span className="hidden xl:inline">Buscas</span>
+        <span className={cn("rounded-full bg-superficie-2 px-1.5 font-mono text-[11px] tabular-nums", !(ativas || naFila) && "hidden sm:inline")}>{ativas || naFila}</span>
       </button>
     </Dica>
   );
@@ -41,7 +42,8 @@ export function Topo({ abrirMenu }: { abrirMenu: () => void }) {
       <div data-privado className="shrink-0"><BuscaRapida /></div>
       <IndicadorBuscas />
       <BotaoSuporte />
-      <MenuTema />
+      {/* No celular o tema segue o do aparelho: o botão sai para dar espaço ao seletor de empresa */}
+      <div className="hidden shrink-0 sm:block"><MenuTema /></div>
       <div data-privado className="shrink-0"><MenuUsuario /></div>
     </header>
   );
