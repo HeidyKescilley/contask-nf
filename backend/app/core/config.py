@@ -41,6 +41,8 @@ class Config(BaseSettings):
     # Leiaute da DPS em produção (nt004 | nt009). Se a Sefin recusar o XML por esquema, o motor tenta o
     # outro leiaute e grava o que foi aceito em dados/leiaute_producao.txt, que vale mais que esta opção.
     leiaute_producao: str = "nt004"
+    # Gerador oficial do DANFSe da Receita (contêiner interno). Vazio: só o gerador próprio.
+    danfse_url: str = ""
 
     # Motor de busca
     adn_url: str = "https://adn.nfse.gov.br"

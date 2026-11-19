@@ -830,7 +830,7 @@ def xml_nota(nota_id: int, tipo: str = Query("nfse", pattern="^(nfse|dps|cancela
 @router.get("/notas/{nota_id}/danfse")
 def danfse_nota(nota_id: int, download: int = 0, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
     from app.core.config import config
-    from app.fiscal.danfse import gerar_danfse
+    from app.fiscal import danfse_receita
     if download:
         from app.core.escritorios import exigir_plano
         exigir_plano(db, esc)
@@ -838,7 +838,7 @@ def danfse_nota(nota_id: int, download: int = 0, db: Session = Depends(sessao), 
     if not n.xml_nfse_path or not (config().dados_dir / n.xml_nfse_path).is_file():
         raise HTTPException(404, "A nota ainda não foi autorizada.")
     marca = ("SUBSTITUÍDA" if n.substituida_por_id else "CANCELADA") if n.situacao == "cancelada" else None
-    pdf = gerar_danfse((config().dados_dir / n.xml_nfse_path).read_bytes(), marca_dagua=marca)
+    pdf, _ = danfse_receita.gerar((config().dados_dir / n.xml_nfse_path).read_bytes(), marca_dagua=marca)
     disp = "attachment" if download else "inline"
     return Response(pdf, media_type="application/pdf",
                     headers={"Content-Disposition": f'{disp}; filename="DANFSe_{n.numero_nfse or n.id}_{n.chave}.pdf"',

@@ -44,6 +44,9 @@ Para encerrar, feche a janela minimizada **"Contask NF - servidor"**.
   | Confirmações e códigos desconhecidos | Só histórico |
 
 - **DANFSe gerado localmente** a partir do XML, conforme a NT SE/CGNFS-e 008/2026 (v1.02). A API de DANFSe do ADN foi suspensa em 03/08/2026.
+  - No servidor, quem gera é o **gerador oficial da Receita** ([calculadora-rtc-gerador-danfse](https://github.com/ReceitaFederal/calculadora-rtc-gerador-danfse), MIT), num contêiner interno (`deploy/danfse`, versão fixa, sem porta aberta para fora; o XML não sai do servidor). Endereço em `CONTASK_DANFSE_URL`.
+  - `deploy/danfse/correcoes.patch` acerta duas descrições que divergem do leiaute: situação (cStat 101 é "NFS-e de Substituição Gerada", não cancelada) e ambiente gerador (2 é "Sefin Nacional NFS-e", não homologação).
+  - Se o gerador oficial falhar ou estiver fora do ar, entra o gerador próprio (`backend/app/fiscal/danfse.py`). Sem `CONTASK_DANFSE_URL` (instalação local), só o próprio.
   - Quando o prestador é o emitente, os dados que faltam na DPS vêm do grupo `emit` do mesmo XML.
   - A marca d'água CANCELADA/SUBSTITUÍDA vem do status.
 - **Valores**: os totais em R$ somam só notas autorizadas.

@@ -13,6 +13,9 @@ IMAGEM=contask-nf
 REDE=contask
 CONTEINER=contask-app
 MEMORIA=1g
+# Gerador oficial do DANFSe (Receita Federal), só na rede interna: sem porta aberta para fora
+DANFSE_IMAGEM=contask-danfse
+DANFSE_CONTEINER=contask-danfse
 
 erro() { echo "ERRO: $*" >&2; exit 1; }
 
@@ -34,10 +37,20 @@ subir_app() {
     -e CONTASK_HOSTS="$SUBDOMINIO.$DOMINIO_BASE" \
     -e CONTASK_CADASTRO="${CADASTRO:-fechado}" \
     -e CONTASK_EMISSOR_PRODUCAO="${EMISSOR_PRODUCAO:-false}"     -e CONTASK_LEIAUTE_PRODUCAO="${LEIAUTE_PRODUCAO:-nt004}" \
-    -e CONTASK_LIMITE_XMLS_MES="${LIMITE_XMLS_MES:-0}" \
+    -e CONTASK_LIMITE_XMLS_MES="${LIMITE_XMLS_MES:-0}"     -e CONTASK_DANFSE_URL="http://$DANFSE_CONTEINER:8080" \
     -v "$DADOS:/app/dados" -v "$BACKUPS:/backups" \
     --log-opt max-size=10m --log-opt max-file=5 \
     "$IMAGEM" >/dev/null
+}
+
+# Se o gerador da Receita cair, o sistema usa o gerador próprio (mesma NT 008) e segue no ar.
+construir_danfse() {
+  docker build -q -t "$DANFSE_IMAGEM" "$CODIGO/deploy/danfse" >/dev/null
+}
+
+subir_danfse() {
+  docker rm -f "$DANFSE_CONTEINER" >/dev/null 2>&1 || true
+  docker run -d --name "$DANFSE_CONTEINER" --restart unless-stopped --network "$REDE" --memory 256m     --read-only --cap-drop ALL --security-opt no-new-privileges     -e LOG_LEVEL=warn --log-opt max-size=10m --log-opt max-file=3     "$DANFSE_IMAGEM" >/dev/null
 }
 
 esperar_saude() {

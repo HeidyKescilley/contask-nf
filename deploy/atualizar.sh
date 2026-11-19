@@ -13,8 +13,10 @@ bash "$CODIGO/deploy/backup.sh"
 
 echo "==> Imagem"
 docker build -t "$IMAGEM" "$CODIGO"
+construir_danfse
 
 echo "==> Reiniciando (alguns segundos fora do ar)"
+subir_danfse
 subir_app
 esperar_saude
 docker image prune -f >/dev/null

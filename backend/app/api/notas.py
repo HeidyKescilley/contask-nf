@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from app.core.config import config
 from app.api.escopo import escritorio_atual, obter_empresa, obter_nota
 from app.core.db import sessao
-from app.fiscal.danfse import gerar_danfse
+from app.fiscal import danfse_receita
 from app.fiscal.parser import XmlInvalido
 from app.fiscal.status import CONHECIDOS, DESCRICOES
 from app.models import Empresa, EventoNota, Nota
@@ -188,7 +188,9 @@ def marca_dagua(n: Nota) -> str | None:
 
 @router.get("/notas/{nota_id}/pdf")
 def danfse(nota_id: int, download: int = 0, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
-    """DANFSe gerado localmente a partir do XML (NT 008/2026), guardado para os próximos acessos."""
+    """DANFSe gerado a partir do XML (NT 008/2026), guardado para os próximos acessos.
+
+    Gerador oficial da Receita quando ativo (arquivo .receita.pdf); senão, o próprio (.pdf)."""
     if download:
         from app.core.escritorios import exigir_plano
         exigir_plano(db, esc)  # no teste, o PDF só abre para ver
@@ -198,12 +200,18 @@ def danfse(nota_id: int, download: int = 0, db: Session = Depends(sessao), esc: 
     sufixo = "" if marca is None else ("-substituida" if marca == "SUBSTITUÍDA" else "-cancelada")
     mes = xml_path.parent.name
     empresa = db.get(Empresa, n.empresa_id)
-    destino = config().dados_dir / "empresas" / empresa.cnpj / "pdf" / mes / f"{n.chave}{sufixo}.pdf"
+    pasta = config().dados_dir / "empresas" / empresa.cnpj / "pdf" / mes
+    oficial = pasta / f"{n.chave}{sufixo}.receita.pdf"
+    proprio = pasta / f"{n.chave}{sufixo}.pdf"
+    receita = danfse_receita.receita_ativa()
+    # Com a Receita ativa, os PDFs guardados do gerador próprio não valem: gera de novo pelo oficial
+    destino = oficial if receita else proprio
     if not destino.is_file():
         try:
-            pdf = gerar_danfse(xml_path.read_bytes(), marca_dagua=marca)
+            pdf, origem = danfse_receita.gerar(xml_path.read_bytes(), marca_dagua=marca)
         except XmlInvalido as e:
             raise HTTPException(422, f"Não foi possível gerar o DANFSe: XML inválido ({e}).") from None
+        destino = oficial if origem == danfse_receita.RECEITA else proprio
         destino.parent.mkdir(parents=True, exist_ok=True)
         tmp = destino.with_suffix(".tmp")
         tmp.write_bytes(pdf)

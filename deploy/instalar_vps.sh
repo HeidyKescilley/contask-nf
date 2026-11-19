@@ -80,8 +80,10 @@ chmod 600 "$SEGREDOS/chave.env"
 echo "==> Imagem do sistema (alguns minutos)"
 docker network inspect "$REDE" >/dev/null 2>&1 || docker network create "$REDE"
 docker build -t "$IMAGEM" "$CODIGO"
+construir_danfse
 
 echo "==> Sistema"
+subir_danfse
 subir_app
 esperar_saude
 
