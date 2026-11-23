@@ -1,7 +1,8 @@
 """Proteção da API.
 
 - Host: só 127.0.0.1/localhost ou o domínio configurado (bloqueia DNS rebinding).
-- Origin: quando presente, só a própria aplicação (bloqueia sites abertos no mesmo navegador).
+- Origin: quando presente, só a própria aplicação (bloqueia sites abertos no mesmo navegador). O site de
+  vendas (CONTASK_SITE_URL) só alcança as rotas do formulário de teste grátis (ROTAS_SITE).
 - Sec-Fetch-Site cross-site em requisições que mudam estado também é recusado.
 - Toda rota /api exige sessão válida, exceto as públicas; quem precisa trocar a senha só acessa
   as rotas de login até trocar.
@@ -16,7 +17,9 @@ from app.core.config import config
 METODOS_ESCRITA = {"POST", "PUT", "PATCH", "DELETE"}
 ROTAS_PUBLICAS = {
     "/api/auth/eu", "/api/auth/entrar", "/api/auth/sair", "/api/auth/cadastrar", "/api/ping", "/api/saude",
+    "/api/publico/teste",
 }
+ROTAS_SITE = {"/api/publico/teste"}
 ROTAS_TROCA_SENHA = ROTAS_PUBLICAS | {"/api/auth/senha"}
 
 
@@ -39,7 +42,9 @@ class ProtecaoLocalMiddleware(BaseHTTPMiddleware):
             return JSONResponse({"detail": "Host não permitido."}, status_code=400)
 
         origin = request.headers.get("origin")
-        if origin is not None and origin.lower() not in cfg.origens_permitidas:
+        do_site = (origin is not None and cfg.origem_site is not None and origin.lower() == cfg.origem_site
+                   and request.url.path in ROTAS_SITE)
+        if origin is not None and origin.lower() not in cfg.origens_permitidas and not do_site:
             return JSONResponse({"detail": "Origem não permitida."}, status_code=403)
 
         if request.method in METODOS_ESCRITA and request.headers.get("sec-fetch-site") == "cross-site":

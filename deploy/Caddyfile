@@ -15,10 +15,21 @@
 }
 
 {$DOMINIO_BASE} {
-	root * /srv/site
-	file_server
 	encode zstd gzip
 	import seguranca
+	# Formulário de teste grátis: o site chama o sistema no próprio domínio (sem CORS); só esta rota passa
+	handle /api/publico/* {
+		request_body {
+			max_size 16KB
+		}
+		reverse_proxy contask-app:8765 {
+			header_up Host {$SUBDOMINIO}.{$DOMINIO_BASE}
+		}
+	}
+	handle {
+		root * /srv/site
+		file_server
+	}
 }
 
 www.{$DOMINIO_BASE} {

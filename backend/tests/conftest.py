@@ -39,9 +39,12 @@ def cliente(app_teste):
 def _limite_de_cadastro_zerado():
     """Todo teste se cadastra do mesmo IP: o limite de cadastros por hora começa zerado."""
     from app.api.auth import limitador_cadastro
-    limitador_cadastro._erros.clear()
+    from app.api.leads import limitador_leads
+    for lim in (limitador_cadastro, limitador_leads):
+        lim._erros.clear()
     yield
-    limitador_cadastro._erros.clear()
+    for lim in (limitador_cadastro, limitador_leads):
+        lim._erros.clear()
 
 
 @pytest.fixture(autouse=True)

@@ -63,6 +63,31 @@ class EscritorioEvento(Base):
     valor: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
 
 
+class Lead(Base):
+    """Pedido de teste grátis feito pelo formulário do site. A conta de teste é criada na hora."""
+    __tablename__ = "lead"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora, index=True)
+    nome: Mapped[str] = mapped_column(String(200))  # escritório ou empresa
+    # contabilidade | bpo | financeiro | nenhum
+    segmento: Mapped[str] = mapped_column(String(20))
+    email: Mapped[str] = mapped_column(String(200), index=True)
+    telefone: Mapped[str] = mapped_column(String(20))
+    origem: Mapped[str | None] = mapped_column(String(300))  # página e campanha (utm)
+    ip: Mapped[str | None] = mapped_column(String(64))
+    # conta_criada | email_existente
+    resultado: Mapped[str] = mapped_column(String(20))
+    escritorio_id: Mapped[int | None] = mapped_column(ForeignKey("escritorio.id", ondelete="SET NULL"))
+    usuario_id: Mapped[int | None] = mapped_column(ForeignKey("usuario.id", ondelete="SET NULL"))
+    # pendente | enviado | erro | sem_envio (e-mail do sistema não configurado)
+    email_status: Mapped[str] = mapped_column(String(12), default="pendente")
+    email_enviado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    email_erro: Mapped[str | None] = mapped_column(String(300))
+    # novo | em_contato | cliente | perdido (acompanhamento comercial)
+    etapa: Mapped[str] = mapped_column(String(12), default="novo", server_default="novo")
+    observacoes: Mapped[str | None] = mapped_column(Text)
+
+
 class Certificado(Base):
     __tablename__ = "certificado"
     __table_args__ = (

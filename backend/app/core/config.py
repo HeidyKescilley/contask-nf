@@ -39,12 +39,24 @@ class Config(BaseSettings):
     teste_completo: bool = False
     # Dias de teste de quem se cadastra pela tela (0 = a conta nasce ativa, como na instalação local)
     cadastro_teste_dias: int = 0
+    # Dias do teste grátis criado pelo formulário do site (tudo liberado; depois, o acesso trava)
+    lead_teste_dias: int = 30
     # Emissor de NFS-e: falso = produção restrita (homologação, sem valor fiscal). Ligar só com
     # liberação expressa de quem é dono do projeto (CONTASK_EMISSOR_PRODUCAO=true).
     emissor_producao: bool = False
     # Leiaute da DPS em produção (nt004 | nt009). Se a Sefin recusar o XML por esquema, o motor tenta o
     # outro leiaute e grava o que foi aceito em dados/leiaute_producao.txt, que vale mais que esta opção.
     leiaute_producao: str = "nt004"
+    # Site de vendas (origem do formulário de teste grátis) e endereço do sistema nos e-mails
+    site_url: str = ""
+    app_url: str = ""
+    # E-mail do sistema (SMTP com SSL). Sem smtp_host, os e-mails ficam pendentes no painel.
+    smtp_host: str = ""
+    smtp_porta: int = 465
+    smtp_usuario: str = ""
+    smtp_senha: SecretStr | None = None
+    email_remetente: str = ""
+    email_nome: str = "Contask NF"
     # Gerador oficial do DANFSe da Receita (contêiner interno). Vazio: só o gerador próprio.
     danfse_url: str = ""
 
@@ -76,6 +88,11 @@ class Config(BaseSettings):
         for h in self.lista_hosts:
             base.add(f"https://{h}")
         return base | set(self.origens_extras)
+
+    @property
+    def origem_site(self) -> str | None:
+        """Origem do site de vendas: só pode chamar as rotas públicas do formulário (ROTAS_SITE)."""
+        return self.site_url.rstrip("/").lower() or None
 
 
 @lru_cache

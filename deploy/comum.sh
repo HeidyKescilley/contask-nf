@@ -31,13 +31,26 @@ carregar_conf() {
 subir_app() {
   carregar_conf
   [ -f "$SEGREDOS/chave.env" ] || erro "$SEGREDOS/chave.env não existe."
+  # Senha da caixa de e-mail do sistema (CONTASK_SMTP_SENHA): segredos/email.env, só root lê
+  local segredo_email=()
+  [ -f "$SEGREDOS/email.env" ] && segredo_email=(--env-file "$SEGREDOS/email.env")
   docker rm -f "$CONTEINER" >/dev/null 2>&1 || true
   docker run -d --name "$CONTEINER" --restart unless-stopped --network "$REDE" --memory "$MEMORIA" \
-    --env-file "$SEGREDOS/chave.env" \
+    --env-file "$SEGREDOS/chave.env" "${segredo_email[@]}" \
     -e CONTASK_HOSTS="$SUBDOMINIO.$DOMINIO_BASE" \
+    -e CONTASK_SITE_URL="https://$DOMINIO_BASE" \
+    -e CONTASK_APP_URL="https://$SUBDOMINIO.$DOMINIO_BASE" \
     -e CONTASK_CADASTRO="${CADASTRO:-fechado}" \
-    -e CONTASK_EMISSOR_PRODUCAO="${EMISSOR_PRODUCAO:-false}"     -e CONTASK_LEIAUTE_PRODUCAO="${LEIAUTE_PRODUCAO:-nt004}" \
-    -e CONTASK_LIMITE_XMLS_MES="${LIMITE_XMLS_MES:-0}"     -e CONTASK_DANFSE_URL="http://$DANFSE_CONTEINER:8080"     -e CONTASK_TESTE_COMPLETO="${TESTE_COMPLETO:-true}"     -e CONTASK_CADASTRO_TESTE_DIAS="${CADASTRO_TESTE_DIAS:-30}" \
+    -e CONTASK_EMISSOR_PRODUCAO="${EMISSOR_PRODUCAO:-false}" \
+    -e CONTASK_LEIAUTE_PRODUCAO="${LEIAUTE_PRODUCAO:-nt004}" \
+    -e CONTASK_LIMITE_XMLS_MES="${LIMITE_XMLS_MES:-0}" \
+    -e CONTASK_DANFSE_URL="http://$DANFSE_CONTEINER:8080" \
+    -e CONTASK_TESTE_COMPLETO="${TESTE_COMPLETO:-true}" \
+    -e CONTASK_CADASTRO_TESTE_DIAS="${CADASTRO_TESTE_DIAS:-30}" \
+    -e CONTASK_LEAD_TESTE_DIAS="${LEAD_TESTE_DIAS:-30}" \
+    -e CONTASK_SMTP_HOST="${SMTP_HOST:-smtp.hostinger.com}" \
+    -e CONTASK_SMTP_PORTA="${SMTP_PORTA:-465}" \
+    -e CONTASK_EMAIL_REMETENTE="${EMAIL_REMETENTE:-notas@$DOMINIO_BASE}" \
     -v "$DADOS:/app/dados" -v "$BACKUPS:/backups" \
     --log-opt max-size=10m --log-opt max-file=5 \
     "$IMAGEM" >/dev/null

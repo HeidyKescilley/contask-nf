@@ -96,6 +96,42 @@
   .perfil li svg { width: 18px; height: 18px; color: var(--cor); margin-top: 3px; }
   .perfil .botao { width: 100%; }
 
+  .cartao-form { max-width: 560px; margin: 0 auto; text-align: left; background: var(--superficie); border: 1px solid var(--borda);
+    border-radius: 22px; padding: 28px; box-shadow: var(--sombra); border-top: 4px solid var(--azul); scroll-margin-top: 88px; }
+  .cartao-form h2 { font-size: 21px; letter-spacing: -0.02em; margin: 0 0 4px; font-weight: 650; }
+  .cartao-form .sub { color: var(--texto-2); font-size: 14.5px; margin: 0 0 20px; }
+  .campo { display: grid; gap: 6px; margin-bottom: 16px; }
+  .campo > label, .campo > legend { font-size: 14px; font-weight: 500; padding: 0; }
+  fieldset.campo { border: 0; margin: 0 0 16px; padding: 0; min-width: 0; }
+  .campo input[type=text], .campo input[type=email], .campo input[type=tel] {
+    height: 46px; width: 100%; border-radius: 12px; border: 1px solid var(--borda-forte); background: var(--fundo); color: var(--texto);
+    padding: 0 14px; font: inherit; font-size: 16px; outline: none; transition: border-color .15s, box-shadow .15s; }
+  .campo input:focus { border-color: var(--azul); box-shadow: 0 0 0 3px color-mix(in srgb, var(--azul) 22%, transparent); }
+  .campo input[aria-invalid=true] { border-color: #dc2626; }
+  .opcoes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .opcoes label { position: relative; display: flex; align-items: center; justify-content: center; text-align: center; min-height: 46px;
+    padding: 6px 8px; border-radius: 12px; border: 1px solid var(--borda-forte); background: var(--fundo); font-size: 14px; cursor: pointer;
+    line-height: 1.25; transition: border-color .15s, background .15s, color .15s; }
+  .opcoes input { position: absolute; opacity: 0; pointer-events: none; }
+  .opcoes label:has(input:checked) { border-color: var(--azul); background: var(--azul-suave); color: var(--azul); font-weight: 600; }
+  .opcoes label:has(input:focus-visible) { outline: 2px solid var(--azul); outline-offset: 2px; }
+  .duas-col { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+  .armadilha { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+  .cartao-form .enviar { width: 100%; height: 50px; font-size: 16px; margin-top: 4px; }
+  .cartao-form .enviar[disabled] { opacity: .65; cursor: progress; }
+  .cartao-form .letra-miuda { font-size: 12.5px; color: var(--texto-2); margin: 12px 0 0; text-align: center; }
+  .msg-erro { display: none; margin: 0 0 14px; padding: 10px 14px; border-radius: 12px; font-size: 14px; color: #b91c1c;
+    background: color-mix(in srgb, #dc2626 12%, var(--superficie)); }
+  .msg-erro.visivel { display: block; }
+  @media (prefers-color-scheme: dark) { .msg-erro { color: #fca5a5; } }
+  .sucesso { text-align: center; padding: 8px 0; }
+  .sucesso .icone-ok { width: 54px; height: 54px; border-radius: 50%; background: var(--ok-suave); color: var(--ok); display: inline-flex;
+    align-items: center; justify-content: center; margin-bottom: 12px; }
+  .sucesso .icone-ok svg { width: 28px; height: 28px; }
+  .sucesso p { color: var(--texto-2); margin: 0 0 10px; }
+  .sucesso b { color: var(--texto); }
+  .girando { width: 18px; height: 18px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: gira .7s linear infinite; }
+  @keyframes gira { to { transform: rotate(360deg); } }
   .garantias { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 22px; margin: 28px 0 0; padding: 0; list-style: none;
     font-size: 14px; color: var(--texto-2); }
   .garantias li { display: flex; align-items: center; gap: 7px; }
@@ -152,6 +188,7 @@
 
   @media (max-width: 860px) {
     .perfis, .depois { grid-template-columns: 1fr; }
+    .opcoes { grid-template-columns: 1fr 1fr; }
     .passos { grid-template-columns: 1fr; }
     .hero { padding-top: 44px; }
     section.bloco { padding: 56px 0; }
@@ -160,6 +197,8 @@
     .topo .esconder-celular { display: none; }
     .final .acoes .botao { flex: 1 1 100%; }
     .perfil { padding: 22px; }
+    .cartao-form { padding: 22px 18px; }
+    .duas-col { grid-template-columns: 1fr; }
   }
   @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; } }
 </style>
@@ -182,7 +221,7 @@
     </a>
     <div class="acoes-topo">
       <a class="botao secundario pequeno" href="https://app.contasknf.com.br/entrar">Entrar</a>
-      <a class="botao azul pequeno" href="#escolha"><span class="esconder-celular">Testar</span> 30 dias grátis</a>
+      <a class="botao azul pequeno" href="#teste"><span class="esconder-celular">Testar</span> 30 dias grátis</a>
     </div>
   </div>
 </header>
@@ -192,8 +231,68 @@
     <div class="container">
       <span class="selo"><svg aria-hidden="true"><use href="#i-gift"/></svg> 30 dias grátis · tudo liberado</span>
       <h1 id="t-hero">Use o Contask NF <em>de graça por 30 dias.</em></h1>
-      <p class="lead">Crie a conta em um minuto e use o sistema completo, com notas de verdade, sem cartão de crédito. No fim do teste, você decide se continua.</p>
+      <p class="lead">Preencha o formulário e receba o acesso por e-mail na hora. Sistema completo, com notas de verdade e sem cartão de crédito. No fim do teste, você decide se continua.</p>
 
+      <div class="cartao-form" id="teste">
+        <form id="form-teste" novalidate>
+          <h2>Comece seu teste grátis</h2>
+          <p class="sub">O acesso chega no seu e-mail em instantes. Sem cartão de crédito.</p>
+          <p class="msg-erro" id="erro-form" role="alert"></p>
+          <div class="campo">
+            <label for="f-nome">Nome do escritório ou da empresa</label>
+            <input type="text" id="f-nome" name="nome" autocomplete="organization" required minlength="2" maxlength="200" placeholder="Ex.: Contábil Silva">
+          </div>
+          <fieldset class="campo">
+            <legend>Sua empresa é</legend>
+            <div class="opcoes">
+              <label><input type="radio" name="segmento" value="contabilidade" required> Contabilidade</label>
+              <label><input type="radio" name="segmento" value="bpo"> BPO</label>
+              <label><input type="radio" name="segmento" value="financeiro"> Financeiro</label>
+              <label><input type="radio" name="segmento" value="nenhum"> Nenhum dos dois</label>
+            </div>
+          </fieldset>
+          <div class="duas-col">
+            <div class="campo">
+              <label for="f-email">E-mail</label>
+              <input type="email" id="f-email" name="email" autocomplete="email" required maxlength="200" placeholder="voce@empresa.com.br">
+            </div>
+            <div class="campo">
+              <label for="f-telefone">WhatsApp</label>
+              <input type="tel" id="f-telefone" name="telefone" autocomplete="tel-national" inputmode="tel" required maxlength="16" placeholder="(61) 99999-9999">
+            </div>
+          </div>
+          <div class="armadilha" aria-hidden="true">
+            <label for="f-site">Deixe em branco</label>
+            <input type="text" id="f-site" name="site" tabindex="-1" autocomplete="off">
+          </div>
+          <button class="botao azul enviar" type="submit" id="enviar">Quero meus 30 dias grátis <svg aria-hidden="true"><use href="#i-seta"/></svg></button>
+          <p class="letra-miuda">Usamos seus dados só para criar o acesso e falar com você sobre o Contask NF.</p>
+        </form>
+        <div class="sucesso" id="sucesso" hidden tabindex="-1">
+          <div class="icone-ok"><svg aria-hidden="true"><use href="#i-check"/></svg></div>
+          <h2>Pronto! Seu teste começou.</h2>
+          <p id="sucesso-texto"></p>
+          <p>Não chegou em alguns minutos? Confira a caixa de spam ou <a data-whats="Olá! Pedi o teste grátis do Contask NF e não recebi o acesso." href="https://wa.me/5561996543664">chame no WhatsApp</a>.</p>
+          <a class="botao secundario" href="https://app.contasknf.com.br/entrar">Ir para o login</a>
+        </div>
+      </div>
+
+      <ul class="garantias">
+        <li><svg aria-hidden="true"><use href="#i-check"/></svg> Sem cartão de crédito</li>
+        <li><svg aria-hidden="true"><use href="#i-check"/></svg> Sem instalar nada</li>
+        <li><svg aria-hidden="true"><use href="#i-check"/></svg> Nada se perde no fim do teste</li>
+        <li><svg aria-hidden="true"><use href="#i-check"/></svg> Suporte pelo WhatsApp</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="bloco alt" aria-labelledby="t-usa">
+    <div class="container">
+      <div class="titulo-secao">
+        <span class="sobre">O que você usa</span>
+        <h2 class="secao" id="t-usa">Tudo liberado, do jeito que você trabalha</h2>
+        <p>Contabilidade, BPO e financeiro cuidam de vários CNPJs. Para a sua própria empresa, o foco é o emissor.</p>
+      </div>
       <div class="perfis">
         <article class="perfil contador" aria-labelledby="t-contador">
           <span class="rotulo">Sou contador</span>
@@ -205,8 +304,8 @@
             <li><svg aria-hidden="true"><use href="#i-check"/></svg> Exportação ZIP e relatórios por período</li>
             <li><svg aria-hidden="true"><use href="#i-check"/></svg> Emissor de NFS-e para os clientes, com notas recorrentes</li>
           </ul>
-          <a class="botao azul" href="https://app.contasknf.com.br/cadastrar?perfil=contador">
-            Criar conta do escritório <svg aria-hidden="true"><use href="#i-seta"/></svg>
+          <a class="botao azul" href="#teste" data-segmento="contabilidade">
+            Testar no meu escritório <svg aria-hidden="true"><use href="#i-seta"/></svg>
           </a>
         </article>
 
@@ -220,22 +319,16 @@
             <li><svg aria-hidden="true"><use href="#i-check"/></svg> Notas recorrentes, emitidas sozinhas todo mês</li>
             <li><svg aria-hidden="true"><use href="#i-check"/></svg> Notas emitidas e recebidas buscadas sozinhas</li>
           </ul>
-          <a class="botao roxo" href="https://app.contasknf.com.br/cadastrar?perfil=empresa">
-            Criar conta da empresa <svg aria-hidden="true"><use href="#i-seta"/></svg>
+          <a class="botao roxo" href="#teste" data-segmento="nenhum">
+            Testar na minha empresa <svg aria-hidden="true"><use href="#i-seta"/></svg>
           </a>
         </article>
       </div>
 
-      <ul class="garantias">
-        <li><svg aria-hidden="true"><use href="#i-check"/></svg> Sem cartão de crédito</li>
-        <li><svg aria-hidden="true"><use href="#i-check"/></svg> Sem instalar nada</li>
-        <li><svg aria-hidden="true"><use href="#i-check"/></svg> Nada se perde no fim do teste</li>
-        <li><svg aria-hidden="true"><use href="#i-check"/></svg> Suporte pelo WhatsApp</li>
-      </ul>
     </div>
   </section>
 
-  <section class="bloco alt" aria-labelledby="t-passos">
+  <section class="bloco" aria-labelledby="t-passos">
     <div class="container">
       <div class="titulo-secao">
         <span class="sobre">Como começar</span>
@@ -244,8 +337,8 @@
       <div class="passos">
         <div class="passo">
           <div class="num">1</div>
-          <h3>Crie a conta</h3>
-          <p>Nome, e-mail e senha. Os 30 dias começam na hora, com tudo liberado.</p>
+          <h3>Preencha o formulário</h3>
+          <p>O acesso chega no seu e-mail na hora e os 30 dias começam com tudo liberado.</p>
         </div>
         <div class="passo">
           <div class="num">2</div>
@@ -261,7 +354,7 @@
     </div>
   </section>
 
-  <section class="bloco" aria-labelledby="t-depois">
+  <section class="bloco alt" aria-labelledby="t-depois">
     <div class="container depois">
       <div class="texto">
         <div class="titulo-secao" style="text-align:left;margin:0 0 20px">
@@ -285,7 +378,7 @@
     </div>
   </section>
 
-  <section class="bloco alt" aria-labelledby="t-faq">
+  <section class="bloco" aria-labelledby="t-faq">
     <div class="container">
       <div class="titulo-secao">
         <span class="sobre">Dúvidas</span>
@@ -294,7 +387,7 @@
       <div class="faq">
         <details>
           <summary>Preciso informar cartão de crédito?</summary>
-          <p>Não. O cadastro pede só nome, e-mail e senha. Nada é cobrado no teste nem depois dele, a não ser que você decida assinar.</p>
+          <p>Não. O formulário pede só o nome do escritório ou da empresa, o e-mail e o WhatsApp. Nada é cobrado no teste nem depois dele, a não ser que você decida assinar.</p>
         </details>
         <details>
           <summary>É mesmo tudo liberado?</summary>
@@ -314,7 +407,7 @@
         </details>
         <details>
           <summary>O que acontece no dia seguinte ao fim do teste?</summary>
-          <p>O acesso fica pausado e as buscas automáticas e as notas recorrentes param. Nada é apagado: ao assinar, tudo volta como estava.</p>
+          <p>O acesso trava e as buscas automáticas e as notas recorrentes param. Nada é apagado: ao assinar, tudo volta como estava.</p>
         </details>
       </div>
     </div>
@@ -325,8 +418,7 @@
       <h2 class="secao" id="t-final">Comece hoje, de graça</h2>
       <p>Em poucos minutos você vê as suas notas reais no sistema. São 30 dias com tudo liberado.</p>
       <div class="acoes">
-        <a class="botao azul" href="https://app.contasknf.com.br/cadastrar?perfil=contador">Sou contador <svg aria-hidden="true"><use href="#i-seta"/></svg></a>
-        <a class="botao roxo" href="https://app.contasknf.com.br/cadastrar?perfil=empresa">Sou empresa <svg aria-hidden="true"><use href="#i-seta"/></svg></a>
+        <a class="botao azul" href="#teste">Quero meus 30 dias grátis <svg aria-hidden="true"><use href="#i-seta"/></svg></a>
       </div>
       <p class="contato">Prefere falar com alguém antes? <a data-whats="Olá! Tenho uma dúvida sobre os 30 dias grátis do Contask NF." href="https://wa.me/5561996543664">Chame no WhatsApp</a>.</p>
     </div>
@@ -346,6 +438,84 @@
 
 <script>
   const WHATSAPP = "5561996543664";
+  const form = document.getElementById("form-teste");
+  const erro = document.getElementById("erro-form");
+  const botao = document.getElementById("enviar");
+  const textoBotao = botao.innerHTML;
+  const tel = document.getElementById("f-telefone");
+
+  // ?perfil=empresa (vindo da página do emissor) ou botão de um dos cartões: já marca o segmento
+  function marcar(segmento) {
+    const r = form.querySelector(`input[name=segmento][value="${segmento}"]`);
+    if (r) r.checked = true;
+  }
+  const perfil = new URLSearchParams(location.search).get("perfil");
+  if (perfil === "empresa") marcar("nenhum");
+  document.querySelectorAll("[data-segmento]").forEach((a) => a.addEventListener("click", () => {
+    marcar(a.dataset.segmento);
+    setTimeout(() => document.getElementById("f-nome").focus({ preventScroll: true }), 400);
+  }));
+
+  // Máscara do WhatsApp: (61) 99999-9999
+  tel.addEventListener("input", () => {
+    let d = tel.value.replace(/\D/g, "");
+    if (d.length > 11 && d.startsWith("55")) d = d.slice(2);
+    d = d.slice(0, 11);
+    tel.value = d.length > 6 ? `(${d.slice(0, 2)}) ${d.slice(2, d.length - 4)}-${d.slice(-4)}`
+      : d.length > 2 ? `(${d.slice(0, 2)}) ${d.slice(2)}` : d;
+  });
+
+  function mostrarErro(msg, campo) {
+    erro.textContent = msg;
+    erro.classList.add("visivel");
+    form.querySelectorAll("[aria-invalid]").forEach((c) => c.removeAttribute("aria-invalid"));
+    if (campo) { campo.setAttribute("aria-invalid", "true"); campo.focus(); }
+  }
+
+  form.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    erro.classList.remove("visivel");
+    const dados = Object.fromEntries(new FormData(form));
+    const nome = (dados.nome || "").trim();
+    const digitos = (dados.telefone || "").replace(/\D/g, "");
+    if (nome.length < 2) return mostrarErro("Informe o nome do escritório ou da empresa.", document.getElementById("f-nome"));
+    if (!dados.segmento) return mostrarErro("Escolha se é contabilidade, BPO, financeiro ou nenhum dos dois.", form.querySelector("input[name=segmento]"));
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test((dados.email || "").trim())) return mostrarErro("Informe um e-mail válido.", document.getElementById("f-email"));
+    if (digitos.length < 10 || digitos.length > 11) return mostrarErro("Informe o WhatsApp com DDD, por exemplo (61) 99999-9999.", tel);
+
+    botao.disabled = true;
+    botao.innerHTML = '<span class="girando" aria-hidden="true"></span> Criando seu acesso…';
+    const ref = document.referrer && !document.referrer.startsWith(location.origin) ? ` (de ${new URL(document.referrer).hostname})` : "";
+    try {
+      const r = await fetch("/api/publico/teste", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nome, segmento: dados.segmento, email: dados.email.trim(), telefone: digitos,
+                               origem: (location.pathname + location.search + ref).slice(0, 300), site: dados.site || null }),
+      });
+      const corpo = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        const msg = typeof corpo.detail === "string" ? corpo.detail : "Confira os dados e tente de novo.";
+        throw new Error(r.status >= 500 ? "Não foi possível criar o acesso agora. Tente de novo em instantes ou chame no WhatsApp." : msg);
+      }
+      const ate = corpo.teste_ate ? corpo.teste_ate.split("-").reverse().join("/") : null;
+      document.getElementById("sucesso-texto").innerHTML = (corpo.envio === "equipe"
+        ? "Sua conta foi criada. Nossa equipe envia o acesso para <b></b> em seguida."
+        : "Enviamos o acesso para <b></b>. No primeiro login, o sistema pede uma senha nova.")
+        + (ate ? ` O teste vai até ${ate}, com tudo liberado.` : "");
+      document.querySelector("#sucesso-texto b").textContent = corpo.email;
+      form.hidden = true;
+      const ok = document.getElementById("sucesso");
+      ok.hidden = false;
+      ok.focus();
+    } catch (e) {
+      mostrarErro(e instanceof TypeError ? "Sem conexão com o servidor. Verifique a internet e tente de novo." : e.message);
+    } finally {
+      botao.disabled = false;
+      botao.innerHTML = textoBotao;
+    }
+  });
+
   document.getElementById("ano").textContent = new Date().getFullYear();
   document.querySelectorAll("[data-whats]").forEach((a) => {
     a.href = "https://wa.me/" + WHATSAPP + "?text=" + encodeURIComponent(a.dataset.whats);

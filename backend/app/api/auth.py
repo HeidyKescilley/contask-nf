@@ -44,7 +44,9 @@ def _eu(db: Session, u) -> dict:
     if u is None:
         # Sem login: a tela de entrada precisa saber se mostra o cadastro e se ele pede convite
         return {"usuario": None, "escritorio": None, "tem_contabilidade": False, "empresas": 0,
-                "cadastro": config().cadastro, "teste_dias": config().cadastro_teste_dias}
+                "cadastro": config().cadastro, "teste_dias": config().cadastro_teste_dias,
+                # Formulário de teste grátis do site (com o cadastro fechado, a tela de entrada leva para ele)
+                "teste_url": f"{config().site_url.rstrip('/')}/30-dias-gratis/#teste" if config().site_url else None}
     esc = db.get(Escritorio, u.escritorio_id)
     empresas = int(db.scalar(select(func.count()).select_from(Empresa).where(Empresa.escritorio_id == u.escritorio_id)) or 0)
     tem = db.scalar(select(Empresa.id).where(Empresa.escritorio_id == u.escritorio_id, Empresa.is_contabilidade))

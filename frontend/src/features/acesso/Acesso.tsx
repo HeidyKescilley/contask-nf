@@ -112,7 +112,13 @@ export function Entrar() {
         </Button>
         <p className="text-center text-xs text-texto-2">Esqueceu a senha? Fale com o suporte do Contask NF.</p>
         {sessao.data?.cadastro === "fechado" ? (
-          <p className="text-center text-sm text-texto-2">Não tem conta? Peça o acesso ao suporte do Contask NF.</p>
+          sessao.data?.teste_url ? (
+            <p className="text-center text-sm text-texto-2">
+              Não tem conta? <a href={sessao.data.teste_url} className="text-destaque hover:underline">Teste 30 dias grátis</a>
+            </p>
+          ) : (
+            <p className="text-center text-sm text-texto-2">Não tem conta? Peça o acesso ao suporte do Contask NF.</p>
+          )
         ) : (
           <p className="text-center text-sm text-texto-2">
             Não tem conta?{" "}
@@ -158,7 +164,14 @@ export function Cadastrar() {
   if (sessao.data?.cadastro === "fechado") {
     return (
       <Moldura titulo="Cadastrar" descricao="O cadastro de novas contas é feito pelo suporte do Contask NF.">
-        <p className="text-sm text-texto-2">Peça o acesso ao suporte: você recebe o e-mail de entrada e uma senha inicial, que é trocada no primeiro acesso.</p>
+        {sessao.data?.teste_url ? (
+          <p className="text-sm text-texto-2">
+            Para testar 30 dias grátis, preencha o <a href={sessao.data.teste_url} className="text-destaque hover:underline">formulário do site</a>:
+            o acesso chega por e-mail na hora.
+          </p>
+        ) : (
+          <p className="text-sm text-texto-2">Peça o acesso ao suporte: você recebe o e-mail de entrada e uma senha inicial, que é trocada no primeiro acesso.</p>
+        )}
         <p className="mt-4 text-center text-sm"><Link to="/entrar" className="text-destaque hover:underline">Voltar para entrar</Link></p>
       </Moldura>
     );

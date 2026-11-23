@@ -26,6 +26,8 @@ export interface Sessao {
   cadastro?: "aberto" | "convite" | "fechado";
   /** só sem login: dias de teste grátis de quem se cadastra pela tela (0 = conta já ativa) */
   teste_dias?: number;
+  /** só sem login: formulário de teste grátis do site */
+  teste_url?: string | null;
 }
 
 export interface Uso {
