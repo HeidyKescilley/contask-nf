@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  AlertTriangle, CheckCircle2, Clock, Download, Inbox, Loader2, Mail, MailCheck, MailX, MessageCircle, NotebookPen, RotateCw,
+  AlertTriangle, CheckCircle2, Clock, Download, Inbox, Loader2, Mail, MailCheck, MailX, MessageCircle, NotebookPen, RotateCw, Tag, FileText,
   Search, ShieldCheck, UserRoundCheck, UserRoundX,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -32,13 +32,19 @@ interface Lead {
   email: string;
   telefone: string;
   origem: string | null;
-  resultado: "conta_criada" | "email_existente";
+  resultado: "conta_criada" | "email_existente" | "oferta" | "plano_personalizado";
   etapa: Etapa;
   observacoes: string | null;
   email_status: "pendente" | "enviado" | "erro" | "sem_envio";
   email_enviado_em: string | null;
   email_erro: string | null;
   escritorio_id: number | null;
+  campanha: string | null;
+  campanha_rotulo: string | null;
+  contato: string | null;
+  notas_mes: string | null;
+  notas_mes_rotulo: string | null;
+  aceita_whatsapp: boolean;
   escritorio: { nome: string; tipo: "contador" | "empresa"; situacao: "teste" | "ativo" | "suspenso"; teste_ate: string | null; bloqueio: string | null } | null;
   primeiro_acesso_feito: boolean | null;
   ultimo_acesso_em: string | null;
@@ -56,6 +62,8 @@ function diasAte(iso: string) {
 }
 
 function SituacaoConta({ l }: { l: Lead }) {
+  if (l.resultado === "plano_personalizado") return <Selo tom="alerta" icone={MessageCircle}>Plano personalizado: chamar</Selo>;
+  if (l.resultado === "oferta") return <Selo tom="destaque" icone={Clock}>Aguardando pagamento</Selo>;
   if (l.resultado === "email_existente") return <Selo tom="neutro" icone={UserRoundCheck}>Conta já existia</Selo>;
   const e = l.escritorio;
   if (!e) return <Selo tom="neutro" icone={UserRoundX}>Conta removida</Selo>;
@@ -67,7 +75,7 @@ function SituacaoConta({ l }: { l: Lead }) {
 }
 
 function SeloEmail({ l }: { l: Lead }) {
-  if (l.resultado === "email_existente") return null;
+  if (l.resultado !== "conta_criada") return null;
   const m = {
     enviado: <Selo tom="ok" icone={MailCheck}>Acesso enviado</Selo>,
     pendente: <Selo tom="neutro" icone={Mail}>Enviando</Selo>,
@@ -84,6 +92,7 @@ export function Leads() {
   const lista = useQuery({ queryKey: CHAVE, queryFn: () => api<{ leads: Lead[]; email_configurado: boolean }>("/api/admin/leads"), enabled: admin });
   const [busca, setBusca] = useState("");
   const [etapa, setEtapa] = useState<"" | Etapa>("");
+  const [campanha, setCampanha] = useState("");
   const [notas, setNotas] = useState<Lead | null>(null);
   const [reenviar, setReenviar] = useState<Lead | null>(null);
 
@@ -91,9 +100,9 @@ export function Leads() {
   const filtrados = useMemo(() => {
     const t = busca.trim().toLowerCase();
     const digitos = t.replace(/\D/g, "");
-    return leads.filter((l) => (!etapa || l.etapa === etapa) && (!t || l.nome.toLowerCase().includes(t) || l.email.includes(t)
-      || (digitos.length >= 3 && l.telefone.includes(digitos))));
-  }, [leads, busca, etapa]);
+    return leads.filter((l) => (!etapa || l.etapa === etapa) && (!campanha || (l.campanha ?? "teste") === campanha) && (!t || l.nome.toLowerCase().includes(t) || l.email.includes(t)
+      || (digitos.length >= 3 && l.telefone.includes(digitos)) || (l.contato ?? "").toLowerCase().includes(t)));
+  }, [leads, busca, etapa, campanha]);
 
   if (sessao.isLoading) return <Esqueleto className="h-64 w-full" />;
   if (!admin) return <EstadoVazio icone={ShieldCheck} titulo="Área restrita">Só o administrador do sistema acessa esta página.</EstadoVazio>;
@@ -104,7 +113,7 @@ export function Leads() {
 
   return (
     <>
-      <Cabecalho titulo="Leads" descricao="Pedidos de teste grátis feitos pelo formulário do site. A conta de 30 dias é criada na hora e o acesso vai por e-mail."
+      <Cabecalho titulo="Leads" descricao="Pedidos feitos nos formulários do site: teste grátis (a conta de 30 dias é criada na hora e o acesso vai por e-mail) e ofertas de campanha, como a Black Friday."
         acoes={leads.length > 0 && <Button asChild><a href="/api/admin/leads/exportar" download><Download /> Exportar planilha</a></Button>} />
       {lista.data && !lista.data.email_configurado && (
         <div className="mb-4"><Aviso tom="alerta">O e-mail do sistema não está configurado no servidor: as contas são criadas, mas o acesso não é enviado. Configure e use Reenviar acesso em cada lead.</Aviso></div>
@@ -112,7 +121,7 @@ export function Leads() {
       {lista.isLoading && <Esqueleto className="h-64 w-full" />}
       {lista.isError && <EstadoErro mensagem={(lista.error as Error).message} tentarDeNovo={() => lista.refetch()} />}
       {lista.data && leads.length === 0 && (
-        <EstadoVazio icone={Inbox} titulo="Nenhum lead ainda">Os pedidos feitos em contasknf.com.br/30-dias-gratis aparecem aqui.</EstadoVazio>
+        <EstadoVazio icone={Inbox} titulo="Nenhum lead ainda">Os pedidos feitos em contasknf.com.br/30-dias-gratis e /black-friday aparecem aqui.</EstadoVazio>
       )}
       {leads.length > 0 && (
         <>
@@ -120,7 +129,7 @@ export function Leads() {
             <Indicador rotulo="Leads" valor={leads.length} />
             <Indicador rotulo="Últimos 7 dias" valor={conta((l) => new Date(l.criado_em).getTime() >= semana)} />
             <Indicador rotulo="Em teste agora" valor={emTeste} />
-            <Indicador rotulo="Já entraram" valor={conta((l) => l.primeiro_acesso_feito === true)} />
+            <Indicador rotulo="Black Friday" valor={conta((l) => l.campanha === "black_friday")} />
           </div>
           <div className="mb-3 flex flex-col gap-2 sm:flex-row">
             <div className="relative sm:w-80">
@@ -130,6 +139,11 @@ export function Leads() {
             <Select value={etapa} onChange={(e) => setEtapa(e.target.value as "" | Etapa)} aria-label="Etapa" className="sm:w-44">
               <option value="">Todas as etapas</option>
               {ETAPAS.map((x) => <option key={x.valor} value={x.valor}>{x.rotulo}</option>)}
+            </Select>
+            <Select value={campanha} onChange={(e) => setCampanha(e.target.value)} aria-label="Origem do pedido" className="sm:w-44">
+              <option value="">Todos os pedidos</option>
+              <option value="teste">Teste grátis</option>
+              <option value="black_friday">Black Friday</option>
             </Select>
           </div>
           {filtrados.length === 0 ? (
@@ -163,15 +177,22 @@ function CartaoLead({ l, aoNotas, aoReenviar, podeEnviar }: { l: Lead; aoNotas: 
     onSuccess: () => qc.invalidateQueries({ queryKey: CHAVE }),
     onError: (e) => toast.error((e as Error).message),
   });
-  const zap = `https://wa.me/55${l.telefone}?text=${encodeURIComponent(`Olá! Aqui é do Contask NF. Vi que você pediu o teste grátis para ${l.nome}.`)}`;
+  const saudacao = l.contato ? `Olá, ${l.contato.split(" ")[0]}!` : "Olá!";
+  const zap = `https://wa.me/55${l.telefone}?text=${encodeURIComponent(l.campanha === "black_friday"
+    ? `${saudacao} Aqui é do Contask NF. Recebemos seu pedido da oferta de Black Friday para ${l.nome}.`
+    : `Olá! Aqui é do Contask NF. Vi que você pediu o teste grátis para ${l.nome}.`)}`;
   return (
     <li className="rounded-xl border border-borda bg-superficie p-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium">{l.nome}</span>
-            <Selo tom="neutro" icone={l.segmento === "nenhum" ? UserRoundCheck : ShieldCheck}>{l.segmento_rotulo}</Selo>
+            {l.campanha_rotulo
+              ? <Selo tom="destaque" icone={Tag}>{l.campanha_rotulo}</Selo>
+              : <Selo tom="neutro" icone={l.segmento === "nenhum" ? UserRoundCheck : ShieldCheck}>{l.segmento_rotulo}</Selo>}
+            {l.notas_mes_rotulo && <Selo tom="neutro" icone={FileText}>{l.notas_mes_rotulo}</Selo>}
           </div>
+          {l.contato && <div className="text-sm">{l.contato}{l.campanha && !l.aceita_whatsapp && <span className="text-texto-2"> · não aceitou mensagens no WhatsApp</span>}</div>}
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-texto-2">
             <a href={`mailto:${l.email}`} className="break-all hover:text-texto hover:underline">{l.email}</a>
             <a href={zap} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 hover:text-texto hover:underline">

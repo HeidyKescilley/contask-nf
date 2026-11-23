@@ -64,7 +64,7 @@ class EscritorioEvento(Base):
 
 
 class Lead(Base):
-    """Pedido de teste grátis feito pelo formulário do site. A conta de teste é criada na hora."""
+    """Pedido feito por um formulário do site: teste grátis (conta criada na hora) ou oferta de campanha."""
     __tablename__ = "lead"
     id: Mapped[int] = mapped_column(primary_key=True)
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora, index=True)
@@ -75,7 +75,7 @@ class Lead(Base):
     telefone: Mapped[str] = mapped_column(String(20))
     origem: Mapped[str | None] = mapped_column(String(300))  # página e campanha (utm)
     ip: Mapped[str | None] = mapped_column(String(64))
-    # conta_criada | email_existente
+    # conta_criada | email_existente | oferta | plano_personalizado
     resultado: Mapped[str] = mapped_column(String(20))
     escritorio_id: Mapped[int | None] = mapped_column(ForeignKey("escritorio.id", ondelete="SET NULL"))
     usuario_id: Mapped[int | None] = mapped_column(ForeignKey("usuario.id", ondelete="SET NULL"))
@@ -86,6 +86,12 @@ class Lead(Base):
     # novo | em_contato | cliente | perdido (acompanhamento comercial)
     etapa: Mapped[str] = mapped_column(String(12), default="novo", server_default="novo")
     observacoes: Mapped[str | None] = mapped_column(Text)
+    # Campanha do formulário: None (teste grátis) | black_friday (oferta paga, sem conta criada na hora)
+    campanha: Mapped[str | None] = mapped_column(String(30))
+    contato: Mapped[str | None] = mapped_column(String(200))  # nome da pessoa, quando o formulário pede
+    # ate_100 | 100_500 | 500_1000 | acima_1000
+    notas_mes: Mapped[str | None] = mapped_column(String(20))
+    aceita_whatsapp: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))
 
 
 class Certificado(Base):

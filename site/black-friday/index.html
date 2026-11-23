@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Black Friday | Contask NF: 12 meses por R$ 29,90</title>
+<meta name="description" content="Black Friday Contask NF para escritórios de contabilidade: emissão de NFS-e e download automático das notas dos clientes, 12 meses por R$ 29,90. Só até 27/11.">
+<meta name="robots" content="noindex">
+<meta property="og:title" content="Black Friday Contask NF: 12 meses por R$ 29,90">
+<meta property="og:description" content="Até 1.000 notas emitidas por mês e download automático das NFS-e dos seus clientes. Só até sexta, 27/11.">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="pt_BR">
+<meta property="og:url" content="https://contasknf.com.br/black-friday/">
+<meta property="og:site_name" content="Contask NF">
+<meta property="og:image" content="https://contasknf.com.br/og.png">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#08090b">
+<link rel="icon" href="/icone.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800;900&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  /* Página de campanha: tema escuro de propósito (identidade da Black Friday), em qualquer preferência do sistema */
+  :root {
+    --fundo: #08090b; --fundo-2: #0d0f12; --cartao: #111318; --cartao-2: #161920; --borda: #23262e; --borda-forte: #333845;
+    --texto: #f4f5f7; --texto-2: #a3a8b3; --texto-3: #6f7581;
+    --azul: #2350e8; --azul-forte: #1c41c4; --azul-claro: #7d9bff; --azul-fundo: #0c1430;
+    --verde: #4ade80; --vermelho: #f87171;
+    --titulo: "Archivo", "Geist", ui-sans-serif, system-ui, sans-serif;
+    --mono: "Geist Mono", ui-monospace, Consolas, monospace;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { overflow-x: clip; scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--fundo); color: var(--texto); overflow-x: hidden;
+    font: 15px/1.6 "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; }
+  [hidden] { display: none !important; }
+  :focus-visible { outline: 2px solid var(--azul-claro); outline-offset: 3px; border-radius: 6px; }
+  .container { width: 100%; max-width: 1140px; margin: 0 auto; padding: 0 20px; }
+  .pular { position: absolute; left: -9999px; }
+  .pular:focus { left: 16px; top: 12px; z-index: 100; background: #fff; color: #000; padding: 8px 12px; border-radius: 8px; }
+
+  /* Faixas que correm */
+  .faixa { overflow: hidden; white-space: nowrap; }
+  .faixa .trilho { display: inline-flex; animation: correr 38s linear infinite; }
+  .faixa .trilho span { display: inline-flex; align-items: center; gap: 28px; padding-right: 28px; }
+  @keyframes correr { to { transform: translateX(-50%); } }
+  .faixa-topo { background: var(--azul); color: #fff; font: 700 11px/1 var(--titulo); letter-spacing: .08em; text-transform: uppercase; padding: 9px 0; }
+  .faixa-topo i { font-style: normal; opacity: .85; }
+
+  /* Topo */
+  header.topo { position: sticky; top: 0; z-index: 40; background: color-mix(in srgb, var(--fundo) 86%, transparent); backdrop-filter: blur(10px); }
+  .topo .container { display: flex; align-items: center; gap: 14px; height: 60px; }
+  .marca { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 16px; text-decoration: none; letter-spacing: -.01em; white-space: nowrap; }
+  .marca img { width: 26px; height: 26px; }
+  .marca span { color: var(--azul-claro); }
+  .topo .relogio-mini { margin-left: auto; display: flex; align-items: center; gap: 8px; font: 600 12px/1 var(--mono); color: var(--texto); white-space: nowrap; }
+  .topo .relogio-mini::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 0 4px rgb(239 68 68 / .18); animation: pulsar 1.6s ease-in-out infinite; }
+  @keyframes pulsar { 50% { opacity: .35; } }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 0; cursor: pointer; text-decoration: none;
+    font: 700 13px/1 "Geist", sans-serif; border-radius: 8px; padding: 12px 18px; transition: background .15s, transform .15s, border-color .15s; white-space: nowrap; }
+  .btn:active { transform: translateY(1px); }
+  .btn-branco { background: #fff; color: #08090b; }
+  .btn-branco:hover { background: #e6e8ee; }
+  .btn-azul { background: var(--azul); color: #fff; }
+  .btn-azul:hover { background: var(--azul-forte); }
+  .btn-contorno { background: transparent; color: var(--texto); border: 1px solid var(--borda-forte); }
+  .btn-contorno:hover { border-color: var(--texto-2); }
+  .btn-preto { background: #08090b; color: #fff; }
+  .btn-preto:hover { background: #1b1e25; }
+  .topo .btn { padding: 10px 14px; font-size: 12px; }
+
+  /* Herói */
+  .heroi { position: relative; padding: 56px 0 84px; isolation: isolate; overflow-x: clip; }
+  .fita-caixa { overflow: hidden; padding: 28px 0; margin: -28px 0; }
+  .marca-dagua { position: absolute; z-index: -1; left: 50%; transform: translateX(-50%); white-space: nowrap; pointer-events: none; user-select: none;
+    font: 900 clamp(90px, 15vw, 210px)/0.9 var(--titulo); letter-spacing: -.03em; text-transform: uppercase;
+    color: transparent; -webkit-text-stroke: 1px rgb(255 255 255 / .07); }
+  .heroi .marca-dagua { top: 22px; }
+  .heroi-grade { display: grid; grid-template-columns: 1.08fr .92fr; gap: 56px; align-items: start; }
+  .selos { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 18px; }
+  .selo-bf { background: #fff; color: #08090b; font: 800 11px/1 var(--titulo); letter-spacing: .08em; padding: 7px 10px; border-radius: 4px; text-transform: uppercase; }
+  .selo-publico { font-size: 12px; color: var(--texto-2); border: 1px solid var(--borda-forte); padding: 5px 10px; border-radius: 4px; }
+  h1 { font: 800 clamp(38px, 5.6vw, 64px)/1.02 var(--titulo); letter-spacing: -.035em; margin: 0 0 22px; }
+  h1 .destaque { color: var(--azul-claro); }
+  h1 .preco-tarja { display: inline-block; background: var(--azul); color: #fff; padding: 2px 14px 6px; margin-top: 6px; border-radius: 4px; box-shadow: 0 10px 40px -10px rgb(35 80 232 / .7); }
+  .heroi .sub { color: var(--texto-2); max-width: 470px; margin: 0 0 26px; font-size: 15.5px; }
+  .acoes { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
+  .checks { display: flex; flex-wrap: wrap; gap: 6px 20px; list-style: none; padding: 0; margin: 0; font-size: 12.5px; color: var(--texto-2); }
+  .checks li, .lista-ok li { display: flex; align-items: center; gap: 7px; }
+  .ok { color: var(--verde); flex: none; }
+
+  /* Cartão da oferta */
+  .oferta { position: relative; background: linear-gradient(180deg, #0f1424 0%, var(--cartao) 38%); border: 1px solid #2b3f8f; border-radius: 14px; padding: 24px;
+    box-shadow: 0 0 0 1px rgb(35 80 232 / .25), 0 30px 90px -30px rgb(35 80 232 / .65); scroll-margin-top: 80px; }
+  .desconto { position: absolute; top: -26px; right: -18px; width: 82px; height: 82px; border-radius: 50%; background: #fff; color: #08090b;
+    display: grid; place-content: center; text-align: center; transform: rotate(12deg); box-shadow: 0 12px 30px -10px rgb(0 0 0 / .6); }
+  .desconto b { font: 900 24px/1 var(--titulo); letter-spacing: -.03em; }
+  .desconto small { font: 800 9px/1.2 var(--titulo); letter-spacing: .14em; }
+  .rotulo { font: 700 11px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--azul-claro); margin: 0 0 12px; }
+  .de { color: var(--texto-3); text-decoration: line-through; font-size: 13px; margin: 0; }
+  .preco { display: flex; align-items: baseline; gap: 10px; margin: 2px 0 16px; flex-wrap: wrap; }
+  .preco b { font: 900 46px/1 var(--titulo); letter-spacing: -.035em; }
+  .preco span { color: var(--texto-2); font-size: 13px; }
+  .contador { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 18px; }
+  .contador div { background: #0a0c10; border: 1px solid var(--borda); border-radius: 8px; padding: 10px 4px 8px; text-align: center; }
+  .contador b { display: block; font: 600 24px/1 var(--mono); }
+  .contador small { display: block; font: 600 9px/1 var(--mono); letter-spacing: .14em; color: var(--texto-3); margin-top: 6px; text-transform: uppercase; }
+  .lista-ok { list-style: none; padding: 16px 0; margin: 0 0 16px; display: grid; gap: 8px; font-size: 13px; border-top: 1px solid var(--borda); border-bottom: 1px solid var(--borda); }
+  form .linha { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .campo { display: grid; gap: 6px; margin-bottom: 12px; }
+  .campo label { font-size: 12px; font-weight: 600; color: var(--texto); }
+  .campo input, .campo select { width: 100%; min-width: 0; height: 42px; background: #0a0c10; border: 1px solid var(--borda); color: var(--texto); border-radius: 8px;
+    padding: 0 12px; font: 16px "Geist", sans-serif; outline: none; transition: border-color .15s, box-shadow .15s; }
+  @media (min-width: 720px) { .campo input, .campo select { font-size: 14px; } }
+  .campo select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a3a8b3' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+  .campo input::placeholder { color: var(--texto-3); }
+  .campo input:focus, .campo select:focus { border-color: var(--azul-claro); box-shadow: 0 0 0 3px rgb(125 155 255 / .18); }
+  .campo input[aria-invalid="true"] { border-color: var(--vermelho); }
+  .aceite { display: flex; gap: 9px; align-items: flex-start; font-size: 12px; color: var(--texto-2); margin: 4px 0 16px; cursor: pointer; }
+  .aceite input { margin: 2px 0 0; width: 15px; height: 15px; accent-color: var(--azul); flex: none; }
+  .enviar { width: 100%; padding: 15px; font: 800 13px/1 var(--titulo); letter-spacing: .06em; text-transform: uppercase; }
+  .enviar:disabled { opacity: .7; cursor: progress; }
+  .nota-form { text-align: center; font-size: 11.5px; color: var(--texto-3); margin: 12px 0 0; }
+  .erro { background: rgb(248 113 113 / .1); border: 1px solid rgb(248 113 113 / .35); color: #fecaca; border-radius: 8px; padding: 10px 12px; font-size: 13px; margin-bottom: 12px; }
+  .girando { width: 14px; height: 14px; border: 2px solid rgb(255 255 255 / .35); border-top-color: #fff; border-radius: 50%; animation: girar .8s linear infinite; }
+  @keyframes girar { to { transform: rotate(360deg); } }
+  .sucesso { text-align: center; padding: 18px 4px 6px; outline: none; }
+  .sucesso .icone { width: 52px; height: 52px; border-radius: 50%; background: rgb(74 222 128 / .12); color: var(--verde); display: grid; place-items: center; margin: 0 auto 14px; }
+  .sucesso h3 { font: 800 22px/1.2 var(--titulo); margin: 0 0 8px; letter-spacing: -.02em; }
+  .sucesso p { color: var(--texto-2); font-size: 14px; margin: 0 0 16px; }
+  .encerrada { text-align: center; padding: 10px 0 4px; }
+  .encerrada p { color: var(--texto-2); font-size: 14px; }
+
+  /* Fita inclinada */
+  .fita { background: #fff; color: #08090b; transform: rotate(-2.4deg); margin: 0 -40px; padding: 16px 0; font: 900 clamp(18px, 2.4vw, 26px)/1 var(--titulo); letter-spacing: -.01em; text-transform: uppercase; }
+  .fita .trilho { animation-duration: 30s; }
+  .fita .trilho span { gap: 34px; padding-right: 34px; }
+  .fita .bola { width: 16px; height: 16px; border-radius: 50%; background: var(--azul); flex: none; }
+
+  /* Seções */
+  section.bloco { padding: 84px 0 0; }
+  .sobretitulo { font: 700 11px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--azul-claro); margin: 0 0 12px; }
+  h2 { font: 800 clamp(28px, 3.4vw, 38px)/1.1 var(--titulo); letter-spacing: -.03em; margin: 0 0 30px; max-width: 560px; }
+  .passos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; list-style: none; padding: 0; margin: 0; }
+  .passos li { background: var(--cartao); border: 1px solid var(--borda); border-radius: 10px; padding: 20px; }
+  .passos .num { font: 700 11px/1 var(--mono); color: var(--azul-claro); }
+  .passos h3 { font: 700 16px/1.3 var(--titulo); margin: 14px 0 8px; letter-spacing: -.01em; }
+  .passos p { margin: 0; color: var(--texto-2); font-size: 13px; }
+  .comparar { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 36px; }
+  .comparar > div { border: 1px solid var(--borda); background: var(--fundo-2); border-radius: 10px; padding: 22px 22px 18px; }
+  .comparar .com { border-color: #2b48c8; background: var(--azul-fundo); box-shadow: 0 0 0 1px rgb(35 80 232 / .2); }
+  .comparar h3 { font: 700 11px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--texto-2); margin: 0 0 14px; }
+  .comparar .com h3 { color: var(--azul-claro); }
+  .comparar ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; font-size: 13.5px; }
+  .comparar li { display: flex; gap: 9px; align-items: center; }
+  .x { color: var(--vermelho); flex: none; }
+
+  .faq-sec { background: var(--fundo-2); border-top: 1px solid var(--borda); margin-top: 84px; padding: 72px 0 80px; }
+  .faq { max-width: 720px; margin: 0 auto; }
+  .faq h2 { margin-bottom: 18px; }
+  .faq details { border-bottom: 1px solid var(--borda); }
+  .faq summary { cursor: pointer; list-style: none; padding: 18px 0; font-weight: 600; font-size: 14.5px; display: flex; gap: 10px; align-items: baseline; }
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq summary::before { content: "▸"; font-size: 11px; transition: transform .15s; }
+  .faq details[open] summary::before { transform: rotate(90deg); }
+  .faq details p { margin: -6px 0 18px 21px; color: var(--texto-2); font-size: 14px; }
+
+  .final { position: relative; isolation: isolate; overflow: hidden; background: var(--azul); text-align: center; padding: 64px 0 130px; }
+  .final h2 { margin: 0 auto 18px; max-width: 760px; font-size: clamp(30px, 4.4vw, 46px); color: #fff; }
+  .final .relogio-grande { font: 600 clamp(20px, 2.6vw, 26px)/1 var(--mono); margin: 0 0 24px; letter-spacing: .02em; }
+  .final .marca-dagua { bottom: -34px; -webkit-text-stroke: 0; color: rgb(255 255 255 / .1); }
+  .final .btn { padding: 16px 26px; font: 800 13px/1 var(--titulo); letter-spacing: .06em; text-transform: uppercase; }
+  footer { padding: 24px 0 32px; color: var(--texto-3); font-size: 12px; }
+  footer .container { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: space-between; }
+  footer a { color: var(--texto-2); }
+
+  @media (max-width: 920px) {
+    .heroi-grade { grid-template-columns: 1fr; gap: 48px; }
+    .oferta { max-width: 560px; }
+    .desconto { right: 8px; }
+    .passos { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 640px) {
+    .topo .relogio-mini { display: none; }
+    .topo .btn { margin-left: auto; }
+    .heroi { padding: 32px 0 64px; }
+    .comparar, form .linha { grid-template-columns: 1fr; gap: 0 12px; }
+    .comparar { gap: 12px; }
+    .oferta { padding: 20px 16px; }
+    .preco b { font-size: 40px; }
+    .contador b { font-size: 20px; }
+    .desconto { width: 70px; height: 70px; top: -22px; }
+    .desconto b { font-size: 20px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .faixa .trilho, .topo .relogio-mini::before { animation: none; }
+    html { scroll-behavior: auto; }
+  }
+</style>
+</head>
+<body>
+<a class="pular" href="#oferta">Ir para o formulário</a>
+
+<div class="faixa faixa-topo" aria-hidden="true"><div class="trilho">
+  <span>Black Friday Contask <i>★</i> −97% off <i>★</i> Só até 27/11 <i>★</i> 1.000 notas em 5 minutos <i>★</i> Black Friday Contask <i>★</i> −97% off <i>★</i> Só até 27/11 <i>★</i> 1.000 notas em 5 minutos <i>★</i></span>
+  <span>Black Friday Contask <i>★</i> −97% off <i>★</i> Só até 27/11 <i>★</i> 1.000 notas em 5 minutos <i>★</i> Black Friday Contask <i>★</i> −97% off <i>★</i> Só até 27/11 <i>★</i> 1.000 notas em 5 minutos <i>★</i></span>
+</div></div>
+
+<header class="topo">
+  <div class="container">
+    <a class="marca" href="/"><img src="/icone.svg" alt="" width="26" height="26"> Contask <span>NF</span></a>
+    <span class="relogio-mini" data-relogio="curto" aria-hidden="true">--d --h --m --s</span>
+    <a class="btn btn-branco" href="#oferta">Garantir oferta</a>
+  </div>
+</header>
+
+<main>
+  <section class="heroi">
+    <div class="marca-dagua" aria-hidden="true">Black Friday</div>
+    <div class="container heroi-grade">
+      <div>
+        <div class="selos"><span class="selo-bf">Black Friday</span><span class="selo-publico">Para escritórios de contabilidade</span></div>
+        <h1>1.000 notas fiscais em <span class="destaque">5 minutos.</span><br>O ano todo por<br><span class="preco-tarja">R$ 29,90</span></h1>
+        <p class="sub">Chega de emitir nota uma por uma e de entrar no portal empresa por empresa. A Contask NF emite em lote e ainda baixa sozinha as NFS-e prestadas e tomadas de todos os seus clientes.</p>
+        <div class="acoes">
+          <a class="btn btn-azul" href="#oferta">Quero a oferta <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+          <a class="btn btn-contorno" href="#como-funciona">Ver como funciona</a>
+        </div>
+        <ul class="checks">
+          <li><svg class="ok" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="m5 12 5 5L20 7"/></svg>Sem instalar nada</li>
+          <li><svg class="ok" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="m5 12 5 5L20 7"/></svg>Empresas ilimitadas</li>
+          <li><svg class="ok" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="m5 12 5 5L20 7"/></svg>Suporte por WhatsApp</li>
+        </ul>
+      </div>
+
+      <div class="oferta" id="oferta">
+        <div class="desconto" aria-hidden="true"><b>−97%</b><small>OFF</small></div>
+        <p class="rotulo">Oferta Black Friday</p>
+        <p class="de">de R$ 958,80 (12 × R$ 79,90)</p>
+        <div class="preco"><b>R$ 29,90</b><span>pelos 12 meses</span></div>
+        <div class="contador" data-relogio="caixas" role="timer" aria-label="Tempo restante da oferta">
+          <div><b data-u="d">--</b><small>dias</small></div>
+          <div><b data-u="h">--</b><small>horas</small></div>
+          <div><b data-u="m">--</b><small>min</small></div>
+          <div><b data-u="s">--</b><small>seg</small></div>
+        </div>
+        <ul class="lista-ok">
+          <li><svg class="ok" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="m5 12 5 5L20 7"/></svg>Até 1.000 notas emitidas por mês</li>
+          <li><svg class="ok" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="m5 12 5 5L20 7"/></svg>Download automático das NFS-e</li>
+          <li><svg class="ok" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="m5 12 5 5L20 7"/></svg>12 meses de acesso, preço travado</li>
+        </ul>
+
+        <form id="form" novalidate>
+          <div id="erro" class="erro" role="alert" hidden></div>
+          <div class="campo"><label for="nome">Nome</label><input id="nome" name="nome" autocomplete="name" placeholder="Seu nome" required maxlength="200"></div>
+          <div class="linha">
+            <div class="campo"><label for="telefone">WhatsApp</label><input id="telefone" name="telefone" type="tel" inputmode="tel" autocomplete="tel-national" placeholder="(61) 90000-0000" required maxlength="16"></div>
+            <div class="campo"><label for="email">E-mail</label><input id="email" name="email" type="email" inputmode="email" autocomplete="email" placeholder="voce@escritorio.com" required maxlength="200"></div>
+          </div>
+          <div class="linha">
+            <div class="campo"><label for="escritorio">Escritório</label><input id="escritorio" name="escritorio" autocomplete="organization" placeholder="Nome do escritório" required maxlength="200"></div>
+            <div class="campo"><label for="notas_mes">Notas por mês</label>
+              <select id="notas_mes" name="notas_mes">
+                <option value="ate_100">Até 100</option>
+                <option value="100_500">100 a 500</option>
+                <option value="500_1000">500 a 1.000</option>
+                <option value="acima_1000">Mais de 1.000</option>
+              </select></div>
+          </div>
+          <div style="position:absolute;left:-9999px" aria-hidden="true"><label>Site <input name="site" tabindex="-1" autocomplete="off"></label></div>
+          <label class="aceite"><input type="checkbox" name="aceita_whatsapp" checked> Aceito receber mensagens da Contask no WhatsApp sobre meu acesso.</label>
+          <button class="btn btn-azul enviar" id="enviar" type="submit">Garantir por R$ 29,90</button>
+          <p class="nota-form">Nossa equipe envia o link de pagamento pelo seu WhatsApp. Pix ou cartão.</p>
+        </form>
+
+        <div id="sucesso" class="sucesso" tabindex="-1" hidden>
+          <div class="icone"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="m5 12 5 5L20 7"/></svg></div>
+          <h3 id="sucesso-titulo">Oferta garantida!</h3>
+          <p id="sucesso-texto"></p>
+          <a class="btn btn-contorno" data-whats="Olá! Acabei de garantir a oferta de Black Friday do Contask NF." href="https://wa.me/5561996543664" target="_blank" rel="noopener">Falar agora no WhatsApp</a>
+        </div>
+
+        <div id="encerrada" class="encerrada" hidden>
+          <p>A oferta de Black Friday terminou. Ainda dá para conhecer o Contask NF com 30 dias grátis.</p>
+          <a class="btn btn-azul" href="/30-dias-gratis/#teste">Testar 30 dias grátis</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="fita-caixa" aria-hidden="true"><div class="fita"><div class="faixa"><div class="trilho">
+    <span>Emissão em lote <i class="bola"></i> NFS-e baixadas sozinhas <i class="bola"></i> 12 meses por R$ 29,90 <i class="bola"></i> Emissão em lote <i class="bola"></i> NFS-e baixadas sozinhas <i class="bola"></i> 12 meses por R$ 29,90 <i class="bola"></i></span>
+    <span>Emissão em lote <i class="bola"></i> NFS-e baixadas sozinhas <i class="bola"></i> 12 meses por R$ 29,90 <i class="bola"></i> Emissão em lote <i class="bola"></i> NFS-e baixadas sozinhas <i class="bola"></i> 12 meses por R$ 29,90 <i class="bola"></i></span>
+  </div></div></div></div>
+
+  <section class="bloco" id="como-funciona">
+    <div class="container">
+      <p class="sobretitulo">Como funciona</p>
+      <h2>Do arquivo à nota emitida em 3 passos</h2>
+      <ol class="passos">
+        <li><span class="num">01</span><h3>Importe suas empresas</h3><p>Suba a planilha XLSX ou CSV com os clientes do escritório.</p></li>
+        <li><span class="num">02</span><h3>Monte o lote</h3><p>Rascunhos, duplicação e notas recorrentes, com proteção contra nota duplicada.</p></li>
+        <li><span class="num">03</span><h3>Emita tudo de uma vez</h3><p>Um clique, e as notas saem. O DANFSe em PDF fica pronto pra enviar.</p></li>
+      </ol>
+      <div class="comparar">
+        <div>
+          <h3>Sem a Contask</h3>
+          <ul>
+            <li><svg class="x" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>Uma nota por vez, empresa por empresa</li>
+            <li><svg class="x" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>XML baixado um a um no portal</li>
+            <li><svg class="x" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>Fechamento atrasado todo mês</li>
+          </ul>
+        </div>
+        <div class="com">
+          <h3>Com a Contask NF</h3>
+          <ul>
+            <li><svg class="ok" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="m5 12 5 5L20 7"/></svg>1.000 notas emitidas em menos de 5 minutos</li>
+            <li><svg class="ok" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="m5 12 5 5L20 7"/></svg>NFS-e baixadas sozinhas, por procuração</li>
+            <li><svg class="ok" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="m5 12 5 5L20 7"/></svg>Exportação em ZIP e relatórios em Excel/PDF</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="faq-sec">
+    <div class="container faq">
+      <h2>Perguntas frequentes</h2>
+      <details><summary>E se eu emitir mais de 1.000 notas no mês?</summary>
+        <p>Escolha "Mais de 1.000" no formulário. A gente chama no WhatsApp para montar um plano personalizado para o volume do seu escritório.</p></details>
+      <details><summary>O preço sobe depois de 12 meses?</summary>
+        <p>Nos 12 meses o valor fica travado em R$ 29,90. Antes de terminar o período, avisamos o valor da renovação e você decide se continua.</p></details>
+      <details><summary>Quando começo a usar?</summary>
+        <p>Assim que o pagamento é confirmado, você recebe o acesso por e-mail e o passo a passo para começar pelo WhatsApp.</p></details>
+      <details><summary>E se eu não gostar?</summary>
+        <p>Você tem 7 dias depois da compra para desistir e receber o valor de volta, sem precisar explicar o motivo.</p></details>
+    </div>
+  </section>
+
+  <section class="final">
+    <div class="container">
+      <h2>12 meses de Contask NF por R$&nbsp;29,90. Só até sexta.</h2>
+      <p class="relogio-grande" data-relogio="longo" aria-hidden="true">--d : --h : --m : --s</p>
+      <a class="btn btn-preto" href="#oferta">Garantir minha oferta</a>
+    </div>
+    <div class="marca-dagua" aria-hidden="true">Black Friday</div>
+  </section>
+</main>
+
+<footer>
+  <div class="container">
+    <span>© 2026 Contask NF. Oferta válida até 27/11/2026, 23h59 (horário de Brasília).</span>
+    <span><a href="/">Página inicial</a> · <a data-whats="Olá! Tenho uma dúvida sobre a Black Friday do Contask NF." href="https://wa.me/5561996543664" target="_blank" rel="noopener">WhatsApp (61) 99654-3664</a></span>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const FIM = new Date("2026-11-27T23:59:59-03:00").getTime();
+  const dois = (n) => String(n).padStart(2, "0");
+  let encerrou = false;
+
+  // Links de WhatsApp com mensagem pronta
+  document.querySelectorAll("[data-whats]").forEach((a) => { a.href = "https://wa.me/5561996543664?text=" + encodeURIComponent(a.dataset.whats); });
+
+  function encerrar() {
+    encerrou = true;
+    document.getElementById("form").hidden = true;
+    document.getElementById("encerrada").hidden = false;
+    document.querySelectorAll('a[href="#oferta"]').forEach((a) => { a.textContent = "Ver opções"; });
+  }
+
+  function tique() {
+    const resta = Math.max(0, FIM - Date.now());
+    const d = Math.floor(resta / 864e5), h = Math.floor(resta / 36e5) % 24, m = Math.floor(resta / 6e4) % 60, s = Math.floor(resta / 1e3) % 60;
+    document.querySelectorAll('[data-relogio="curto"]').forEach((el) => { el.textContent = `${dois(d)} d ${dois(h)} h ${dois(m)} m ${dois(s)} s`; });
+    document.querySelectorAll('[data-relogio="longo"]').forEach((el) => { el.textContent = `${dois(d)}d : ${dois(h)}h : ${dois(m)}m : ${dois(s)}s`; });
+    const caixas = document.querySelector('[data-relogio="caixas"]');
+    for (const [u, v] of Object.entries({ d, h, m, s })) caixas.querySelector(`[data-u="${u}"]`).textContent = dois(v);
+    if (resta === 0 && !encerrou) encerrar();
+  }
+  tique();
+  setInterval(tique, 1000);
+
+  // Máscara do WhatsApp
+  const tel = document.getElementById("telefone");
+  tel.addEventListener("input", () => {
+    let d = tel.value.replace(/\D/g, "").slice(0, 11);
+    tel.value = d.length > 10 ? `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`
+      : d.length > 6 ? `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`
+      : d.length > 2 ? `(${d.slice(0, 2)}) ${d.slice(2)}` : d.length ? `(${d}` : "";
+  });
+
+  const form = document.getElementById("form");
+  const caixaErro = document.getElementById("erro");
+  const botao = document.getElementById("enviar");
+  const textoBotao = botao.innerHTML;
+  function mostrarErro(msg, campo) {
+    caixaErro.textContent = msg;
+    caixaErro.hidden = false;
+    form.querySelectorAll("[aria-invalid]").forEach((el) => el.removeAttribute("aria-invalid"));
+    if (campo) { campo.setAttribute("aria-invalid", "true"); campo.focus(); }
+  }
+
+  form.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    caixaErro.hidden = true;
+    const f = form.elements;
+    const nome = f.nome.value.trim(), escritorio = f.escritorio.value.trim(), email = f.email.value.trim();
+    const digitos = f.telefone.value.replace(/\D/g, "");
+    if (nome.length < 2) return mostrarErro("Informe seu nome.", f.nome);
+    if (digitos.length < 10) return mostrarErro("Informe o WhatsApp com DDD, por exemplo (61) 99999-9999.", f.telefone);
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return mostrarErro("Informe um e-mail válido.", f.email);
+    if (escritorio.length < 2) return mostrarErro("Informe o nome do escritório.", f.escritorio);
+
+    botao.disabled = true;
+    botao.innerHTML = '<span class="girando" aria-hidden="true"></span> Enviando…';
+    const ref = document.referrer && !document.referrer.startsWith(location.origin) ? ` (de ${new URL(document.referrer).hostname})` : "";
+    try {
+      const r = await fetch("/api/publico/black-friday", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nome, escritorio, email, telefone: digitos, notas_mes: f.notas_mes.value,
+          aceita_whatsapp: f.aceita_whatsapp.checked, origem: (location.pathname + location.search + ref).slice(0, 300),
+          site: f.site.value || null }),
+      });
+      const corpo = await r.json().catch(() => ({}));
+      if (r.status === 410) { encerrar(); return; }
+      if (!r.ok) {
+        const msg = typeof corpo.detail === "string" ? corpo.detail : "Confira os dados e tente de novo.";
+        throw new Error(r.status >= 500 ? "Não foi possível enviar agora. Tente de novo em instantes ou chame no WhatsApp." : msg);
+      }
+      const personalizado = corpo.situacao === "plano_personalizado";
+      document.getElementById("sucesso-titulo").textContent = personalizado ? "Recebemos seu pedido!" : "Oferta garantida!";
+      const p = document.getElementById("sucesso-texto");
+      p.textContent = personalizado
+        ? "Como o escritório emite mais de 1.000 notas por mês, vamos montar um plano personalizado. Chamamos você no WhatsApp " + f.telefone.value + "."
+        : "Seu preço de R$ 29,90 por 12 meses está reservado. Enviamos o link de pagamento (Pix ou cartão) para o WhatsApp " + f.telefone.value + ".";
+      form.hidden = true;
+      const ok = document.getElementById("sucesso");
+      ok.hidden = false;
+      ok.focus();
+    } catch (e) {
+      mostrarErro(e instanceof TypeError ? "Sem conexão com o servidor. Verifique a internet e tente de novo." : e.message);
+    } finally {
+      botao.disabled = false;
+      botao.innerHTML = textoBotao;
+    }
+  });
+})();
+</script>
+</body>
+</html>

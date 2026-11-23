@@ -129,7 +129,7 @@ def test_painel_lista_edita_exporta_e_reenvia(site, cliente):
     assert r.json() == {"id": lead["id"], "etapa": "em_contato", "observacoes": "Ligar segunda"}
     assert cliente.put(f"/api/admin/leads/{lead['id']}", json={"etapa": "xpto"}).status_code == 422
     csv = cliente.get("/api/admin/leads/exportar")
-    assert csv.status_code == 200 and "Contábil Exemplo Ltda;Contabilidade;contato@exemplo.com.br;61999998888;Em contato;Em teste" in csv.content.decode("utf-8-sig")
+    assert csv.status_code == 200 and "Teste grátis;Contábil Exemplo Ltda;;Contabilidade;contato@exemplo.com.br;61999998888;;;Em contato;Em teste" in csv.content.decode("utf-8-sig")
     # reenviar: senha nova, a antiga deixa de valer
     antiga = _senha(site[0]["texto"])
     assert cliente.post(f"/api/admin/leads/{lead['id']}/reenviar").json() == {"email_status": "enviado"}
@@ -149,3 +149,68 @@ def test_fim_do_teste_trava_o_acesso(site, cliente):
     texto = site[0]["texto"]
     r = cliente.post("/api/auth/entrar", json={"email": "contato@exemplo.com.br", "senha": _senha(texto)})
     assert r.status_code == 401 and "período de teste" in r.json()["detail"]
+
+
+# --- Black Friday ---------------------------------------------------------------------------------
+
+BF = {"nome": "Ana Souza", "escritorio": "Contábil Aurora", "email": "Ana@Aurora.com.br", "telefone": "(61) 98888-7777",
+      "notas_mes": "100_500", "aceita_whatsapp": True, "origem": "/black-friday/?utm_source=linkedin"}
+
+
+@pytest.fixture()
+def oferta_aberta(monkeypatch):
+    from datetime import datetime
+    from app.api import leads
+    monkeypatch.setattr(leads, "BLACK_FRIDAY_ATE", datetime(2999, 1, 1, tzinfo=escritorios.BRASILIA))
+    return leads
+
+
+def _bf(cliente, **extra):
+    cliente.cookies.clear()
+    return cliente.post("/api/publico/black-friday", json={**BF, **extra}, headers={"Origin": SITE})
+
+
+def test_black_friday_grava_o_lead_sem_criar_conta_e_avisa_a_equipe(site, oferta_aberta, cliente):
+    r = _bf(cliente)
+    assert r.status_code == 201, r.text
+    assert r.json() == {"situacao": "oferta"}
+    with nova_sessao() as db:
+        lead = db.query(Lead).one()
+        assert (lead.campanha, lead.nome, lead.contato, lead.email, lead.telefone) == (
+            "black_friday", "Contábil Aurora", "Ana Souza", "ana@aurora.com.br", "61988887777")
+        assert (lead.notas_mes, lead.aceita_whatsapp, lead.resultado, lead.escritorio_id) == ("100_500", True, "oferta", None)
+        assert db.query(Usuario).filter_by(email="ana@aurora.com.br").first() is None
+    (aviso,) = site
+    assert aviso["para"] == "notas@contasknf.com.br" and "Contábil Aurora" in aviso["assunto"]
+    assert "61988887777" in aviso["texto"]
+
+
+def test_black_friday_acima_de_mil_notas_vira_plano_personalizado(site, oferta_aberta, cliente):
+    assert _bf(cliente, notas_mes="acima_1000").json() == {"situacao": "plano_personalizado"}
+    assert "Plano personalizado" in site[0]["assunto"]
+
+
+def test_black_friday_valida_os_campos(site, oferta_aberta, cliente):
+    assert _bf(cliente, notas_mes="10_mil").status_code == 422
+    assert _bf(cliente, email="sem-arroba").status_code == 422
+    assert _bf(cliente, telefone="1234").status_code == 422
+
+
+def test_black_friday_encerrada_recusa(site, cliente, monkeypatch):
+    from datetime import datetime
+    from app.api import leads
+    monkeypatch.setattr(leads, "BLACK_FRIDAY_ATE", datetime(2000, 1, 1, tzinfo=escritorios.BRASILIA))
+    assert _bf(cliente).status_code == 410
+
+
+def test_black_friday_aparece_no_painel_e_na_exportacao(site, oferta_aberta, cliente):
+    _bf(cliente, notas_mes="acima_1000")
+    cliente.cookies.clear()
+    from tests.conftest import SENHA_TESTE
+    assert cliente.post("/api/auth/entrar", json={"email": "teste@contask.local", "senha": SENHA_TESTE}).status_code == 200
+    _admin(cliente)
+    (lead,) = cliente.get("/api/admin/leads").json()["leads"]
+    assert (lead["campanha_rotulo"], lead["contato"], lead["notas_mes_rotulo"], lead["escritorio"]) == (
+        "Black Friday", "Ana Souza", "Mais de 1.000 notas/mês", None)
+    csv = cliente.get("/api/admin/leads/exportar").content.decode("utf-8")
+    assert "Black Friday;Contábil Aurora;Ana Souza" in csv and "Plano personalizado" in csv
