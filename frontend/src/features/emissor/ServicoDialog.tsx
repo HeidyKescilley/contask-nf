@@ -11,6 +11,7 @@ import {
   type Sugestao,
 } from "@/lib/emissor";
 import { cn } from "@/lib/utils";
+import { CamposIbsCbs } from "./CamposIbsCbs";
 
 function useAtraso<T>(valor: T, ms = 250) {
   const [v, setV] = useState(valor);
@@ -168,22 +169,14 @@ export function ServicoDialog({ empresaId, servico, aberto, aoFechar, aoSalvar, 
           {issnet && f.ctribnac && (
             <CodigoMunicipalDf ctribnac={f.ctribnac} valor={f.ctribmun} aoMudar={(v) => setF({ ...f, ctribmun: v })} />
           )}
-          <div className={cn("grid gap-3", issnet ? "grid-cols-2" : "grid-cols-3")}>
-            {!issnet && (
-              <Campo rotulo="Código municipal" ajuda="Complementar, se o município usar (3 dígitos).">
-                {(p) => <Input {...p} value={f.ctribmun} inputMode="numeric" maxLength={3}
-                  onChange={(e) => setF({ ...f, ctribmun: apenasDigitos(e.target.value) })} placeholder="Opcional" />}
-              </Campo>
-            )}
-            <Campo rotulo="cIndOp (IBS/CBS)" obrigatorio={ibsObrigatorio} ajuda="Indicador da operação (Anexo VII). Sugerido pela NBS.">
-              {(p) => <Input {...p} value={f.cindop} inputMode="numeric" maxLength={6}
-                onChange={(e) => setF({ ...f, cindop: apenasDigitos(e.target.value) })} placeholder={ibsObrigatorio ? "6 dígitos" : "Opcional"} />}
+          {!issnet && (
+            <Campo rotulo="Código municipal" ajuda="Complementar, se o município usar (3 dígitos)." className="max-w-xs">
+              {(p) => <Input {...p} value={f.ctribmun} inputMode="numeric" maxLength={3}
+                onChange={(e) => setF({ ...f, ctribmun: apenasDigitos(e.target.value) })} placeholder="Opcional" />}
             </Campo>
-            <Campo rotulo="cClassTrib (IBS/CBS)" obrigatorio={ibsObrigatorio} ajuda="Classificação tributária. O CST são os 3 primeiros dígitos (000001 = tributação integral). Sugerido pela NBS.">
-              {(p) => <Input {...p} value={f.cclasstrib} inputMode="numeric" maxLength={6}
-                onChange={(e) => setF({ ...f, cclasstrib: apenasDigitos(e.target.value) })} placeholder={ibsObrigatorio ? "6 dígitos" : "Opcional"} />}
-            </Campo>
-          </div>
+          )}
+          <CamposIbsCbs ctribnac={f.ctribnac} cnbs={f.cnbs} cindop={f.cindop} cclasstrib={f.cclasstrib} obrigatorio={ibsObrigatorio}
+            aoMudar={(c) => setF((a) => ({ ...a, ...c }))} />
           {exigeIbsCbs && !issnet && <Aviso tom="info">Empresa fora do Simples: a nota leva o grupo IBS/CBS com esses códigos. Os valores de IBS e CBS (em 2026, CBS 0,9% e IBS 0,1%, só informativos) são calculados pela Sefin na autorização.</Aviso>}
           {issnet && <Aviso tom="info">No ISSNet do DF, o código municipal e o grupo IBS/CBS (cIndOp e cClassTrib) são obrigatórios. A alíquota do ISS vem do cadastro da empresa no ISSNet.</Aviso>}
 

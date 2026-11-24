@@ -238,6 +238,22 @@ def _validar_servico(d: ServicoIn) -> dict:
     return {"descricao": descricao, **_validar_codigos(d), "ativo": d.ativo}
 
 
+def validar_ibscbs(cindop: str | None, cclasstrib: str | None) -> dict:
+    """cIndOp e cClassTrib: 6 dígitos e presentes nas tabelas oficiais que valem para a NFS-e."""
+    campos = {}
+    for nome, v, rotulo, achar in (("cindop", cindop, "O indicador da operação (cIndOp)", tabelas.cindop),
+                                   ("cclasstrib", cclasstrib, "A classificação tributária (cClassTrib)", tabelas.cclasstrib)):
+        v = _dig(v)
+        if v and len(v) != 6:
+            raise HTTPException(422, f"{rotulo} deve ter 6 dígitos.")
+        if v and achar(v) is None:
+            raise HTTPException(422, f"{rotulo} {v} não está entre os códigos que valem para a NFS-e. Escolha um da lista.")
+        if nome == "cclasstrib" and v in tabelas.SO_PESSOA_FISICA:
+            raise HTTPException(422, f"O cClassTrib {v} é só para prestador pessoa física (autônomo ou nanoempreendedor).")
+        campos[nome] = v or None
+    return campos
+
+
 def _validar_codigos(d: CodigosServicoIn) -> dict:
     ctrib, nbs = _dig(d.ctribnac), _dig(d.cnbs)
     if tabelas.servico(ctrib) is None:
@@ -245,12 +261,7 @@ def _validar_codigos(d: CodigosServicoIn) -> dict:
     if len(nbs) != 9 or tabelas.nbs_descricao(nbs) is None:
         raise HTTPException(422, "Código NBS não encontrado na tabela oficial (NBS 2.0).")
     campos = {"ctribnac": ctrib, "cnbs": nbs}
-    for nome, tam, rotulo in (("cindop", 6, "O indicador da operação (cIndOp)"),
-                              ("cclasstrib", 6, "A classificação tributária (cClassTrib)")):
-        v = _dig(getattr(d, nome))
-        if v and len(v) != tam:
-            raise HTTPException(422, f"{rotulo} deve ter {tam} dígitos.")
-        campos[nome] = v or None
+    campos.update(validar_ibscbs(d.cindop, d.cclasstrib))
     mun = _dig(d.ctribmun)
     if len(mun) > 10:
         raise HTTPException(422, "O código municipal deve ter até 10 dígitos (3 no padrão nacional; até 10 no ISSNet do DF).")
@@ -460,6 +471,12 @@ def codigos_nbs(q: str = "", limite: int = Query(30, ge=1, le=200)):
     return tabelas.buscar_nbs(q, limite)
 
 
+@router.get("/codigos/ibscbs")
+def codigos_ibscbs(ctribnac: str = "", cnbs: str = ""):
+    """cIndOp e cClassTrib que valem para a NFS-e, com os sugeridos para o serviço (Anexo VIII) primeiro."""
+    return tabelas.opcoes_ibscbs(_dig(ctribnac) or None, _dig(cnbs) or None)
+
+
 @router.get("/codigos/sugestoes/{ctribnac}")
 def codigos_sugestoes(ctribnac: str):
     return tabelas.sugestoes(_dig(ctribnac))
@@ -600,6 +617,9 @@ class EmissaoIn(BaseModel):
     empresa_id: int
     servico_id: int | None = None
     servico: CodigosServicoIn | None = None  # sem serviço cadastrado: os códigos vêm da nota duplicada
+    # IBS/CBS desta nota; em branco, valem os do serviço
+    cindop: str | None = None
+    cclasstrib: str | None = None
     descricao: str | None = None
     competencia: date
     valor: Decimal = Field(gt=0)
@@ -641,6 +661,7 @@ def _entrada(d: EmissaoIn):
         texto_simples=d.texto_simples, texto_procon=d.texto_procon, texto_fixo=d.texto_fixo,
         servico_codigos=_validar_codigos(d.servico) if d.servico and not d.servico_id else None,
         substituicao=_substituicao(d.substituicao),
+        ibscbs={k: v for k, v in validar_ibscbs(d.cindop, d.cclasstrib).items() if v},
     )
 
 

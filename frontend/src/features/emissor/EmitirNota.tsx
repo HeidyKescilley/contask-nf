@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
-  AlertTriangle, Building2, CheckCircle2, Download, FileSearch, FileText, Loader2, Plus, ReceiptText, Repeat, RotateCcw, Save, Search, Send,
+  AlertTriangle, Building2, CheckCircle2, Download, FileSearch, FileText, Loader2, Pencil, Plus, ReceiptText, Repeat, RotateCcw, Save, Search, Send,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -26,6 +26,7 @@ import { formatarDoc, mascararCnpj, UFS } from "@/lib/formato";
 import { moeda } from "@/lib/notas";
 import { cn } from "@/lib/utils";
 import { AbasEmissor } from "./Abas";
+import { CamposIbsCbs } from "./CamposIbsCbs";
 import { ServicoDialog } from "./ServicoDialog";
 
 const RETENCOES = [
@@ -62,6 +63,9 @@ export interface Form {
   textoProcon: boolean;
   /** texto fixo da empresa (cadastro do emissor) */
   textoFixo: boolean;
+  /** IBS/CBS escolhidos nesta nota; em branco, valem os do serviço */
+  cindop: string;
+  cclasstrib: string;
 }
 
 export function hoje() {
@@ -72,7 +76,8 @@ export function hoje() {
 export function vazio(): Form {
   return { servicoId: null, servicoNota: null, localPrestacao: "", descricao: "", competencia: hoje(), valor: "", desconto: "", semTomador: false,
     tomador: TOMADOR_VAZIO, salvarTomador: true, issRetido: false, aliquota: "",
-    ret: { ret_pis: "", ret_cofins: "", ret_csll: "", ret_irrf: "", ret_cp: "" }, info: "", textoSimples: true, textoProcon: true, textoFixo: true };
+    ret: { ret_pis: "", ret_cofins: "", ret_csll: "", ret_irrf: "", ret_cp: "" }, info: "", textoSimples: true, textoProcon: true, textoFixo: true,
+    cindop: "", cclasstrib: "" };
 }
 
 const doTomador = (t: Partial<Tomador> | null | undefined): Tomador =>
@@ -98,7 +103,9 @@ export function daNota(n: NotaEmitida | ModeloAdn, duplicar = false): Form {
     ret: { ret_pis: v2(n.ret_pis), ret_cofins: v2(n.ret_cofins), ret_csll: v2(n.ret_csll), ret_irrf: v2(n.ret_irrf), ret_cp: v2(n.ret_cp) },
     info: n.info_usuario ?? "", textoSimples: padrao || n.texto_simples, textoProcon: padrao || n.texto_procon,
     // Duplicar: o texto fixo vale (inclusive de notas anteriores a ele); corrigir ou substituir: como estava
-    textoFixo: duplicar || (n.texto_fixo ?? true) };
+    textoFixo: duplicar || (n.texto_fixo ?? true),
+    // os códigos IBS/CBS da nota original (inclusive os escolhidos só nela)
+    cindop: n.cindop ?? "", cclasstrib: n.cclasstrib ?? "" };
 }
 
 /** Corpo salvo (rascunho ou recorrência) -> formulário. */
@@ -116,6 +123,7 @@ export function doCorpo(d: CorpoEmissao): Form {
     ret: { ret_pis: v(d.ret_pis), ret_cofins: v(d.ret_cofins), ret_csll: v(d.ret_csll), ret_irrf: v(d.ret_irrf), ret_cp: v(d.ret_cp) },
     info: d.info_complementar ?? "", textoSimples: d.texto_simples ?? true, textoProcon: d.texto_procon ?? true,
     textoFixo: d.texto_fixo ?? true,
+    cindop: d.cindop ?? "", cclasstrib: d.cclasstrib ?? "",
   };
 }
 
@@ -246,6 +254,7 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
   const [resultado, setResultado] = useState<NotaEmitida | null>(null);
   const [revisar, setRevisar] = useState(false);
   const [novoServico, setNovoServico] = useState(false);
+  const [editarServico, setEditarServico] = useState(false);
   const atualizar = useAtualizarEmissor();
   const navegar = useNavigate();
   const modoRec = !!recorrencia;
@@ -280,11 +289,16 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
   }, [servicos.data]);
 
   function escolherServico(s: Servico | undefined) {
-    setF((a) => ({ ...a, servicoId: s?.id ?? null, descricao: s?.descricao ?? "" }));
+    setF((a) => ({ ...a, servicoId: s?.id ?? null, descricao: s?.descricao ?? "", cindop: "", cclasstrib: "" }));
   }
   const DA_NOTA = "nota";
   const usaNota = !f.servicoId && !!f.servicoNota;
-  const codigosAtuais: Partial<CodigosServico> | null = f.servicoId ? servicos.data?.find((x) => x.id === f.servicoId) ?? null : f.servicoNota;
+  const servicoAtual = f.servicoId ? servicos.data?.find((x) => x.id === f.servicoId) ?? null : null;
+  const codigosAtuais: Partial<CodigosServico> | null = f.servicoId ? servicoAtual : f.servicoNota;
+  // Grupo IBS/CBS na nota: empresa fora do Simples (Sefin) ou ISSNet do DF
+  const mostraIbs = !!cfg?.exige_ibscbs || empresa.canal === "issnet_df";
+  const cindopFinal = f.cindop || codigosAtuais?.cindop || "";
+  const cclasstribFinal = f.cclasstrib || codigosAtuais?.cclasstrib || "";
 
   const valor = num(f.valor);
   const desconto = num(f.desconto);
@@ -311,6 +325,7 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
     if (desconhecidas.length) problemas.push(`Variável desconhecida: ${desconhecidas.map((x) => `{${x}}`).join(", ")}.`);
   }
   if (!f.servicoId && !f.servicoNota) problemas.push("Escolha o serviço.");
+  else if (mostraIbs && (!cindopFinal || !cclasstribFinal)) problemas.push("Escolha o cIndOp e o cClassTrib (IBS/CBS) da nota.");
   if (f.localPrestacao && apenasDigitos(f.localPrestacao).length !== 7) problemas.push("O local da prestação deve ter o código IBGE de 7 dígitos.");
   if (!f.descricao.trim()) problemas.push("Informe a descrição do serviço.");
   if (!(valor > 0)) problemas.push("Informe o valor do serviço.");
@@ -338,6 +353,7 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
     servico: f.servicoId || !f.servicoNota ? null : { ctribnac: f.servicoNota.ctribnac, cnbs: f.servicoNota.cnbs,
       ctribmun: f.servicoNota.ctribmun, cindop: f.servicoNota.cindop, cclasstrib: f.servicoNota.cclasstrib },
     cod_municipio_prestacao: apenasDigitos(f.localPrestacao) || null,
+    cindop: mostraIbs ? f.cindop || null : null, cclasstrib: mostraIbs ? f.cclasstrib || null : null,
     valor: fixo(f.valor), desconto: desconto.toFixed(2),
     tomador: f.semTomador ? null : { ...t, documento: doc },
     salvar_tomador: f.salvarTomador, iss_retido: f.issRetido,
@@ -424,7 +440,7 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
           <div className="mt-6 flex flex-wrap justify-center gap-2">
             <Button asChild variante="primario"><a href={`/api/emissor/notas/${resultado.id}/danfse`} target="_blank" rel="noreferrer"><FileText /> Abrir DANFSe</a></Button>
             {!teste.emTeste && <Button asChild><a href={`/api/emissor/notas/${resultado.id}/xml`}><Download /> Baixar XML</a></Button>}
-            <Button onClick={() => { setResultado(null); setF({ ...vazio(), servicoId: f.servicoId, servicoNota: f.servicoNota, localPrestacao: f.localPrestacao, descricao: f.descricao }); }}><Plus /> Emitir outra nota</Button>
+            <Button onClick={() => { setResultado(null); setF({ ...vazio(), servicoId: f.servicoId, servicoNota: f.servicoNota, localPrestacao: f.localPrestacao, descricao: f.descricao, cindop: f.cindop, cclasstrib: f.cclasstrib }); }}><Plus /> Emitir outra nota</Button>
             <Button variante="fantasma" onClick={() => navegar(`/emissor?empresa=${empresa.id}`)}>Ver notas</Button>
           </div>
         </div>
@@ -655,6 +671,22 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
                         <Save /> Salvar como serviço
                       </Button>
                     )}
+                    {servicoAtual && (
+                      <Button type="button" tamanho="pequeno" variante="fantasma" onClick={() => setEditarServico(true)}>
+                        <Pencil /> Editar serviço
+                      </Button>
+                    )}
+                  </div>
+                )}
+                {mostraIbs && codigosAtuais && (
+                  <div className="rounded-xl border border-borda p-3">
+                    <p className="mb-2 text-xs text-texto-2">
+                      IBS/CBS desta nota. {f.servicoId ? "Mude aqui só para esta nota; para todas, edite o serviço." : "Vieram da nota original."}
+                    </p>
+                    <CamposIbsCbs ctribnac={codigosAtuais.ctribnac} cnbs={codigosAtuais.cnbs} obrigatorio
+                      cindop={f.cindop} cclasstrib={f.cclasstrib}
+                      padraoCindop={f.servicoId ? codigosAtuais.cindop : null} padraoCclasstrib={f.servicoId ? codigosAtuais.cclasstrib : null}
+                      aoMudar={(c) => setF((a) => ({ ...a, ...c }))} />
                   </div>
                 )}
                 <Campo rotulo="Descrição nesta nota" obrigatorio
@@ -822,6 +854,7 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
               : <Linha rotulo="Competência" valor={f.competencia.split("-").reverse().join("/")} />}
             <Linha rotulo="Valor" valor={moeda(valor)} />
             <Linha rotulo="ISS" valor={f.issRetido ? "Retido pelo tomador" : "Não retido"} />
+            {mostraIbs && <Linha rotulo="IBS/CBS" valor={`cIndOp ${cindopFinal || "-"} · cClassTrib ${cclasstribFinal || "-"}`} />}
             {federais > 0 && <Linha rotulo="Retenções federais" valor={moeda(federais)} />}
           </dl>
           {problemas.length > 0 && (
@@ -857,6 +890,8 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
         exigeIbsCbs={!!empresa.config?.exige_ibscbs} aoFechar={() => setNovoServico(false)}
         modelo={usaNota && f.servicoNota ? { ...f.servicoNota, descricao: f.descricao } : null}
         aoSalvar={(s) => setF((a) => ({ ...a, servicoId: s.id, descricao: usaNota ? a.descricao : s.descricao }))} />
+      <ServicoDialog empresaId={empresa.id} servico={servicoAtual} aberto={editarServico && !!servicoAtual} canal={empresa.canal}
+        exigeIbsCbs={!!empresa.config?.exige_ibscbs} aoFechar={() => setEditarServico(false)} />
     </div>
   );
 }

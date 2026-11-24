@@ -100,6 +100,24 @@ export interface Servico {
 
 export interface CodigoServico { codigo: string; codigo_formatado: string; item: string; descricao: string }
 export interface CodigoNbs { codigo: string; codigo_formatado: string; descricao: string }
+export interface OpcaoCIndOp {
+  codigo: string; tipo: string; caracteristica: string; local: string; incidencia: string;
+  sugerido: boolean; exige_endereco_tomador: boolean;
+}
+export interface OpcaoCClassTrib {
+  codigo: string; cst: string; nome_cst: string; nome: string; red_ibs: number; red_cbs: number; lei: string | null; sugerido: boolean;
+}
+export interface OpcoesIbsCbs { cindop: OpcaoCIndOp[]; cclasstrib: OpcaoCClassTrib[] }
+
+/** cIndOp e cClassTrib que valem para a NFS-e da empresa, com os sugeridos para o serviço (Anexo VIII) primeiro. */
+export function useOpcoesIbsCbs(ctribnac?: string | null, cnbs?: string | null) {
+  return useQuery({
+    queryKey: ["emissor", "ibscbs", ctribnac ?? "", cnbs ?? ""],
+    queryFn: () => api<OpcoesIbsCbs>(`/api/emissor/codigos/ibscbs?${new URLSearchParams({ ctribnac: ctribnac ?? "", cnbs: cnbs ?? "" })}`),
+    staleTime: Infinity,
+  });
+}
+
 export interface Sugestao { nbs: string; nbs_formatado: string; nbs_descricao: string | null; cindop: string | null; cclasstrib: string | null }
 
 export interface Tomador {
@@ -352,6 +370,9 @@ export interface CorpoEmissao {
   servico_id?: number | null;
   /** sem serviço cadastrado: os códigos vêm da nota duplicada */
   servico?: CodigosServico | null;
+  /** IBS/CBS desta nota (em branco: os do serviço) */
+  cindop?: string | null;
+  cclasstrib?: string | null;
   cod_municipio_prestacao?: string | null;
   descricao?: string;
   competencia?: string;

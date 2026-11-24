@@ -71,3 +71,42 @@ def sugestoes(ctribnac: str) -> list[dict]:
     """NBS, cIndOp e cClassTrib que o Anexo VIII relaciona ao item do código de tributação nacional."""
     lista = _dados()["correlacao"].get(item_do_codigo(ctribnac), [])
     return [{**s, "nbs_formatado": formatar_nbs(s["nbs"]), "nbs_descricao": nbs_descricao(s["nbs"])} for s in lista]
+
+
+# --- IBS/CBS: cIndOp (Anexo VII) e cClassTrib (Conformidade Fácil), gerados por app.tools.tabelas_ibscbs ---
+
+ARQUIVO_IBSCBS = Path(__file__).with_name("tabelas_ibscbs.json")
+# cClassTrib só de pessoa física (autônomo, nanoempreendedor): o prestador do Contask é sempre CNPJ
+SO_PESSOA_FISICA = {"000006", "200055", "200056", "410015", "410035"}
+INCIDENCIA_TOMADOR = "Endereço do Tomador/Adquirente"
+
+
+@lru_cache
+def _ibscbs() -> dict:
+    return json.loads(ARQUIVO_IBSCBS.read_text(encoding="utf-8"))
+
+
+def cindop(codigo: str | None) -> dict | None:
+    return next((c for c in _ibscbs()["cindop"] if c["codigo"] == codigo), None)
+
+
+def cclasstrib(codigo: str | None) -> dict | None:
+    return next((c for c in _ibscbs()["cclasstrib"] if c["codigo"] == codigo), None)
+
+
+def opcoes_ibscbs(ctribnac: str | None = None, cnbs: str | None = None) -> dict:
+    """Listas de cIndOp e cClassTrib que valem para a NFS-e de uma empresa (CNPJ), com as sugeridas para o
+    serviço primeiro: as que o Anexo VIII liga ao item (e, se informada, à NBS) vêm marcadas como sugeridas."""
+    corr = _dados()["correlacao"].get(item_do_codigo(ctribnac), []) if ctribnac and len(ctribnac) == 6 else []
+    da_nbs = [c for c in corr if c["nbs"] == cnbs] if cnbs else []
+    ordem_ind = [c["cindop"] for c in da_nbs + corr if c.get("cindop")]
+    ordem_cls = [c["cclasstrib"] for c in da_nbs + corr if c.get("cclasstrib")]
+
+    def montar(lista: list[dict], ordem: list[str]) -> list[dict]:
+        pos = {cod: i for i, cod in reversed(list(enumerate(ordem)))}
+        saida = [{**x, "sugerido": x["codigo"] in pos} for x in lista]
+        return sorted(saida, key=lambda x: (pos.get(x["codigo"], len(pos)), x["codigo"]))
+
+    ind = [{**c, "exige_endereco_tomador": c["incidencia"] == INCIDENCIA_TOMADOR} for c in _ibscbs()["cindop"]]
+    cls = [c for c in _ibscbs()["cclasstrib"] if c["codigo"] not in SO_PESSOA_FISICA]
+    return {"cindop": montar(ind, ordem_ind), "cclasstrib": montar(cls, ordem_cls)}

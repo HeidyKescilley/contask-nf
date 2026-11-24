@@ -144,6 +144,8 @@ class Entrada:
     # Substituição: {"nota_id": nota do Contask} ou {"nota_adn_id": nota prestada vinda do ADN}, mais motivo e
     # justificativa (ver dps.MOTIVOS_SUBSTITUICAO)
     substituicao: dict | None = None
+    # cIndOp/cClassTrib escolhidos na nota: valem no lugar dos do serviço
+    ibscbs: dict = field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------
@@ -263,6 +265,7 @@ def _preencher(db: Session, nota: NotaEmitida, e: Empresa, cfg: EmissorEmpresa, 
         codigos = ent.servico_codigos
     else:
         raise ErroEmissao("Escolha o serviço (ou cadastre um novo).")
+    codigos = {**codigos, **ent.ibscbs}
     descricao = (ent.descricao or "").strip() or (serv.descricao if serv else "")
     if not descricao:
         raise ErroEmissao("Informe a descrição do serviço.")
