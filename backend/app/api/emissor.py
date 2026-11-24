@@ -744,6 +744,22 @@ def emitir_nota(dados: EmissaoIn, request: Request, db: Session = Depends(sessao
     return _nota_out(db, n)
 
 
+@router.post("/notas/previa")
+def previa_nota(dados: EmissaoIn, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
+    """PDF da nota antes de transmitir, no leiaute do DANFSe, marcado como sem valor fiscal.
+    Não assina, não gasta número, não grava nada e não fala com a Sefin."""
+    from app.emissor import motor, previa
+    try:
+        pdf, _ = previa.gerar(db, esc, _entrada(dados))
+    except motor.ErroEmissao as ex:
+        raise _erro_emissao(ex) from None
+    finally:
+        db.rollback()  # nada da prévia fica no banco (o código IBGE descoberto já foi gravado antes)
+    return Response(pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": 'inline; filename="Previa_NFS-e_sem_valor_fiscal.pdf"',
+                             "Cache-Control": "no-store"})
+
+
 @router.get("/notas")
 def listar_notas(empresa_id: int | None = None, situacao: str | None = None, ambiente: int | None = Query(None, ge=1, le=2),
                  limite: int = Query(100, ge=1, le=500),

@@ -318,8 +318,13 @@ L1, L2 = 5.09, 10.19  # larguras de 1 e 2 colunas
 H = 0.63
 
 
-def gerar_danfse(xml: bytes, *, marca_dagua: str | None = None) -> bytes:
-    """Gera o PDF. `marca_dagua`: "CANCELADA" ou "SUBSTITUÍDA" (item 2.5)."""
+AVISO_PREVIA = "PRÉVIA - SEM VALOR FISCAL"
+
+
+def gerar_danfse(xml: bytes, *, marca_dagua: str | None = None, previa: bool = False) -> bytes:
+    """Gera o PDF. `marca_dagua`: "CANCELADA" ou "SUBSTITUÍDA" (item 2.5).
+    `previa`: o XML é a NFS-e montada pelo Contask antes da transmissão (emissor.previa); sai o mesmo
+    leiaute, com o aviso de que não tem valor fiscal no lugar da chave, do QR code e da situação."""
     try:
         raiz = etree.fromstring(xml, etree.XMLParser(resolve_entities=False, no_network=True))
     except etree.XMLSyntaxError as e:
@@ -333,7 +338,7 @@ def gerar_danfse(xml: bytes, *, marca_dagua: str | None = None) -> bytes:
 
     buf = io.BytesIO()
     c = Canvas(buf, pagesize=A4)
-    c.setTitle(f"DANFSe {chave}")
+    c.setTitle("Prévia da NFS-e (sem valor fiscal)" if previa else f"DANFSe {chave}")
     c.setAuthor("Gerado a partir do XML da NFS-e (NT SE/CGNFS-e 008/2026)")
     d = Desenho(c)
 
@@ -349,12 +354,12 @@ def gerar_danfse(xml: bytes, *, marca_dagua: str | None = None) -> bytes:
                     preserveAspectRatio=True, anchor="w", mask="auto")
     c.setFont(d.rotb, 9)
     homolog = dps.t("tpAmb") == "2"
-    yc = d.alt_pagina - 0.30 * cm - (0.62 if homolog else 0.48) * cm
+    yc = d.alt_pagina - 0.30 * cm - (0.62 if homolog or previa else 0.48) * cm
     c.drawCentredString(10.50 * cm, yc, "DANFSe v2.0")
     c.drawCentredString(10.50 * cm, yc - 11, "Documento Auxiliar da NFS-e")
-    if homolog:
+    if homolog or previa:
         c.setFillColor(Color(1, 0, 0))
-        c.drawCentredString(10.50 * cm, yc - 22, "NFS-e SEM VALIDADE JURÍDICA")
+        c.drawCentredString(10.50 * cm, yc - 22, AVISO_PREVIA if previa else "NFS-e SEM VALIDADE JURÍDICA")
         c.setFillColor(black)
     c_trib = dps.t("serv/cServ/cTribNac") or ""
     c.setFont(d.cont, 8)
@@ -367,30 +372,48 @@ def gerar_danfse(xml: bytes, *, marca_dagua: str | None = None) -> bytes:
 
     # ---- Dados da NFS-e ----------------------------------------------------------------------------
     d.caixa(0.30, 1.48, 20.40, 2.84)
-    d.campo(0.30, 1.48, 15.30, 0.77, "CHAVE DE ACESSO DA NFS-E", chave, rotulo_tam=7, valor_tam=9)
+    d.campo(0.30, 1.48, 15.30, 0.77, "CHAVE DE ACESSO DA NFS-E",
+            "Gerada pela Sefin na autorização" if previa else chave, rotulo_tam=7, valor_tam=9)
     linha = [
         [("NÚMERO DA NFS-E", inf.t("nNFSe")), ("COMPETÊNCIA DA NFS-E", data(dps.t("dCompet"))),
          ("DATA E HORA DA EMISSÃO DA NFS-E", data_hora(inf.t("dhProc")))],
         [("NÚMERO DA DPS", dps.t("nDPS")), ("SÉRIE DA DPS", dps.t("serie")),
          ("DATA E HORA DA EMISSÃO DA DPS", data_hora(dps.t("dhEmi")))],
         [("EMITENTE DA NFS-E", T_EMIT.get(dps.t("tpEmit") or "", dps.t("tpEmit"))),
-         ("SITUAÇÃO DA NFS-E", T_CSTAT.get(inf.t("cStat") or "", inf.t("cStat"))),
+         ("SITUAÇÃO DA NFS-E", "Prévia, não transmitida" if previa else T_CSTAT.get(inf.t("cStat") or "", inf.t("cStat"))),
          ("FINALIDADE", T_FIN.get(ibscbs_dps.t("finNFSe") or "", ibscbs_dps.t("finNFSe")))],
     ]
     for i, campos in enumerate(linha):
         y = 2.27 + i * 0.69
         for j, (rot, val) in enumerate(campos):
             d.campo(COLS[j], y, L1, 0.67, rot, val, rotulo_tam=7, fundo=(rot == "EMITENTE DA NFS-E"))
-    qr = QrCodeWidget(URL_QR + chave)
-    b = qr.getBounds()
-    tam = 1.52 * cm
-    dr = Drawing(tam, tam, transform=[tam / (b[2] - b[0]), 0, 0, tam / (b[3] - b[1]), 0, 0])
-    dr.add(qr)
-    renderPDF.draw(dr, c, 17.48 * cm, d._y(1.67, 1.52))
-    c.setFont(d.cont, 6)
-    for i, t in enumerate(["A autenticidade desta NFS-e pode ser verificada", "pela leitura deste código QR ou pela consulta da",
-                           "chave de acesso no portal nacional da NFS-e"]):
-        c.drawCentredString(18.16 * cm, d._y(3.36 + i * 0.22, 0.20), t)
+    if previa:
+        # Sem QR code: não há nota para consultar no portal
+        c.saveState()
+        c.setStrokeColor(Color(1, 0, 0))
+        c.setLineWidth(1.2)
+        c.rect(15.80 * cm, d._y(1.67, 1.52), 4.72 * cm, 1.52 * cm)
+        c.setFillColor(Color(1, 0, 0))
+        c.setFont(d.rotb, 12)
+        c.drawCentredString(18.16 * cm, d._y(1.67, 0.75), "PRÉVIA")
+        c.setFont(d.rotb, 7)
+        c.drawCentredString(18.16 * cm, d._y(2.42, 0.40), "SEM VALOR FISCAL")
+        c.restoreState()
+        c.setFont(d.cont, 6)
+        for i, t in enumerate(["Documento gerado antes da transmissão.", "Não é NFS-e: número, chave e valores",
+                               "finais são definidos pela Sefin."]):
+            c.drawCentredString(18.16 * cm, d._y(3.36 + i * 0.22, 0.20), t)
+    else:
+        qr = QrCodeWidget(URL_QR + chave)
+        b = qr.getBounds()
+        tam = 1.52 * cm
+        dr = Drawing(tam, tam, transform=[tam / (b[2] - b[0]), 0, 0, tam / (b[3] - b[1]), 0, 0])
+        dr.add(qr)
+        renderPDF.draw(dr, c, 17.48 * cm, d._y(1.67, 1.52))
+        c.setFont(d.cont, 6)
+        for i, t in enumerate(["A autenticidade desta NFS-e pode ser verificada", "pela leitura deste código QR ou pela consulta da",
+                               "chave de acesso no portal nacional da NFS-e"]):
+            c.drawCentredString(18.16 * cm, d._y(3.36 + i * 0.22, 0.20), t)
 
     y = 4.34
 
@@ -536,10 +559,12 @@ def gerar_danfse(xml: bytes, *, marca_dagua: str | None = None) -> bytes:
 
     # ---- Tributação IBS/CBS --------------------------------------------------------------------------------
     gtrib = ibscbs_dps.g("valores/trib/gIBSCBS")
+    trib_ib = ibscbs_dps.g("valores/trib")  # NT 009: CST e cClassTrib direto em trib
     iv = ibscbs.g("valores")
     tot = ibscbs.g("totCIBS")
     d.titulo(COLS[0], y, L1, H, "Tributação IBS / CBS")
-    d.campo(COLS[1], y, L1, H, "CST / cClassTrib", junta(gtrib.t("CST"), gtrib.t("cClassTrib")))
+    d.campo(COLS[1], y, L1, H, "CST / cClassTrib", junta(gtrib.t("CST") or trib_ib.t("CST"),
+                                                          gtrib.t("cClassTrib") or trib_ib.t("cClassTrib")))
     loc_inc = ibscbs.t("cLocalidadeIncid")
     d.campo(COLS[2], y, L2, H, "Indicador de Operação / Código IBGE Incidência / Município Incidência / Sigla UF",
             junta(ibscbs_dps.t("cIndOp"), loc_inc, ibscbs.t("xLocalidadeIncid"),

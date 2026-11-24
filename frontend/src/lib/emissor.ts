@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
-import { api, type SituacaoCert } from "./api";
+import { api, apiArquivo, ErroApi, type SituacaoCert } from "./api";
 
 export interface ConfigPrestador {
   inscricao_municipal: string | null;
@@ -525,3 +525,28 @@ export function escreverValor(n: number | null | undefined): string {
 }
 
 export const arredondar = (n: number) => Math.round(n * 100) / 100;
+
+/** Prévia da nota (PDF no leiaute do DANFSe, sem valor fiscal). A aba é aberta já no clique, antes da
+ *  resposta, senão o navegador bloqueia como pop-up; sem aba (bloqueada mesmo assim), o PDF é baixado. */
+export async function abrirPrevia(corpo: CorpoEmissao & { empresa_id: number }): Promise<void> {
+  const aba = window.open("", "_blank");
+  if (aba) aba.document.title = "Gerando a prévia…";
+  try {
+    const pdf = await apiArquivo("/api/emissor/notas/previa", corpo);
+    const url = URL.createObjectURL(pdf);
+    if (aba && !aba.closed) aba.location.href = url;
+    else {
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "Previa_NFS-e_sem_valor_fiscal.pdf";
+      a.click();
+    }
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  } catch (e) {
+    aba?.close();
+    // 422 da validação de campos (sem mensagem própria): falta algo obrigatório no formulário
+    if (e instanceof ErroApi && e.status === 422 && e.message === "Erro 422")
+      throw new ErroApi(422, "Preencha o serviço, a competência e o valor para gerar a prévia.");
+    throw e;
+  }
+}

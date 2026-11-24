@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
-  AlertTriangle, Building2, CheckCircle2, Download, FileText, Loader2, Plus, ReceiptText, Repeat, RotateCcw, Save, Search, Send,
+  AlertTriangle, Building2, CheckCircle2, Download, FileSearch, FileText, Loader2, Plus, ReceiptText, Repeat, RotateCcw, Save, Search, Send,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -13,7 +13,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Painel } from "@/features/empresas/Passos";
 import { api } from "@/lib/api";
 import {
-  TEXTO_PROCON, TEXTO_SIMPLES, VARIAVEIS, aplicarVariaveis, apenasDigitos, arredondar, codigosIguais, escreverValor, lerValor, mascararCep,
+  TEXTO_PROCON, TEXTO_SIMPLES, VARIAVEIS, abrirPrevia, aplicarVariaveis, apenasDigitos, arredondar, codigosIguais, escreverValor, lerValor, mascararCep,
   proximaData, useAtualizarEmissor, useEmpresasEmissoras, useServicos, variaveisDesconhecidas,
   MOTIVOS_SUBSTITUICAO,
   type CodigosServico, type ConsultaTomador, type CorpoEmissao, type EmpresaEmissora, type ModeloAdn, type NotaEmitida, type Rascunho,
@@ -372,6 +372,11 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
         : api<Rascunho>("/api/emissor/rascunhos", { method: "POST", body });
     },
     onSuccess: (r) => { atualizar(); setRascunho(r.id); toast.success("Rascunho salvo. Ele fica na página de notas para emitir depois."); },
+    onError: (err) => toast.error((err as Error).message),
+  });
+
+  const previa = useMutation({
+    mutationFn: () => abrirPrevia(corpo()),
     onError: (err) => toast.error((err as Error).message),
   });
 
@@ -792,6 +797,9 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
                   {salvarRascunho.isPending ? <Loader2 className="animate-spin" /> : <Save />} {rascunho ? "Atualizar rascunho" : "Salvar rascunho"}
                 </Button>
               )}
+              <Button className="mt-2 w-full" variante="fantasma" disabled={previa.isPending} onClick={() => previa.mutate()}>
+                {previa.isPending ? <><Loader2 className="animate-spin" /> Gerando a prévia…</> : <><FileSearch /> Ver prévia em PDF</>}
+              </Button>
             </>
           )}
           {producao

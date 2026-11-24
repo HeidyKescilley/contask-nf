@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import {
-  AlertTriangle, BadgeCheck, Ban, Building2, ChevronLeft, ChevronRight, Clock, Copy, Download, FilePen, FileText, Loader2,
+  AlertTriangle, BadgeCheck, Ban, Building2, ChevronLeft, ChevronRight, Clock, Copy, Download, FilePen, FileSearch, FileText, Loader2,
   Lock, MoreHorizontal, Plus, ReceiptText, RefreshCw, Repeat, Replace, RotateCcw, Search, Trash2, X, XCircle,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -16,7 +16,7 @@ import { Dica } from "@/components/ui/tooltip";
 import { Painel } from "@/features/empresas/Passos";
 import { api } from "@/lib/api";
 import {
-  lerValor, useAtualizarEmissor, useEmpresasEmissoras, useNotasEmpresa, useRascunhos,
+  abrirPrevia, lerValor, useAtualizarEmissor, useEmpresasEmissoras, useNotasEmpresa, useRascunhos,
   type FiltrosNotas, type ItemNota, type NotaEmitida, type Rascunho,
 } from "@/lib/emissor";
 import { nomeExibicao, useEmpresaSelecionada } from "@/lib/empresas";
@@ -347,6 +347,10 @@ function Rascunhos({ itens, empresaId }: { itens: Rascunho[]; empresaId: number 
     onSuccess: () => { atualizar(); toast.success("Rascunho excluído."); },
     onError: (err) => toast.error((err as Error).message),
   });
+  const previa = useMutation({
+    mutationFn: (r: Rascunho) => abrirPrevia({ ...r.dados, empresa_id: r.empresa_id }),
+    onError: (err) => toast.error(`Prévia: ${(err as Error).message}`),
+  });
   return (
     <Painel titulo={`Rascunhos (${itens.length})`} descricao="Notas preenchidas e guardadas para emitir depois.">
       <ul className="divide-y divide-borda rounded-xl border border-borda">
@@ -360,6 +364,11 @@ function Rascunhos({ itens, empresaId }: { itens: Rascunho[]; empresaId: number 
                 <p className="truncate text-xs text-texto-2">{r.descricao || "Sem descrição"} · salvo em {formatarDataHora(r.atualizado_em)}</p>
               </div>
               <div className="flex gap-1">
+                <Button tamanho="pequeno" variante="fantasma" disabled={previa.isPending && previa.variables?.id === r.id}
+                  onClick={() => previa.mutate(r)} aria-label="Prévia em PDF, sem valor fiscal">
+                  {previa.isPending && previa.variables?.id === r.id ? <Loader2 className="animate-spin" /> : <FileSearch />}
+                  <span className="hidden sm:inline">Prévia</span>
+                </Button>
                 <Button tamanho="pequeno" asChild><Link to={`/emissor/emitir?rascunho=${r.id}&empresa=${empresaId}`}>Continuar</Link></Button>
                 <Button tamanho="icone" variante="fantasma" aria-label="Excluir rascunho" disabled={excluir.isPending}
                   onClick={() => { if (window.confirm("Excluir este rascunho?")) excluir.mutate(r); }}><Trash2 /></Button>

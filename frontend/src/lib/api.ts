@@ -42,6 +42,14 @@ export async function api<T>(caminho: string, init?: RequestInit): Promise<T> {
   return tratar<T>(await chamar(caminho, { ...init, headers: { ...headers, ...(init?.headers as object) } }));
 }
 
+/** POST com JSON que devolve um arquivo (PDF). Erros têm o mesmo tratamento de api(). */
+export async function apiArquivo(caminho: string, corpo: unknown): Promise<Blob> {
+  const r = await chamar(caminho, { method: "POST", body: JSON.stringify(corpo),
+    headers: { Accept: "application/pdf, application/json", "Content-Type": "application/json" } });
+  if (!r.ok) await tratar(r);  // lança ErroApi com a mensagem do servidor
+  return r.blob();
+}
+
 /** Envio multipart (certificado + campos). O navegador define o Content-Type com o boundary. */
 export async function apiForm<T>(caminho: string, dados: Record<string, string | Blob | null | undefined>, method = "POST"): Promise<T> {
   const fd = new FormData();
