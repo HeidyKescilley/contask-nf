@@ -352,7 +352,10 @@ def montar(d: DadosDps, leiaute: str | None = None) -> etree._Element:
         # ME/EPP informa o percentual aproximado do Simples, nunca indTotTrib (E0712)
         _e(tt, "pTotTribSN", _dec(d.percentual_tributos_sn if d.percentual_tributos_sn is not None else Decimal("0")))
     else:
-        _e(tt, "indTotTrib", 0)
+        # Não optante: a Sefin recusa indTotTrib e pTotTribSN (E0713); vai o percentual aproximado, zerado
+        pt = _e(tt, "pTotTrib")
+        for tag in ("pTotTribFed", "pTotTribEst", "pTotTribMun"):
+            _e(pt, tag, "0.00")
     if exige_ibscbs(d.prestador):
         _ibscbs(inf, d, nt009)
     return raiz

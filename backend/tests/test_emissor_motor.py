@@ -71,9 +71,13 @@ def test_assinatura_usa_canonicalizacao_exclusiva():
     assert not assinatura.conferir(raiz)
 
 
-def test_nao_optante_usa_indicador_de_tributos():
+def test_nao_optante_usa_percentual_zerado_por_esfera():
+    """E0713: para não optante a Sefin recusa indTotTrib e pTotTribSN (Veritas, 18 e 24/11/2026)."""
     inf = montar(_dados(op="1"))[0]
-    assert inf.find("n:valores/n:trib/n:totTrib/n:indTotTrib", NS).text == "0"
+    tt = inf.find("n:valores/n:trib/n:totTrib", NS)
+    assert tt.find("n:indTotTrib", NS) is None and tt.find("n:pTotTribSN", NS) is None
+    assert [(etree.QName(e).localname, e.text) for e in tt.find("n:pTotTrib", NS)] == [
+        ("pTotTribFed", "0.00"), ("pTotTribEst", "0.00"), ("pTotTribMun", "0.00")]
     assert inf.find("n:prest/n:regTrib/n:regApTribSN", NS) is None
 
 
