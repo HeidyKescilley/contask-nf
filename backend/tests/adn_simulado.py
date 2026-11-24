@@ -64,6 +64,8 @@ class ADNSimulado:
     atraso: float = 0.0
     docs: dict[str, list[Doc]] = field(default_factory=dict)
     sem_procuracao: set[str] = field(default_factory=set)
+    # CNPJ -> certificados (hash do .pfx, ver cert_id) que têm a procuração; os demais recebem E2245
+    procuracao_so_de: dict[str, set[str]] = field(default_factory=dict)
     roteiro: list[str] = field(default_factory=list)  # "429:7", "503", "rede", "tls", "morrer"
     chamadas: list[tuple[str, int]] = field(default_factory=list)
     _lock: threading.Lock = field(default_factory=threading.Lock)
@@ -85,6 +87,10 @@ class ADNSimulado:
     def adicionar_evento(self, cnpj: str, chave: str, codigo: str, **kw) -> int:
         return self.adicionar(cnpj, "EVENTO", chave, evento_xml(chave, codigo, **kw), TIPOS_EVENTO.get(codigo, "OUTRO"))
 
+    @staticmethod
+    def cert_id(pfx: bytes) -> str:
+        return hashlib.sha256(pfx).hexdigest()[:12]
+
     # --- transporte -----------------------------------------------------------------
     def fabrica(self, pfx: bytes, senha: str):
         from app.adn.cliente import ClienteADN
@@ -102,13 +108,13 @@ class ADNSimulado:
         try:
             if self.atraso:
                 time.sleep(self.atraso * (0.5 + random.random()))
-            return self._resposta(req, acao)
+            return self._resposta(req, acao, cert)
         finally:
             with self._lock:
                 self.ativos_por_cert[cert] -= 1
                 self.ativos_total -= 1
 
-    def _resposta(self, req: httpx.Request, acao: str | None) -> httpx.Response:
+    def _resposta(self, req: httpx.Request, acao: str | None, cert: str = "") -> httpx.Response:
         if acao == "morrer":
             raise FalhaSimulada("processo encerrado no meio da busca")
         if acao == "rede":
@@ -128,7 +134,7 @@ class ADNSimulado:
         assert req.url.params.get("lote") == "true"
         self.chamadas.append((cnpj, nsu))
         base = {"TipoAmbiente": "PRODUCAO", "VersaoAplicativo": "1.0.0.0", "Alertas": []}
-        if cnpj in self.sem_procuracao:
+        if cnpj in self.sem_procuracao or (cnpj in self.procuracao_so_de and cert not in self.procuracao_so_de[cnpj]):
             return httpx.Response(400, json={**base, "TipoConsulta": "InscricaoCertificado", "StatusProcessamento": "REJEICAO",
                                              "LoteDFe": [], "Erros": [{"Codigo": "E2245", "Descricao": f"Não há procuração da inscrição X para a inscrição {cnpj}."}]})
         lote = [d for d in self.docs.get(cnpj, []) if d.nsu > nsu][: self.lote]  # NSU exclusivo

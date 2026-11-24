@@ -137,10 +137,9 @@ def certificado_procuracao(db: Session, e: Empresa) -> Certificado | None:
     Desde 01/11/2026 a Sefin de produção aceita a DPS assinada pelo procurador. A produção restrita
     ainda recusa (E0718), e o cancelamento por procuração é recusado nos dois ambientes (E0812/E0813).
     """
-    if e.is_contabilidade or e.modo_certificado != "contabilidade":
-        return None
-    contab = db.scalar(select(Empresa).where(Empresa.escritorio_id == e.escritorio_id, Empresa.is_contabilidade))
-    return db.get(Certificado, contab.certificado_id) if contab and contab.certificado_id else None
+    from app.core import procuracao
+    # Com dois certificados na contabilidade, vale o que a busca no ADN confirmou ter a procuração da empresa
+    return procuracao.certificado_procurador(db, e)
 
 
 def certificado_emissor(db: Session, e: Empresa) -> Certificado | None:

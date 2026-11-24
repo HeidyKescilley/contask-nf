@@ -151,6 +151,10 @@ class Empresa(Base):
     is_contabilidade: Mapped[bool] = mapped_column(Boolean, default=False)
     modo_certificado: Mapped[str] = mapped_column(String(15), default="contabilidade")  # proprio|contabilidade
     certificado_id: Mapped[int | None] = mapped_column(ForeignKey("certificado.id", ondelete="SET NULL"))
+    # Só na contabilidade: segundo certificado de procurador (em geral o e-CPF do contador)
+    certificado_extra_id: Mapped[int | None] = mapped_column(ForeignKey("certificado.id", ondelete="SET NULL"))
+    # Empresa por procuração: o certificado da contabilidade que tem a procuração dela (descoberto na busca)
+    certificado_procurador_id: Mapped[int | None] = mapped_column(ForeignKey("certificado.id", ondelete="SET NULL"))
     ativa: Mapped[bool] = mapped_column(Boolean, default=True)
     # Emite NFS-e pelo emissor do Contask (exige certificado próprio: procuração não assina DPS, E0718)
     emite_nfse: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))

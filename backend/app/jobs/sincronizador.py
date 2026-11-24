@@ -24,6 +24,7 @@ from app.adn.cliente import (
     ClienteADN, DocDFe, ErroADN, ErroCertificadoADN, ErroProcuracao, ErroTemporario, RespostaDFe,
 )
 from app.core.certificados import carregar_pfx, situacao_validade
+from app.core import procuracao
 from app.core.config import config
 from app.core.uso import limite_atingido
 from app.fiscal.parser import XmlInvalido, parse_evento, parse_nfse
@@ -54,10 +55,17 @@ class Contexto:
 # ---------------------------------------------------------------------------
 
 def certificado_da_empresa(db: Session, e: Empresa) -> Certificado | None:
-    if e.modo_certificado == "contabilidade" and not e.is_contabilidade:
-        c = db.scalar(select(Empresa).where(Empresa.escritorio_id == e.escritorio_id, Empresa.is_contabilidade))
-        return db.get(Certificado, c.certificado_id) if c and c.certificado_id else None
+    if procuracao.por_procuracao(e):
+        return procuracao.certificado_procurador(db, e)
     return db.get(Certificado, e.certificado_id) if e.certificado_id else None
+
+
+def certificados_da_busca(db: Session, e: Empresa) -> list[Certificado]:
+    """Por procuração: os certificados da contabilidade, o padrão da empresa primeiro. Senão, o próprio."""
+    if procuracao.por_procuracao(e):
+        return procuracao.candidatos(db, e)
+    c = certificado_da_empresa(db, e)
+    return [c] if c else []
 
 
 def _gravar(caminho: Path, dados: bytes) -> None:
@@ -225,25 +233,32 @@ def executar_job(job_id: int, sessao_factory: Callable[[], Session], ctx: Contex
         job.ultimo_nsu = sync.ultimo_nsu
         sync.situacao, sync.ultimo_erro = "buscando", None
 
-        cert = certificado_da_empresa(db, empresa)
-        if cert is None or situacao_validade(cert.validade) == "vencido":
-            msg = "Sem certificado para a busca." if cert is None else \
-                f"Certificado de {cert.titular_nome} vencido em {cert.validade:%d/%m/%Y}."
+        lista = certificados_da_busca(db, empresa)
+        validos = [c for c in lista if situacao_validade(c.validade) != "vencido"]
+        if not validos:
+            msg = "Sem certificado para a busca." if not lista else                 f"Certificado de {lista[0].titular_nome} vencido em {lista[0].validade:%d/%m/%Y}."
             return _finalizar_erro(db, job, sync, "erro_certificado", msg, ctx)
+        cert = validos[0]
+        tentados = [cert]
 
         registrar(db, job, f"Início ({job.tipo}) a partir do NSU {sync.ultimo_nsu}, com o certificado de {cert.titular_nome}.")
         db.commit()
         ctx.publicar(resumo_job(db, job))
 
+        def abrir(c: Certificado):
+            pfx, senha = carregar_pfx(c)
+            try:
+                return ctx.fabrica(pfx, senha)
+            finally:
+                del senha
+
         try:
-            pfx, senha = carregar_pfx(cert)
-            cliente = ctx.fabrica(pfx, senha)
-            del senha
+            cliente = abrir(cert)
         except Exception as e:  # noqa: BLE001
             log.exception("Falha ao carregar o certificado")
             return _finalizar_erro(db, job, sync, "erro_certificado", f"Não foi possível carregar o certificado: {type(e).__name__}.", ctx)
 
-        with cliente:
+        try:
             nsu = sync.ultimo_nsu
             while True:
                 db.refresh(job)
@@ -273,13 +288,36 @@ def executar_job(job_id: int, sessao_factory: Callable[[], Session], ctx: Contex
 
                 try:
                     resp = cliente.distribuicao(nsu, cnpj=empresa.cnpj, ao_esperar=_esperando)
-                except ErroProcuracao as e:
-                    return _finalizar_erro(db, job, sync, "sem_procuracao", str(e), ctx)
-                except ErroCertificadoADN as e:
-                    _erro_certificado_em_todas(db, cert.id, job.id)
-                    return _finalizar_erro(db, job, sync, "erro_certificado", str(e), ctx)
+                except (ErroProcuracao, ErroCertificadoADN) as e:
+                    sem_procuracao = isinstance(e, ErroProcuracao)
+                    proximo = next((c for c in validos if c not in tentados), None)
+                    if proximo is None:
+                        if not sem_procuracao:
+                            _erro_certificado_em_todas(db, cert.id, job.id)
+                        if sem_procuracao and len(tentados) > 1:
+                            nomes = " e ".join(c.titular_nome for c in tentados)
+                            msg = f"Nenhum dos certificados da contabilidade ({nomes}) tem procuração desta empresa. {e}"
+                        else:
+                            msg = str(e)
+                        return _finalizar_erro(db, job, sync, "sem_procuracao" if sem_procuracao else "erro_certificado", msg, ctx)
+                    motivo = "não tem procuração desta empresa" if sem_procuracao else "foi recusado pelo ADN"
+                    registrar(db, job, f"O certificado de {cert.titular_nome} {motivo}. Tentando o de {proximo.titular_nome}.", "aviso")
+                    db.commit()
+                    cliente.close()
+                    cert = proximo
+                    tentados.append(cert)
+                    try:
+                        cliente = abrir(cert)
+                    except Exception as ex:  # noqa: BLE001
+                        log.exception("Falha ao carregar o certificado")
+                        return _finalizar_erro(db, job, sync, "erro_certificado",
+                                               f"Não foi possível carregar o certificado: {type(ex).__name__}.", ctx)
+                    continue
                 except (ErroTemporario, ErroADN) as e:
                     return _finalizar_erro(db, job, sync, "erro", str(e), ctx)
+
+                if procuracao.por_procuracao(empresa) and procuracao.definir_padrao(empresa, cert) and len(validos) > 1:
+                    registrar(db, job, f"Procuração confirmada no certificado de {cert.titular_nome}: ele fica como padrão desta empresa.")
 
                 if resp.tipo_consulta:
                     sync.tipo_consulta = resp.tipo_consulta
@@ -316,6 +354,8 @@ def executar_job(job_id: int, sessao_factory: Callable[[], Session], ctx: Contex
                 nsu = maior
                 ctx.publicar(resumo_job(db, job))
                 ctx.dormir(ctx.pausa)
+        finally:
+            cliente.close()
 
 
 def _finalizar_erro(db: Session, job: BuscaJob, sync: SyncEstado, situacao: str, msg: str, ctx: Contexto) -> str:
@@ -331,8 +371,8 @@ def _erro_certificado_em_todas(db: Session, cert_id: int, job_atual: int) -> Non
     """Certificado recusado: os demais jobs na fila com o mesmo certificado não devem tentar."""
     for j in db.scalars(select(BuscaJob).where(BuscaJob.status == "fila", BuscaJob.id != job_atual)):
         e = db.get(Empresa, j.empresa_id)
-        c = certificado_da_empresa(db, e) if e else None
-        if c is not None and c.id == cert_id:
+        lista = certificados_da_busca(db, e) if e else []
+        if len(lista) == 1 and lista[0].id == cert_id:  # com outro certificado, a busca dela ainda tenta o outro
             j.status, j.mensagem, j.finalizado_em = "erro", "Certificado recusado pelo ADN em outra busca.", agora()
             s = db.get(SyncEstado, j.empresa_id)
             if s:

@@ -9,7 +9,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.api.escopo import escritorio_atual
-from app.core import brasilapi
+from app.core import brasilapi, procuracao
 from app.core.certificados import (
     CertificadoInvalido, InfoCertificado, dias_restantes, ler_pfx, remover_arquivo, salvar_certificado,
     situacao_validade, validar_para_uso,
@@ -38,9 +38,8 @@ def _contabilidade(db: Session, escritorio_id: int) -> Empresa | None:
 
 
 def certificado_efetivo(db: Session, e: Empresa) -> Certificado | None:
-    if e.modo_certificado == "contabilidade" and not e.is_contabilidade:
-        c = _contabilidade(db, e.escritorio_id)
-        return db.get(Certificado, c.certificado_id) if c and c.certificado_id else None
+    if procuracao.por_procuracao(e):
+        return procuracao.certificado_procurador(db, e)
     return db.get(Certificado, e.certificado_id) if e.certificado_id else None
 
 
@@ -81,6 +80,8 @@ def _serializar(db: Session, e: Empresa) -> EmpresaOut:
         uf=e.uf, municipio=e.municipio, situacao_cadastral=e.situacao_cadastral,
         is_contabilidade=e.is_contabilidade, ativa=e.ativa, emite_nfse=e.emite_nfse, modo_certificado=e.modo_certificado,
         acesso=_acesso(e, cert), certificado=_cert_out(cert),
+        certificado_extra=_cert_out(db.get(Certificado, e.certificado_extra_id)) if e.is_contabilidade and e.certificado_extra_id else None,
+        procuracao_confirmada=procuracao.por_procuracao(e) and cert is not None and e.certificado_procurador_id == cert.id,
         busca=BuscaResumo(situacao=sync.situacao, ultima_busca_em=sync.ultima_busca_em, ultimo_erro=sync.ultimo_erro,
                           tipo_consulta=sync.tipo_consulta, ultimo_nsu=sync.ultimo_nsu or 0, job_pendente=pendente > 0),
         total_notas=total, pendencias=outras + com_erro + sem_nota, criado_em=e.criado_em,
@@ -136,7 +137,8 @@ def _agendar_busca_inicial(db: Session, e: Empresa) -> None:
 def _remover_cert_orfao(db: Session, cert_id: int | None) -> None:
     if not cert_id:
         return
-    em_uso = db.scalar(select(func.count()).select_from(Empresa).where(Empresa.certificado_id == cert_id))
+    em_uso = db.scalar(select(func.count()).select_from(Empresa).where(
+        or_(Empresa.certificado_id == cert_id, Empresa.certificado_extra_id == cert_id)))
     if not em_uso:
         c = db.get(Certificado, cert_id)
         if c:
@@ -233,6 +235,11 @@ async def salvar_contabilidade(
     db.add(e)
     db.flush()
     if antigo_cert != cert.id:
+        if antigo_cert:  # o padrão das empresas que usavam o certificado antigo é descoberto de novo
+            for x in db.scalars(select(Empresa).where(Empresa.certificado_procurador_id == antigo_cert)):
+                x.certificado_procurador_id = None
+        if cert.id == e.certificado_extra_id:  # o segundo virou o principal
+            e.certificado_extra_id = None
         _remover_cert_orfao(db, antigo_cert)
     if propria and not e.emite_nfse:  # a conta de empresa existe para emitir: já nasce emissora
         from app.api.emissor import config_prestador
@@ -245,6 +252,65 @@ async def salvar_contabilidade(
     if info.dias_restantes < 30:
         avisos.append(f"O certificado vence em {info.validade:%d/%m/%Y} ({info.dias_restantes} dias).")
     return EmpresaCriada(empresa=_serializar(db, e), avisos=avisos)
+
+
+def _rebuscar_sem_procuracao(db: Session, esc: int) -> int:
+    """Certificado de procurador novo: as empresas que pararam por falta de procuração tentam de novo."""
+    n = 0
+    for e in db.scalars(select(Empresa).where(Empresa.escritorio_id == esc, Empresa.ativa,
+                                              Empresa.is_contabilidade.is_(False), Empresa.modo_certificado == "contabilidade")):
+        sync = db.get(SyncEstado, e.id)
+        if sync and sync.situacao == "sem_procuracao":
+            sync.situacao, sync.ultimo_erro = "nunca_buscada" if not sync.ultimo_nsu else "em_dia", None
+            _agendar_busca_inicial(db, e)
+            n += 1
+    return n
+
+
+@router.put("/contabilidade/certificado-extra", response_model=EmpresaCriada)
+async def salvar_certificado_extra(arquivo: UploadFile | None = File(None), senha: str | None = Form(None),
+                                   db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
+    """Segundo certificado de procurador (em geral o e-CPF do contador). A busca de cada empresa testa os
+    dois e fica com o que tem a procuração dela."""
+    exigir_conta_contador(db, esc)
+    c = _contabilidade(db, esc)
+    if c is None or not c.certificado_id:
+        raise HTTPException(409, "Cadastre primeiro a contabilidade e o certificado principal dela.")
+    pfx, senha_ok, info = await _ler_certificado(arquivo, senha)
+    principal = db.get(Certificado, c.certificado_id)
+    if principal is not None and principal.thumbprint == info.thumbprint:
+        raise HTTPException(409, "Este é o mesmo certificado principal da contabilidade. Envie o outro (por exemplo, o e-CPF do contador).")
+    antigo = c.certificado_extra_id
+    with db.no_autoflush:
+        cert = salvar_certificado(db, pfx, senha_ok, info, escritorio_id=esc)
+    c.certificado_extra_id = cert.id
+    db.flush()
+    if antigo and antigo != cert.id:
+        for e in db.scalars(select(Empresa).where(Empresa.certificado_procurador_id == antigo)):
+            e.certificado_procurador_id = None
+        _remover_cert_orfao(db, antigo)
+    n = _rebuscar_sem_procuracao(db, esc)
+    db.commit()
+    acordar_fila()
+    avisos = [f"{n} empresa(s) sem procuração no certificado principal vão ser buscadas de novo com os dois certificados."] if n else []
+    if info.dias_restantes < 30:
+        avisos.append(f"O certificado vence em {info.validade:%d/%m/%Y} ({info.dias_restantes} dias).")
+    return EmpresaCriada(empresa=_serializar(db, c), avisos=avisos)
+
+
+@router.delete("/contabilidade/certificado-extra", response_model=EmpresaOut)
+def remover_certificado_extra(db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
+    exigir_conta_contador(db, esc)
+    c = _contabilidade(db, esc)
+    if c is None or not c.certificado_extra_id:
+        raise HTTPException(404, "A contabilidade não tem segundo certificado.")
+    antigo, c.certificado_extra_id = c.certificado_extra_id, None
+    for e in db.scalars(select(Empresa).where(Empresa.certificado_procurador_id == antigo)):
+        e.certificado_procurador_id = None  # volta para o principal
+    db.flush()
+    _remover_cert_orfao(db, antigo)
+    db.commit()
+    return _serializar(db, c)
 
 
 # ---------------------------------------------------------------------------

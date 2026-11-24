@@ -14,7 +14,7 @@ import { api, apiForm, type Empresa, type EmpresaCriada } from "@/lib/api";
 import { nomeExibicao, useAtualizarEmpresas, useContabilidade } from "@/lib/empresas";
 import { formatarData, formatarDataHora, formatarDoc, limparCnpj, UFS } from "@/lib/formato";
 import { useContaEmpresa } from "@/lib/sessao";
-import { type CertificadoEscolhido } from "./CertificadoUpload";
+import { CertificadoUpload, type CertificadoEscolhido } from "./CertificadoUpload";
 import { EscolhaCertificado, type Modo } from "./NovaEmpresa";
 import { LinhaResumo, Painel } from "./Passos";
 
@@ -69,7 +69,7 @@ function Detalhe({ e }: { e: Empresa }) {
 
       <FormDados e={e} aoSalvar={atualizar} />
       <PainelEmissor e={e} aoSalvar={atualizar} />
-      {e.is_contabilidade ? <CertContabilidade e={e} /> : <TrocaCertificado e={e} aoSalvar={atualizar} />}
+      {e.is_contabilidade ? <CertContabilidade e={e} aoSalvar={atualizar} /> : <TrocaCertificado e={e} aoSalvar={atualizar} />}
       {!e.is_contabilidade && <ZonaPerigo e={e} aoSalvar={atualizar} />}
     </div>
   );
@@ -113,22 +113,84 @@ function FormDados({ e, aoSalvar }: { e: Empresa; aoSalvar: () => void }) {
   );
 }
 
-function CertContabilidade({ e }: { e: Empresa }) {
+function CertContabilidade({ e, aoSalvar }: { e: Empresa; aoSalvar: () => void }) {
   const c = e.certificado;
   const contaEmpresa = useContaEmpresa();
   return (
-    <Painel titulo={contaEmpresa ? "Certificado digital da empresa" : "Certificado da contabilidade"}
+    <Painel titulo={contaEmpresa ? "Certificado digital da empresa" : "Certificados da contabilidade"}
       descricao={contaEmpresa ? "Usado para emitir as notas e para buscar as que a empresa emitiu e recebeu."
-        : "Usado nas buscas por procuração de todas as empresas."}>
+        : "Usados nas buscas e emissões por procuração. Com dois, cada empresa usa o que tem a procuração dela."}>
       {c && (
         <dl>
+          {!contaEmpresa && <LinhaResumo rotulo="Principal">{c.tipo}</LinhaResumo>}
           <LinhaResumo rotulo="Titular">{c.titular_nome} <span className="font-mono text-texto-2">· {formatarDoc(c.titular_doc)}</span></LinhaResumo>
-          <LinhaResumo rotulo="Tipo">{c.tipo}</LinhaResumo>
-          <LinhaResumo rotulo="Validade"><span className="inline-flex items-center gap-2">{formatarData(c.validade)} <SeloCertificado cert={c} /></span></LinhaResumo>
+          {contaEmpresa && <LinhaResumo rotulo="Tipo">{c.tipo}</LinhaResumo>}
+          <LinhaResumo rotulo="Validade"><span className="inline-flex flex-wrap items-center gap-2">{formatarData(c.validade)} <SeloCertificado cert={c} /></span></LinhaResumo>
         </dl>
       )}
       <div className="mt-4"><Button asChild><Link to="/contabilidade">Enviar certificado renovado</Link></Button></div>
+      {!contaEmpresa && <SegundoCertificado e={e} aoSalvar={aoSalvar} />}
     </Painel>
+  );
+}
+
+/** Segundo certificado de procurador: em geral o e-CPF do contador, quando parte dos clientes deu a procuração a ele. */
+function SegundoCertificado({ e, aoSalvar }: { e: Empresa; aoSalvar: () => void }) {
+  const x = e.certificado_extra ?? null;
+  const [aberto, setAberto] = useState(false);
+  const [cert, setCert] = useState<CertificadoEscolhido | null>(null);
+  const salvar = useMutation({
+    mutationFn: () => apiForm<EmpresaCriada>("/api/contabilidade/certificado-extra", { arquivo: cert!.arquivo, senha: cert!.senha }, "PUT"),
+    onSuccess: (r) => {
+      aoSalvar();
+      toast.success("Segundo certificado salvo. Cada busca agora testa os dois.");
+      r.avisos.forEach((a) => toast.info(a));
+      setAberto(false);
+      setCert(null);
+    },
+  });
+  const remover = useMutation({
+    mutationFn: () => api<Empresa>("/api/contabilidade/certificado-extra", { method: "DELETE" }),
+    onSuccess: () => { aoSalvar(); toast.success("Segundo certificado removido. As empresas voltam a usar o principal."); },
+    onError: (err) => toast.error((err as Error).message),
+  });
+  return (
+    <div className="mt-5 border-t border-borda pt-4">
+      <h3 className="text-sm font-semibold">Segundo certificado</h3>
+      <p className="mt-0.5 text-sm text-texto-2">
+        Para quando parte dos clientes deu a procuração ao e-CPF do contador e parte ao e-CNPJ do escritório.
+        A busca testa os dois e fica com o que tem a procuração de cada empresa.
+      </p>
+      {x && !aberto && (
+        <dl className="mt-3">
+          <LinhaResumo rotulo="Titular">{x.titular_nome} <span className="font-mono text-texto-2">· {formatarDoc(x.titular_doc)}</span></LinhaResumo>
+          <LinhaResumo rotulo="Tipo">{x.tipo}</LinhaResumo>
+          <LinhaResumo rotulo="Validade"><span className="inline-flex flex-wrap items-center gap-2">{formatarData(x.validade)} <SeloCertificado cert={x} /></span></LinhaResumo>
+        </dl>
+      )}
+      {!aberto ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button onClick={() => setAberto(true)}>{x ? "Trocar o segundo certificado" : "Adicionar segundo certificado"}</Button>
+          {x && (
+            <Button variante="fantasma" disabled={remover.isPending}
+              onClick={() => { if (window.confirm(`Remover o certificado de ${x.titular_nome}? As empresas que usam ele voltam para o principal.`)) remover.mutate(); }}>
+              {remover.isPending ? <Loader2 className="animate-spin" /> : <Trash2 />} Remover
+            </Button>
+          )}
+        </div>
+      ) : (
+        <div className="mt-3 space-y-3">
+          <CertificadoUpload valor={cert} onChange={setCert} />
+          {salvar.isError && <Aviso tom="erro">{(salvar.error as Error).message}</Aviso>}
+          <div className="flex justify-end gap-2">
+            <Button variante="fantasma" onClick={() => { setAberto(false); setCert(null); salvar.reset(); }}>Cancelar</Button>
+            <Button variante="primario" disabled={!cert || cert.info.situacao === "vencido" || salvar.isPending} onClick={() => salvar.mutate()}>
+              {salvar.isPending && <Loader2 className="animate-spin" />} Salvar segundo certificado
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -160,6 +222,12 @@ function TrocaCertificado({ e, aoSalvar }: { e: Empresa; aoSalvar: () => void })
               {e.certificado.titular_nome} <span className="font-mono text-texto-2">{formatarDoc(e.certificado.titular_doc)}</span>
               <SeloCertificado cert={e.certificado} />
             </span>
+          </LinhaResumo>
+        )}
+        {e.modo_certificado === "contabilidade" && contab?.certificado_extra && (
+          <LinhaResumo rotulo="Procuração">
+            {e.procuracao_confirmada ? "Confirmada neste certificado na última busca (padrão da empresa)"
+              : "A confirmar na próxima busca: a contabilidade tem dois certificados e a busca testa os dois"}
           </LinhaResumo>
         )}
       </dl>

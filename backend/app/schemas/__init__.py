@@ -39,6 +39,10 @@ class EmpresaOut(BaseModel):
     modo_certificado: str
     acesso: str  # proprio|mesma_raiz|procuracao|sem_certificado
     certificado: CertificadoOut | None
+    # Contabilidade: segundo certificado de procurador (em geral o e-CPF do contador)
+    certificado_extra: CertificadoOut | None = None
+    # Empresa por procuração: a busca já confirmou qual certificado da contabilidade tem a procuração
+    procuracao_confirmada: bool = False
     busca: BuscaResumo
     total_notas: int
     pendencias: int

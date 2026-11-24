@@ -94,6 +94,10 @@ export interface Empresa {
   modo_certificado: "proprio" | "contabilidade";
   acesso: "proprio" | "mesma_raiz" | "procuracao" | "sem_certificado";
   certificado: Certificado | null;
+  /** contabilidade: segundo certificado de procurador (em geral o e-CPF do contador) */
+  certificado_extra?: Certificado | null;
+  /** empresa por procuração: a busca já confirmou qual certificado da contabilidade tem a procuração */
+  procuracao_confirmada?: boolean;
   busca: {
     situacao: SituacaoBusca;
     ultima_busca_em: string | null;

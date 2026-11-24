@@ -41,9 +41,9 @@ export function Painel({ titulo, descricao, children }: { titulo?: string; descr
 
 export function LinhaResumo({ rotulo, children }: { rotulo: string; children: ReactNode }) {
   return (
-    <div className="grid grid-cols-[180px_1fr] gap-4 border-b border-borda py-2.5 text-sm last:border-0">
+    <div className="grid grid-cols-1 gap-x-4 gap-y-0.5 border-b border-borda py-2.5 text-sm last:border-0 sm:grid-cols-[180px_minmax(0,1fr)]">
       <dt className="text-texto-2">{rotulo}</dt>
-      <dd>{children}</dd>
+      <dd className="min-w-0 break-words">{children}</dd>
     </div>
   );
 }
