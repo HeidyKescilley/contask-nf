@@ -287,6 +287,8 @@ class NotaRascunho(Base):
     empresa_id: Mapped[int] = mapped_column(ForeignKey("empresa.id", ondelete="CASCADE"), index=True)
     usuario_id: Mapped[int | None] = mapped_column(ForeignKey("usuario.id", ondelete="SET NULL"))
     dados: Mapped[dict] = mapped_column(JSON)
+    # Última validação antes da transmissão: {pronta, erros, alertas, em}; apagada quando o rascunho muda
+    validacao: Mapped[dict | None] = mapped_column(JSON)
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
     atualizado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora, onupdate=agora)
 

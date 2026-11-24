@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import {
-  AlertTriangle, BadgeCheck, Ban, Building2, ChevronLeft, ChevronRight, Clock, Copy, Download, FilePen, FileSearch, FileText, Loader2,
+  AlertTriangle, BadgeCheck, Ban, Building2, ChevronLeft, ChevronRight, Clock, Copy, Download, FilePen, FileSearch, FileText, Loader2, ShieldCheck,
   Lock, MoreHorizontal, Plus, ReceiptText, RefreshCw, Repeat, Replace, RotateCcw, Search, Trash2, X, XCircle,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -26,6 +26,7 @@ import { formatarData, formatarDataHora, formatarDoc } from "@/lib/formato";
 import { moeda } from "@/lib/notas";
 import { cn } from "@/lib/utils";
 import { AbasEmissor } from "./Abas";
+import { SeloValidacao, ValidacaoDialog, validarNota } from "./ValidacaoNota";
 
 const SITUACOES = [
   { id: "", rotulo: "Todas as situações" },
@@ -347,6 +348,12 @@ function Rascunhos({ itens, empresaId }: { itens: Rascunho[]; empresaId: number 
     onSuccess: () => { atualizar(); toast.success("Rascunho excluído."); },
     onError: (err) => toast.error((err as Error).message),
   });
+  const [validacaoDe, setValidacaoDe] = useState<Rascunho | null>(null);
+  const validar = useMutation({
+    mutationFn: (r: Rascunho) => validarNota({ ...r.dados, empresa_id: r.empresa_id, rascunho_id: r.id }),
+    onMutate: (r) => setValidacaoDe(r),
+    onSettled: () => atualizar(),
+  });
   const previa = useMutation({
     mutationFn: (r: Rascunho) => abrirPrevia({ ...r.dados, empresa_id: r.empresa_id }),
     onError: (err) => toast.error(`Prévia: ${(err as Error).message}`),
@@ -363,7 +370,13 @@ function Rascunhos({ itens, empresaId }: { itens: Rascunho[]; empresaId: number 
                 <p className="truncate text-sm font-medium">{r.tomador_nome ?? "Sem tomador"}{!isNaN(valor) && <span className="ml-2 font-mono font-normal text-texto-2">{moeda(valor)}</span>}</p>
                 <p className="truncate text-xs text-texto-2">{r.descricao || "Sem descrição"} · salvo em {formatarDataHora(r.atualizado_em)}</p>
               </div>
+              <SeloValidacao v={r.validacao} />
               <div className="flex gap-1">
+                <Button tamanho="pequeno" variante="fantasma" disabled={validar.isPending && validar.variables?.id === r.id}
+                  onClick={() => validar.mutate(r)} aria-label="Validar a nota sem transmitir">
+                  {validar.isPending && validar.variables?.id === r.id ? <Loader2 className="animate-spin" /> : <ShieldCheck />}
+                  <span className="hidden sm:inline">Validar</span>
+                </Button>
                 <Button tamanho="pequeno" variante="fantasma" disabled={previa.isPending && previa.variables?.id === r.id}
                   onClick={() => previa.mutate(r)} aria-label="Prévia em PDF, sem valor fiscal">
                   {previa.isPending && previa.variables?.id === r.id ? <Loader2 className="animate-spin" /> : <FileSearch />}
@@ -377,6 +390,12 @@ function Rascunhos({ itens, empresaId }: { itens: Rascunho[]; empresaId: number 
           );
         })}
       </ul>
+      <ValidacaoDialog aberto={!!validacaoDe} aoFechar={() => setValidacaoDe(null)} carregando={validar.isPending}
+        erro={validar.isError ? (validar.error as Error).message : null} resultado={validar.data ?? null} salvaEmRascunho
+        acoes={<>
+          <Button variante="fantasma" onClick={() => setValidacaoDe(null)} disabled={validar.isPending}>Fechar</Button>
+          {validacaoDe && <Button variante="primario" asChild><Link to={`/emissor/emitir?rascunho=${validacaoDe.id}&empresa=${empresaId}`}>Continuar</Link></Button>}
+        </>} />
     </Painel>
   );
 }

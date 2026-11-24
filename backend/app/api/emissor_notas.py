@@ -323,6 +323,7 @@ def _rascunho_out(r: NotaRascunho) -> dict:
     t = d.get("tomador") or {}
     return {"id": r.id, "empresa_id": r.empresa_id, "dados": d, "tomador_nome": t.get("nome") or None,
             "tomador_documento": t.get("documento") or None, "valor": d.get("valor"), "descricao": d.get("descricao") or "",
+            "validacao": r.validacao,
             "criado_em": _com_fuso(r.criado_em, timezone.utc), "atualizado_em": _com_fuso(r.atualizado_em, timezone.utc)}
 
 
@@ -361,7 +362,10 @@ def salvar_rascunho(rascunho_id: int, dados: RascunhoIn, db: Session = Depends(s
     r = _rascunho(db, rascunho_id, esc)
     if dados.empresa_id != r.empresa_id:
         raise HTTPException(422, "O rascunho é de outra empresa.")
-    r.dados = _validar_dados(dados.dados)
+    novos = _validar_dados(dados.dados)
+    if novos != r.dados:
+        r.validacao = None  # mudou: a validação anterior não vale mais
+    r.dados = novos
     db.commit()
     return _rascunho_out(r)
 

@@ -415,6 +415,8 @@ export interface Rascunho {
   descricao: string;
   criado_em: string;
   atualizado_em: string;
+  /** última validação antes da transmissão (apagada quando o rascunho muda) */
+  validacao?: { pronta: boolean; erros: number; alertas: number; em: string } | null;
 }
 
 export function useRascunhos(empresaId: number | null) {

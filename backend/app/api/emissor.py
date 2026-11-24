@@ -852,6 +852,28 @@ def emitir_nota(dados: EmissaoIn, request: Request, db: Session = Depends(sessao
     return _nota_out(db, n)
 
 
+@router.post("/notas/validar")
+def validar_nota(dados: EmissaoIn, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
+    """Confere a nota antes de transmitir (regras, XSD, certificado e parâmetros do município). Nada é enviado
+    à Sefin, nenhum número é reservado e o rascunho continua rascunho."""
+    from app.emissor import validacao
+    try:
+        ent = _entrada(dados)
+    except HTTPException as ex:
+        resultado = {"pronta": False, "erros": 1, "alertas": 0, "ambiente": None, "canal": None,
+                     "itens": [{"id": "dados", "titulo": "Dados da nota", "situacao": "erro", "detalhe": str(ex.detail)}]}
+    else:
+        resultado = validacao.validar(db, esc, ent)
+    if dados.rascunho_id:  # a nota continua rascunho, agora com o resultado da validação
+        from datetime import datetime, timezone
+        from app.models import NotaRascunho
+        r = db.get(NotaRascunho, dados.rascunho_id)
+        if r is not None and r.escritorio_id == esc and r.empresa_id == dados.empresa_id:
+            r.validacao = {k: resultado[k] for k in ("pronta", "erros", "alertas")} | {"em": datetime.now(timezone.utc).isoformat()}
+            db.commit()
+    return resultado
+
+
 @router.post("/notas/previa")
 def previa_nota(dados: EmissaoIn, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
     """PDF da nota antes de transmitir, no leiaute do DANFSe, marcado como sem valor fiscal.

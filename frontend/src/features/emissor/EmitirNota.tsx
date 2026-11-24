@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
-  AlertTriangle, Building2, CheckCircle2, Download, FileSearch, FileText, Loader2, Pencil, Plus, ReceiptText, Repeat, RotateCcw, Save, Search, Send,
+  AlertTriangle, Building2, CheckCircle2, Download, FileSearch, FileText, Loader2, Pencil, Plus, ShieldCheck, ReceiptText, Repeat, RotateCcw, Save, Search, Send,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -27,6 +27,7 @@ import { moeda } from "@/lib/notas";
 import { cn } from "@/lib/utils";
 import { AbasEmissor } from "./Abas";
 import { CamposIbsCbs } from "./CamposIbsCbs";
+import { ValidacaoDialog, validarNota, type ResultadoValidacao } from "./ValidacaoNota";
 import {
   CamposComercioExterior, CamposTomadorExterior, comexCorpo, comexDe, comexVazio, ehExterior, problemasComex, problemasExterior,
   type ComexForm,
@@ -405,6 +406,25 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
     },
     onSuccess: (r) => { atualizar(); setRascunho(r.id); toast.success("Rascunho salvo. Ele fica na página de notas para emitir depois."); },
     onError: (err) => toast.error((err as Error).message),
+  });
+
+  // Validar: confere sem transmitir; numa nota nova, salva antes como rascunho e guarda nele o resultado
+  const [validacaoAberta, setValidacaoAberta] = useState(false);
+  const guardaRascunho = !nota && !substituir;
+  const validar = useMutation({
+    mutationFn: async (): Promise<ResultadoValidacao> => {
+      const c = corpo();
+      if (!guardaRascunho) return validarNota(c);
+      const { empresa_id, ...dados } = c;
+      const body = JSON.stringify({ empresa_id, dados });
+      const r = rascunho
+        ? await api<Rascunho>(`/api/emissor/rascunhos/${rascunho}`, { method: "PUT", body })
+        : await api<Rascunho>("/api/emissor/rascunhos", { method: "POST", body });
+      setRascunho(r.id);
+      return validarNota({ ...c, rascunho_id: r.id });
+    },
+    onMutate: () => setValidacaoAberta(true),
+    onSettled: () => atualizar(),
   });
 
   const previa = useMutation({
@@ -871,6 +891,9 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
               <Button variante="primario" className="mt-4 w-full" disabled={emitir.isPending} onClick={() => setRevisar(true)}>
                 {nota ? <><RotateCcw /> Revisar e reenviar</> : substituir ? <><Send /> Revisar e substituir</> : <><Send /> Revisar e emitir</>}
               </Button>
+              <Button className="mt-2 w-full" disabled={validar.isPending} onClick={() => validar.mutate()}>
+                {validar.isPending ? <Loader2 className="animate-spin" /> : <ShieldCheck />} {guardaRascunho ? "Validar e salvar rascunho" : "Validar nota"}
+              </Button>
               {!nota && !substituir && (
                 <Button className="mt-2 w-full" disabled={salvarRascunho.isPending} onClick={() => salvarRascunho.mutate()}>
                   {salvarRascunho.isPending ? <Loader2 className="animate-spin" /> : <Save />} {rascunho ? "Atualizar rascunho" : "Salvar rascunho"}
@@ -935,6 +958,14 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
         </DialogContent>
       </Dialog>
 
+      <ValidacaoDialog aberto={validacaoAberta} aoFechar={() => setValidacaoAberta(false)} carregando={validar.isPending}
+        erro={validar.isError ? (validar.error as Error).message : null} resultado={validar.data ?? null} salvaEmRascunho={guardaRascunho}
+        acoes={<>
+          <Button variante="fantasma" onClick={() => setValidacaoAberta(false)} disabled={validar.isPending}>Fechar</Button>
+          {validar.data?.pronta && !modoRec && (
+            <Button variante="primario" onClick={() => { setValidacaoAberta(false); setRevisar(true); }}><Send /> Revisar e emitir</Button>
+          )}
+        </>} />
       <ServicoDialog empresaId={empresa.id} servico={null} aberto={novoServico} canal={empresa.canal}
         exigeIbsCbs={!!empresa.config?.exige_ibscbs} aoFechar={() => setNovoServico(false)}
         modelo={usaNota && f.servicoNota ? { ...f.servicoNota, descricao: f.descricao } : null}
