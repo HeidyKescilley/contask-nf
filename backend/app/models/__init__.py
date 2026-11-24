@@ -206,6 +206,8 @@ class NotaEmitida(Base):
     canal: Mapped[str] = mapped_column(String(10), default="nacional", server_default="nacional")
     competencia: Mapped[date] = mapped_column(Date)
     tomador: Mapped[dict | None] = mapped_column(JSON)  # cópia dos dados do tomador usados na nota
+    # Tomador no exterior: grupo comExt (moeda, valor na moeda, modo...) e se é exportação de serviço
+    comercio_exterior: Mapped[dict | None] = mapped_column(JSON)
     descricao: Mapped[str] = mapped_column(Text)
     ctribnac: Mapped[str] = mapped_column(String(6))
     cnbs: Mapped[str] = mapped_column(String(9))
@@ -331,7 +333,8 @@ class Tomador(Base):
     __table_args__ = (UniqueConstraint("escritorio_id", "documento", name="uq_tomador_escritorio_documento"),)
     id: Mapped[int] = mapped_column(primary_key=True)
     escritorio_id: Mapped[int] = mapped_column(ForeignKey("escritorio.id", ondelete="CASCADE"), index=True)
-    documento: Mapped[str] = mapped_column(String(14))  # CNPJ (14) ou CPF (11)
+    # CNPJ (14) ou CPF (11); no exterior, chave própria: EX + país + NIF (ou nome)
+    documento: Mapped[str] = mapped_column(String(40))
     nome: Mapped[str] = mapped_column(String(300))
     inscricao_municipal: Mapped[str | None] = mapped_column(String(15))
     cep: Mapped[str | None] = mapped_column(String(8))
@@ -344,6 +347,13 @@ class Tomador(Base):
     bairro: Mapped[str | None] = mapped_column(String(60))
     telefone: Mapped[str | None] = mapped_column(String(20))
     email: Mapped[str | None] = mapped_column(String(80))
+    # Tomador no exterior
+    pais: Mapped[str | None] = mapped_column(String(2))  # ISO 2 (nunca BR); vazio = Brasil
+    nif: Mapped[str | None] = mapped_column(String(40))
+    nao_nif: Mapped[str | None] = mapped_column(String(1))  # sem NIF: 1 dispensado | 2 não exigido
+    cod_postal: Mapped[str | None] = mapped_column(String(11))
+    cidade: Mapped[str | None] = mapped_column(String(60))
+    estado_provincia: Mapped[str | None] = mapped_column(String(60))
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
     atualizado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora, onupdate=agora)
 

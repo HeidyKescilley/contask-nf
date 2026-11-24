@@ -135,7 +135,20 @@ export interface Tomador {
   bairro?: string | null;
   telefone?: string | null;
   email?: string | null;
+  /** tomador no exterior: país ISO 2 (vazio/BR = Brasil), NIF ou motivo de não ter (1/2) e endereço */
+  pais?: string | null;
+  nif?: string | null;
+  nao_nif?: string | null;
+  cod_postal?: string | null;
+  cidade?: string | null;
+  estado_provincia?: string | null;
   atualizado_em?: string;
+}
+
+/** Grupo comExt da nota com tomador no exterior (ver api.emissor.ComercioExteriorIn). */
+export interface ComercioExterior {
+  moeda: string; valor_moeda: string | number; exportacao: boolean; modo: string; vinculo: string;
+  mec_prestador: string; mec_tomador: string; mov_temp_bens: string; mdic: string;
 }
 
 export interface ConsultaTomador {
@@ -250,6 +263,7 @@ export type SituacaoEmitida = "enviando" | "autorizada" | "rejeitada" | "pendent
 export interface ErroSefin { codigo: string | null; descricao: string | null; complemento: string | null }
 
 export interface NotaEmitida {
+  comercio_exterior?: ComercioExterior | null;
   id: number;
   empresa_id: number;
   empresa_nome: string;
@@ -370,6 +384,8 @@ export interface CorpoEmissao {
   servico_id?: number | null;
   /** sem serviço cadastrado: os códigos vêm da nota duplicada */
   servico?: CodigosServico | null;
+  /** tomador no exterior */
+  comercio_exterior?: ComercioExterior | null;
   /** IBS/CBS desta nota (em branco: os do serviço) */
   cindop?: string | null;
   cclasstrib?: string | null;
@@ -438,6 +454,7 @@ export function useRecorrentes(empresaId: number | null) {
 
 /** Modelo para duplicar uma nota do ADN (lida do XML). */
 export interface ModeloAdn {
+  comercio_exterior?: ComercioExterior | null;
   empresa_id: number;
   numero_nfse: string | null;
   competencia?: string | null;

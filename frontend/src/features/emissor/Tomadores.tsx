@@ -10,6 +10,7 @@ import { api } from "@/lib/api";
 import { apenasDigitos, mascararCep, useAtualizarEmissor, type ConsultaTomador, type Tomador } from "@/lib/emissor";
 import { formatarDoc, mascararCnpj, UFS } from "@/lib/formato";
 import { AbasEmissor } from "./Abas";
+import { CamposTomadorExterior, ehExterior, problemasExterior } from "./TomadorExterior";
 
 const VAZIO: Tomador = { documento: "", nome: "", inscricao_municipal: "", cep: "", cod_municipio: "", municipio: "", uf: "",
   logradouro: "", numero: "", complemento: "", bairro: "", telefone: "", email: "" };
@@ -38,20 +39,45 @@ export function TomadorDialog({ tomador, aberto, aoFechar, aoSalvar }: {
       setAviso(r.origem === "salvo" ? "Este tomador já estava salvo: os dados abaixo são os que estão no cadastro." : r.aviso);
     },
   });
+  const corpo = () => exterior
+    ? { ...f, documento: "", nif: f.nif?.trim() || null, nao_nif: f.nif?.trim() ? null : f.nao_nif || null }
+    : { ...f, pais: null, nif: null, nao_nif: null, cod_postal: null, cidade: null, estado_provincia: null };
   const salvar = useMutation({
     mutationFn: () => tomador?.id
-      ? api<Tomador>(`/api/emissor/tomadores/${tomador.id}`, { method: "PUT", body: JSON.stringify(f) })
-      : api<Tomador>("/api/emissor/tomadores", { method: "POST", body: JSON.stringify(f) }),
+      ? api<Tomador>(`/api/emissor/tomadores/${tomador.id}`, { method: "PUT", body: JSON.stringify(corpo()) })
+      : api<Tomador>("/api/emissor/tomadores", { method: "POST", body: JSON.stringify(corpo()) }),
     onSuccess: (t) => { atualizar(); toast.success("Tomador salvo."); aoSalvar?.(t); aoFechar(); },
   });
 
   const doc = apenasDigitos(f.documento);
+  const [exterior, setExterior] = useState(false);
+  useEffect(() => { if (aberto) setExterior(ehExterior(tomador)); }, [aberto, tomador]);
   const set = (k: keyof Tomador) => (ev: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setF({ ...f, [k]: ev.target.value });
 
   return (
     <Dialog open={aberto} onOpenChange={(v) => !v && aoFechar()}>
       <DialogContent largo titulo={tomador?.id ? "Editar tomador" : "Novo tomador"} descricao="Quem contrata o serviço. Fica salvo para as próximas notas.">
         <form className="grid grid-cols-6 gap-3" onSubmit={(ev) => { ev.preventDefault(); salvar.mutate(); }}>
+          <div className="col-span-6 inline-flex w-fit rounded-lg border border-borda p-0.5" role="radiogroup" aria-label="Onde está o tomador">
+            {([[false, "No Brasil"], [true, "No exterior"]] as const).map(([v, rot]) => (
+              <button key={rot} type="button" role="radio" aria-checked={exterior === v} disabled={!!tomador?.id && exterior !== v}
+                onClick={() => { setExterior(v); setF((a) => ({ ...a, pais: v ? (ehExterior(a) ? a.pais : "") : null })); }}
+                className={exterior === v ? "rounded-md bg-destaque px-3 py-1.5 text-sm text-white" : "rounded-md px-3 py-1.5 text-sm text-texto-2 hover:text-texto disabled:opacity-50"}>
+                {rot}
+              </button>
+            ))}
+          </div>
+          {exterior ? (
+            <>
+              <CamposTomadorExterior t={f} mudar={(c) => setF((a) => ({ ...a, ...c }))} />
+              <Campo rotulo="Telefone" className="col-span-2">
+                {(p) => <Input {...p} value={f.telefone ?? ""} inputMode="tel" onChange={(ev) => setF({ ...f, telefone: apenasDigitos(ev.target.value) })} />}
+              </Campo>
+              <Campo rotulo="E-mail" className="col-span-4">
+                {(p) => <Input {...p} type="email" value={f.email ?? ""} maxLength={80} onChange={set("email")} />}
+              </Campo>
+            </>
+          ) : (<>
           <Campo rotulo="CNPJ ou CPF" obrigatorio className="col-span-3" ajuda={!tomador?.id ? "Com CNPJ, os dados vêm da Receita (BrasilAPI)." : undefined}>
             {(p) => (
               <div className="flex gap-2">
@@ -105,10 +131,11 @@ export function TomadorDialog({ tomador, aberto, aoFechar, aoSalvar }: {
           <Campo rotulo="E-mail" className="col-span-4" ajuda="Para onde a nota vai ser enviada, quando o envio por e-mail existir.">
             {(p) => <Input {...p} type="email" value={f.email ?? ""} maxLength={80} onChange={set("email")} />}
           </Campo>
+          </>)}
           {salvar.isError && <div className="col-span-6"><Aviso tom="erro">{(salvar.error as Error).message}</Aviso></div>}
           <div className="col-span-6 flex justify-end gap-2 pt-1">
             <Button type="button" variante="fantasma" onClick={aoFechar}>Cancelar</Button>
-            <Button type="submit" variante="primario" disabled={![11, 14].includes(doc.length) || !f.nome.trim() || salvar.isPending}>
+            <Button type="submit" variante="primario" disabled={(exterior ? problemasExterior(f).length > 0 : ![11, 14].includes(doc.length)) || !f.nome.trim() || salvar.isPending}>
               {salvar.isPending && <Loader2 className="animate-spin" />} Salvar tomador
             </Button>
           </div>
@@ -168,9 +195,9 @@ export function Tomadores() {
                 <tr key={t.id} className="border-b border-borda last:border-0 hover:bg-superficie-2/60">
                   <td className="px-4 py-2.5">
                     <div className="font-medium">{t.nome}</div>
-                    <div className="font-mono text-xs text-texto-2">{formatarDoc(t.documento)}</div>
+                    <div className="font-mono text-xs text-texto-2">{ehExterior(t) ? `Exterior · ${t.nif ? `NIF ${t.nif}` : "sem NIF"}` : formatarDoc(t.documento)}</div>
                   </td>
-                  <td className="px-3 py-2.5 text-texto-2">{[t.municipio, t.uf].filter(Boolean).join(" / ") || "—"}</td>
+                  <td className="px-3 py-2.5 text-texto-2">{ehExterior(t) ? `${t.cidade ?? ""} / ${t.pais}` : [t.municipio, t.uf].filter(Boolean).join(" / ") || "—"}</td>
                   <td className="px-3 py-2.5 text-texto-2">{t.email || "—"}</td>
                   <td className="px-2 py-2.5">
                     <div className="flex justify-end gap-1">

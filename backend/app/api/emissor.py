@@ -80,6 +80,31 @@ class TomadorIn(BaseModel):
     bairro: str | None = None
     telefone: str | None = None
     email: str | None = None
+    # Tomador no exterior (pais diferente de BR): NIF ou motivo de não ter, e endereço no exterior
+    pais: str | None = None
+    nif: str | None = None
+    nao_nif: str | None = None
+    cod_postal: str | None = None
+    cidade: str | None = None
+    estado_provincia: str | None = None
+
+
+class ComercioExteriorIn(BaseModel):
+    """Grupo comExt da nota com tomador no exterior (códigos do leiaute da NFS-e)."""
+    moeda: str = "220"
+    valor_moeda: Decimal = Field(gt=0)
+    modo: str = Field("1", pattern="^[1-4]$")
+    vinculo: str = Field("0", pattern="^[0-69]$")
+    mec_prestador: str = Field("01", pattern="^0[1-8]$")
+    mec_tomador: str = Field("01", pattern="^(0[1-9]|1[0-9]|2[0-6])$")
+    mov_temp_bens: str = Field("1", pattern="^[1-3]$")
+    mdic: str = Field("0", pattern="^[01]$")
+    exportacao: bool = False  # tribISSQN = 3: o resultado do serviço se verifica no exterior
+
+
+# Moedas mais usadas (tabela de moedas do Banco Central); outra moeda pode ser informada pelo código de 3 dígitos
+MOEDAS = [("220", "Dólar dos Estados Unidos"), ("978", "Euro"), ("540", "Libra esterlina"), ("470", "Iene"),
+          ("425", "Franco suíço"), ("706", "Peso argentino")]
 
 
 # ---------------------------------------------------------------------------
@@ -271,7 +296,8 @@ def _validar_codigos(d: CodigosServicoIn) -> dict:
 def _tomador_out(t: Tomador) -> dict:
     return {c: getattr(t, c) for c in ("id", "documento", "nome", "inscricao_municipal", "cep", "cod_municipio",
                                        "municipio", "uf", "logradouro", "numero", "complemento", "bairro",
-                                       "telefone", "email", "atualizado_em")}
+                                       "telefone", "email", "pais", "nif", "nao_nif", "cod_postal", "cidade",
+                                       "estado_provincia", "atualizado_em")}
 
 
 def _documento(v: str) -> str:
@@ -281,11 +307,48 @@ def _documento(v: str) -> str:
     raise HTTPException(422, "CNPJ ou CPF inválido: confira os dígitos.")
 
 
+def _paises() -> dict[str, str]:
+    from app.fiscal.danfse import _ibge
+    return _ibge()["paises"]
+
+
+def _validar_tomador_exterior(d: TomadorIn, nome: str) -> dict:
+    """Tomador no exterior: país ISO (nunca BR), NIF ou motivo, e endereço completo (E0242)."""
+    pais = (_txt(d.pais) or "").upper()
+    if pais not in _paises() or pais == "BR":
+        raise HTTPException(422, "Escolha o país do tomador no exterior.")
+    nif = _txt(d.nif)
+    nao_nif = (_txt(d.nao_nif) or "") if not nif else ""
+    if not nif and nao_nif not in ("1", "2"):
+        raise HTTPException(422, "Informe o NIF do tomador (identificação fiscal no país dele) ou o motivo de não ter.")
+    if nif and len(nif) > 40:
+        raise HTTPException(422, "O NIF pode ter até 40 caracteres.")
+    campos = {k: _txt(getattr(d, k)) for k in ("cod_postal", "cidade", "estado_provincia", "logradouro", "numero", "bairro")}
+    if not all(campos.values()):
+        raise HTTPException(422, "Tomador no exterior: informe código postal, cidade, estado ou província, logradouro, "
+                                 "número e bairro (a Sefin exige o endereço completo, E0242).")
+    fone, email = _dig(d.telefone), _txt(d.email)
+    if fone and not 6 <= len(fone) <= 20:
+        raise HTTPException(422, "Telefone inválido.")
+    if email and not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+        raise HTTPException(422, "E-mail inválido.")
+    chave = re.sub(r"[^A-Z0-9]", "", (nif or nome).upper())[:36]
+    return {"documento": f"EX{pais}{chave}"[:40], "nome": nome[:300], "pais": pais, "nif": nif, "nao_nif": nao_nif or None,
+            "cod_postal": campos["cod_postal"][:11], "cidade": campos["cidade"][:60],
+            "estado_provincia": campos["estado_provincia"][:60], "logradouro": campos["logradouro"],
+            "numero": campos["numero"], "bairro": campos["bairro"], "complemento": _txt(d.complemento),
+            "telefone": fone or None, "email": email, "inscricao_municipal": None, "cep": None, "cod_municipio": None,
+            "municipio": None, "uf": None}
+
+
 def _validar_tomador(d: TomadorIn) -> dict:
     nome = _txt(d.nome)
     if not nome:
         raise HTTPException(422, "Informe o nome ou a razão social do tomador.")
-    campos = {"documento": _documento(d.documento), "nome": nome[:300]}
+    if (_txt(d.pais) or "BR").upper() != "BR":
+        return _validar_tomador_exterior(d, nome)
+    campos = {"documento": _documento(d.documento), "nome": nome[:300],
+              "pais": None, "nif": None, "nao_nif": None, "cod_postal": None, "cidade": None, "estado_provincia": None}
     cep, mun, fone = _dig(d.cep), _dig(d.cod_municipio), _dig(d.telefone)
     if cep and len(cep) != 8:
         raise HTTPException(422, "O CEP deve ter 8 dígitos.")
@@ -470,6 +533,16 @@ def codigos_nbs(q: str = "", limite: int = Query(30, ge=1, le=200)):
     return tabelas.buscar_nbs(q, limite)
 
 
+@router.get("/codigos/exterior")
+def codigos_exterior():
+    """Países (ISO 2, sem o Brasil) e moedas mais usadas para tomador no exterior."""
+    import unicodedata
+    sem_acento = lambda t: unicodedata.normalize("NFKD", t).encode("ascii", "ignore").decode().lower()  # noqa: E731
+    paises = sorted(((c, n) for c, n in _paises().items() if c != "BR"), key=lambda x: sem_acento(x[1]))
+    return {"paises": [{"codigo": c, "nome": n} for c, n in paises],
+            "moedas": [{"codigo": c, "nome": n} for c, n in MOEDAS]}
+
+
 @router.get("/codigos/ibscbs")
 def codigos_ibscbs(ctribnac: str = "", cnbs: str = ""):
     """cIndOp e cClassTrib que valem para a NFS-e, com os sugeridos para o serviço (Anexo VIII) primeiro."""
@@ -637,6 +710,7 @@ class EmissaoIn(BaseModel):
     texto_simples: bool = True
     texto_procon: bool = True
     texto_fixo: bool = True
+    comercio_exterior: ComercioExteriorIn | None = None  # obrigatório com tomador no exterior
     rascunho_id: int | None = None   # rascunho que vira esta nota (é apagado depois da emissão)
     substituicao: SubstituicaoIn | None = None  # a nota sai como substituta (grupo subst da DPS)
 
@@ -661,7 +735,21 @@ def _entrada(d: EmissaoIn):
         servico_codigos=_validar_codigos(d.servico) if d.servico and not d.servico_id else None,
         substituicao=_substituicao(d.substituicao),
         ibscbs={k: v for k, v in validar_ibscbs(d.cindop, d.cclasstrib).items() if v},
+        comercio_exterior=_comex(d),
     )
+
+
+def _comex(d: "EmissaoIn") -> dict | None:
+    """Só vale com tomador no exterior; com tomador no Brasil, é ignorado."""
+    if not d.tomador or (_txt(d.tomador.pais) or "BR").upper() == "BR":
+        return None
+    c = d.comercio_exterior
+    if c is None:
+        raise HTTPException(422, "Tomador no exterior: informe a moeda e o valor do serviço nessa moeda.")
+    moeda = _dig(c.moeda)
+    if len(moeda) != 3:
+        raise HTTPException(422, "A moeda deve ser o código de 3 dígitos da tabela do Banco Central (220 = dólar).")
+    return {**c.model_dump(mode="json"), "moeda": moeda}
 
 
 def _substituicao(s: SubstituicaoIn | None) -> dict | None:
@@ -695,7 +783,7 @@ def _nota_out(db: Session, n: NotaEmitida) -> dict:
         "situacao": n.situacao, "competencia": n.competencia, "tomador": n.tomador, "descricao": n.descricao,
         "ctribnac": n.ctribnac, "ctribnac_formatado": tabelas.formatar_ctribnac(n.ctribnac),
         "cnbs": n.cnbs, "cnbs_formatado": tabelas.formatar_nbs(n.cnbs), "ctribmun": n.ctribmun,
-        "canal": n.canal, "cindop": n.cindop, "cclasstrib": n.cclasstrib,
+        "canal": n.canal, "cindop": n.cindop, "cclasstrib": n.cclasstrib, "comercio_exterior": n.comercio_exterior,
         "cod_municipio_prestacao": n.cod_municipio_prestacao,
         "valor_servico": f(n.valor_servico), "desconto": f(n.desconto), "iss_retido": n.iss_retido,
         "aliquota_iss": f(n.aliquota_iss), "ret_pis": f(n.ret_pis), "ret_cofins": f(n.ret_cofins),

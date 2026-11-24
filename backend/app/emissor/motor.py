@@ -28,7 +28,7 @@ from app.core.certificados import carregar_pfx, situacao_validade
 from app.core.config import config
 from app.emissor import assinatura, textos
 from app.emissor.dps import (
-    BRASILIA, NT004, NT009, PRODUCAO, RESTRITA, Cancelamento, DadosDps, DpsInvalida, Prestador, Retencoes,
+    BRASILIA, NT004, NT009, PRODUCAO, RESTRITA, Cancelamento, ComercioExterior, DadosDps, DpsInvalida, Prestador, Retencoes,
     Substituicao, TomadorDps, centavos, gravar_leiaute_producao, id_dps, leiaute_do_ambiente, montar, montar_cancelamento,
     montar_issnet, serializar, validar_xsd, validar_xsd_issnet,
 )
@@ -146,6 +146,8 @@ class Entrada:
     substituicao: dict | None = None
     # cIndOp/cClassTrib escolhidos na nota: valem no lugar dos do serviço
     ibscbs: dict = field(default_factory=dict)
+    # Tomador no exterior: grupo comExt e exportação (ver api.emissor.ComercioExteriorIn)
+    comercio_exterior: dict | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -200,7 +202,18 @@ def _dados(e: Empresa, cfg: EmissorEmpresa, nota: NotaEmitida) -> DadosDps:
         cindop=nota.cindop, cclasstrib=nota.cclasstrib,
         subst=Substituicao(nota.subst_chave, nota.subst_motivo or "", nota.subst_justificativa or "")
         if nota.subst_chave else None,
+        comex=_comex(nota.comercio_exterior),
+        exportacao=bool((nota.comercio_exterior or {}).get("exportacao")),
     )
+
+
+def _comex(c: dict | None) -> ComercioExterior | None:
+    if not c:
+        return None
+    return ComercioExterior(valor_moeda=Decimal(str(c["valor_moeda"])), moeda=c.get("moeda", "220"), modo=c.get("modo", "1"),
+                            vinculo=c.get("vinculo", "0"), mec_prestador=c.get("mec_prestador", "01"),
+                            mec_tomador=c.get("mec_tomador", "01"), mov_temp_bens=c.get("mov_temp_bens", "1"),
+                            mdic=c.get("mdic", "0"))
 
 
 def _substituida(db: Session, esc: int, e: Empresa, amb: int, sub: dict) -> tuple[str, NotaEmitida | None]:
@@ -275,6 +288,7 @@ def _preencher(db: Session, nota: NotaEmitida, e: Empresa, cfg: EmissorEmpresa, 
     nota.descricao = descricao
     nota.competencia = ent.competencia
     nota.tomador = ent.tomador
+    nota.comercio_exterior = ent.comercio_exterior
     nota.cod_municipio_prestacao = ent.cod_municipio_prestacao or cfg.cod_municipio
     nota.valor_servico, nota.desconto = centavos(ent.valor), centavos(ent.desconto)
     nota.iss_retido = ent.iss_retido

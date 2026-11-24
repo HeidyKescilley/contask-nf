@@ -154,12 +154,26 @@ def modelo_do_xml(xml: bytes, fixo: str | None = None) -> dict:
     tomador = None
     if toma is not None:
         nac = toma.find("n:end/n:endNac", N)
+        ext = toma.find("n:end/n:endExt", N)
         tomador = {
             "documento": _t(toma, "n:CNPJ") or _t(toma, "n:CPF") or "", "nome": _t(toma, "n:xNome") or "",
             "inscricao_municipal": _t(toma, "n:IM"), "cep": _t(nac, "n:CEP"), "cod_municipio": _t(nac, "n:cMun"),
             "logradouro": _t(toma, "n:end/n:xLgr"), "numero": _t(toma, "n:end/n:nro"),
             "complemento": _t(toma, "n:end/n:xCpl"), "bairro": _t(toma, "n:end/n:xBairro"),
             "telefone": _t(toma, "n:fone"), "email": _t(toma, "n:email"), "municipio": None, "uf": None,
+            # tomador no exterior
+            "pais": _t(ext, "n:cPais"), "nif": _t(toma, "n:NIF"), "nao_nif": _t(toma, "n:cNaoNIF"),
+            "cod_postal": _t(ext, "n:cEndPost"), "cidade": _t(ext, "n:xCidade"), "estado_provincia": _t(ext, "n:xEstProvReg"),
+        }
+    ce = dps.find("n:serv/n:comExt", N)
+    comercio_exterior = None
+    if ce is not None:
+        comercio_exterior = {
+            "moeda": _t(ce, "n:tpMoeda") or "220", "valor_moeda": _num(_t(ce, "n:vServMoeda")),
+            "modo": _t(ce, "n:mdPrestacao") or "1", "vinculo": _t(ce, "n:vincPrest") or "0",
+            "mec_prestador": _t(ce, "n:mecAFComexP") or "01", "mec_tomador": _t(ce, "n:mecAFComexT") or "01",
+            "mov_temp_bens": _t(ce, "n:movTempBens") or "1", "mdic": _t(ce, "n:mdic") or "0",
+            "exportacao": _t(dps, "n:valores/n:trib/n:tribMun/n:tribISSQN") == "3",
         }
     cs = dps.find("n:serv/n:cServ", N)
     trib = dps.find("n:valores/n:trib", N)
@@ -197,6 +211,7 @@ def modelo_do_xml(xml: bytes, fixo: str | None = None) -> dict:
         "ret_irrf": _num(_t(fed, "n:vRetIRRF")), "ret_cp": _num(_t(fed, "n:vRetCP")), **ret,
         "info_usuario": info, "texto_simples": tem_simples, "texto_procon": tem_procon,
         "texto_fixo": textos.tem_fixo(_t(dps, "n:serv/n:infoCompl/n:xInfComp"), fixo),
+        "comercio_exterior": comercio_exterior,
     }
 
 

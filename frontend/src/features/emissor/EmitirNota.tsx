@@ -27,6 +27,10 @@ import { moeda } from "@/lib/notas";
 import { cn } from "@/lib/utils";
 import { AbasEmissor } from "./Abas";
 import { CamposIbsCbs } from "./CamposIbsCbs";
+import {
+  CamposComercioExterior, CamposTomadorExterior, comexCorpo, comexDe, comexVazio, ehExterior, problemasComex, problemasExterior,
+  type ComexForm,
+} from "./TomadorExterior";
 import { ServicoDialog } from "./ServicoDialog";
 
 const RETENCOES = [
@@ -53,6 +57,9 @@ export interface Form {
   valor: string;
   desconto: string;
   semTomador: boolean;
+  /** tomador no exterior (NIF, país e endereço no exterior; a nota leva o grupo de comércio exterior) */
+  exterior: boolean;
+  comex: ComexForm;
   tomador: Tomador;
   salvarTomador: boolean;
   issRetido: boolean;
@@ -75,7 +82,7 @@ export function hoje() {
 
 export function vazio(): Form {
   return { servicoId: null, servicoNota: null, localPrestacao: "", descricao: "", competencia: hoje(), valor: "", desconto: "", semTomador: false,
-    tomador: TOMADOR_VAZIO, salvarTomador: true, issRetido: false, aliquota: "",
+    exterior: false, comex: comexVazio(), tomador: TOMADOR_VAZIO, salvarTomador: true, issRetido: false, aliquota: "",
     ret: { ret_pis: "", ret_cofins: "", ret_csll: "", ret_irrf: "", ret_cp: "" }, info: "", textoSimples: true, textoProcon: true, textoFixo: true,
     cindop: "", cclasstrib: "" };
 }
@@ -99,6 +106,7 @@ export function daNota(n: NotaEmitida | ModeloAdn, duplicar = false): Form {
   return { servicoId: n.servico_id, servicoNota: codigosDe(n), localPrestacao: n.cod_municipio_prestacao ?? "",
     descricao: n.descricao, competencia: duplicar || !n.competencia ? hoje() : n.competencia,
     valor: escreverValor(n.valor_servico), desconto: v2(n.desconto), semTomador: !n.tomador, tomador: doTomador(n.tomador),
+    exterior: ehExterior(n.tomador), comex: comexDe(n.comercio_exterior),
     salvarTomador: true, issRetido: n.iss_retido, aliquota: n.aliquota_iss ? escreverValor(n.aliquota_iss) : "",
     ret: { ret_pis: v2(n.ret_pis), ret_cofins: v2(n.ret_cofins), ret_csll: v2(n.ret_csll), ret_irrf: v2(n.ret_irrf), ret_cp: v2(n.ret_cp) },
     info: n.info_usuario ?? "", textoSimples: padrao || n.texto_simples, textoProcon: padrao || n.texto_procon,
@@ -119,6 +127,7 @@ export function doCorpo(d: CorpoEmissao): Form {
     ...base, servicoId: d.servico_id ?? null, servicoNota: codigosDe(d.servico), localPrestacao: d.cod_municipio_prestacao ?? "",
     descricao: d.descricao ?? "", competencia: d.competencia ?? base.competencia,
     valor: v(d.valor), desconto: v(d.desconto), semTomador: d.tomador === null, tomador: doTomador(d.tomador),
+    exterior: ehExterior(d.tomador), comex: comexDe(d.comercio_exterior),
     salvarTomador: d.salvar_tomador ?? true, issRetido: !!d.iss_retido, aliquota: v(d.aliquota_iss),
     ret: { ret_pis: v(d.ret_pis), ret_cofins: v(d.ret_cofins), ret_csll: v(d.ret_csll), ret_irrf: v(d.ret_irrf), ret_cp: v(d.ret_cp) },
     info: d.info_complementar ?? "", textoSimples: d.texto_simples ?? true, textoProcon: d.texto_procon ?? true,
@@ -331,12 +340,16 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
   if (!(valor > 0)) problemas.push("Informe o valor do serviço.");
   if (f.valor && isNaN(lerValor(f.valor))) problemas.push("Valor do serviço inválido. Use o formato 1.234,56.");
   if (desconto >= valor && desconto > 0) problemas.push("O desconto deve ser menor que o valor.");
-  if (!f.semTomador) {
+  const exterior = !f.semTomador && f.exterior;
+  if (exterior) {
+    problemas.push(...problemasExterior(t), ...problemasComex(f.comex));
+    if (f.issRetido) problemas.push("Tomador no exterior não retém ISS: desmarque o ISS retido.");
+  } else if (!f.semTomador) {
     if (![11, 14].includes(doc.length)) problemas.push("Informe o CNPJ ou CPF do tomador.");
     if (!t.nome.trim()) problemas.push("Informe o nome do tomador.");
     if (enderecoParcial) problemas.push("Complete o endereço do tomador (CEP, código IBGE, logradouro, número e bairro) ou deixe em branco.");
   }
-  if (f.issRetido && (f.semTomador || !enderecoCompleto)) problemas.push("Com ISS retido, o endereço do tomador é obrigatório.");
+  if (f.issRetido && !exterior && (f.semTomador || !enderecoCompleto)) problemas.push("Com ISS retido, o endereço do tomador é obrigatório.");
   if (precisaAliquota && !(num(f.aliquota) > 0 && num(f.aliquota) <= 5)) problemas.push("Informe a alíquota efetiva de ISS do Simples (até 5%).");
   if (federais + desconto >= valor && valor > 0) problemas.push("As retenções não podem chegar ao valor do serviço.");
   if (!modoRec && f.competencia > hoje()) problemas.push("A competência não pode ser futura.");
@@ -355,7 +368,10 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
     cod_municipio_prestacao: apenasDigitos(f.localPrestacao) || null,
     cindop: mostraIbs ? f.cindop || null : null, cclasstrib: mostraIbs ? f.cclasstrib || null : null,
     valor: fixo(f.valor), desconto: desconto.toFixed(2),
-    tomador: f.semTomador ? null : { ...t, documento: doc },
+    tomador: f.semTomador ? null : exterior
+      ? { ...t, documento: "", nif: t.nif?.trim() || null, nao_nif: t.nif?.trim() ? null : t.nao_nif || null }
+      : { ...t, documento: doc, pais: null, nif: null, nao_nif: null, cod_postal: null, cidade: null, estado_provincia: null },
+    comercio_exterior: exterior ? comexCorpo(f.comex) : null,
     salvar_tomador: f.salvarTomador, iss_retido: f.issRetido,
     aliquota_iss: precisaAliquota && num(f.aliquota) ? num(f.aliquota).toFixed(2) : null,
     ...Object.fromEntries(RETENCOES.map((r) => [r.id, mei ? "0" : num(f.ret[r.id]).toFixed(2)])),
@@ -564,7 +580,38 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
             <input type="checkbox" className="size-4 accent-destaque" checked={f.semTomador} onChange={(ev) => setF({ ...f, semTomador: ev.target.checked })} />
             Nota sem tomador
           </label>}>
-          {f.semTomador ? <p className="text-sm text-texto-2">A nota sai sem identificar quem contratou o serviço.</p> : (
+          {!f.semTomador && (
+            <div className="mb-3 inline-flex rounded-lg border border-borda p-0.5" role="radiogroup" aria-label="Onde está o tomador">
+              {([[false, "No Brasil"], [true, "No exterior"]] as const).map(([v, rot]) => (
+                <button key={rot} type="button" role="radio" aria-checked={f.exterior === v}
+                  onClick={() => setF((a) => ({ ...a, exterior: v, issRetido: v ? false : a.issRetido,
+                    comex: v && !a.comex.valorMoeda ? comexVazio(empresa.canal === "issnet_df") : a.comex,
+                    tomador: v ? { ...a.tomador, pais: a.tomador.pais && a.tomador.pais !== "BR" ? a.tomador.pais : "" } : { ...a.tomador, pais: null } }))}
+                  className={cn("rounded-md px-3 py-1.5 text-sm", f.exterior === v ? "bg-destaque text-white" : "text-texto-2 hover:text-texto")}>
+                  {rot}
+                </button>
+              ))}
+            </div>
+          )}
+          {f.semTomador ? <p className="text-sm text-texto-2">A nota sai sem identificar quem contratou o serviço.</p> : f.exterior ? (
+            <div className="grid grid-cols-6 gap-3">
+              <TomadoresExterior escolher={(x) => setF((a) => ({ ...a, tomador: doTomador(x) }))} />
+              <CamposTomadorExterior t={t} mudar={(c) => setF((a) => ({ ...a, tomador: { ...a.tomador, ...c } }))} />
+              <Campo rotulo="E-mail" className="col-span-6 sm:col-span-4">
+                {(p) => <Input {...p} type="email" value={t.email ?? ""} maxLength={80} onChange={setT("email")} />}
+              </Campo>
+              <Campo rotulo="Telefone" className="col-span-6 sm:col-span-2">
+                {(p) => <Input {...p} value={t.telefone ?? ""} inputMode="tel" onChange={(ev) => setF({ ...f, tomador: { ...t, telefone: apenasDigitos(ev.target.value) } })} />}
+              </Campo>
+              <CamposComercioExterior c={f.comex} issnet={empresa.canal === "issnet_df"} mudar={(x) => setF((a) => ({ ...a, comex: { ...a.comex, ...x } }))} />
+              {!modoRec && (
+                <label className="col-span-6 flex items-center gap-2 text-sm text-texto-2">
+                  <input type="checkbox" className="size-4 accent-destaque" checked={f.salvarTomador} onChange={(ev) => setF({ ...f, salvarTomador: ev.target.checked })} />
+                  Salvar ou atualizar este tomador para as próximas notas
+                </label>
+              )}
+            </div>
+          ) : (
             <div className="grid grid-cols-6 gap-3">
               <Campo rotulo="CNPJ ou CPF" obrigatorio className="col-span-6 sm:col-span-3" ajuda="Com CNPJ, os dados vêm do cadastro salvo ou da Receita (BrasilAPI).">
                 {(p) => (
@@ -848,7 +895,9 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
           <dl className="space-y-1.5 text-sm">
             {substituir && !nota && <Linha rotulo="Substitui" valor={`NFS-e nº ${substituir.numero_nfse ?? "-"} (será cancelada)`} />}
             <Linha rotulo="Prestador" valor={`${empresa.razao_social} (${formatarDoc(empresa.cnpj)})`} />
-            <Linha rotulo="Tomador" valor={f.semTomador ? "Sem tomador" : `${t.nome} (${formatarDoc(doc)})`} />
+            <Linha rotulo="Tomador" valor={f.semTomador ? "Sem tomador" : exterior
+              ? `${t.nome} (${t.pais}${t.nif ? ` · NIF ${t.nif}` : " · sem NIF"})` : `${t.nome} (${formatarDoc(doc)})`} />
+            {exterior && <Linha rotulo="Comércio exterior" valor={`${f.comex.valorMoeda || "-"} (moeda ${comexCorpo(f.comex).moeda})${f.comex.exportacao ? " · exportação" : ""}`} />}
             {modoRec
               ? <Linha rotulo="Próxima emissão" valor={proxima && rec?.ativa ? dataBR(proxima) : "Pausada"} />
               : <Linha rotulo="Competência" valor={f.competencia.split("-").reverse().join("/")} />}
@@ -915,5 +964,25 @@ function Linha({ rotulo, valor, forte }: { rotulo: string; valor: ReactNode; for
       <dt className="text-texto-2">{rotulo}</dt>
       <dd className={cn("text-right font-mono tabular-nums", forte && "font-semibold text-texto")}>{valor}</dd>
     </div>
+  );
+}
+
+/** Tomadores do exterior já salvos: escolher preenche os campos. */
+function TomadoresExterior({ escolher }: { escolher: (t: Tomador) => void }) {
+  const q = useQuery({
+    queryKey: ["emissor", "tomadores", "exterior"],
+    queryFn: () => api<Tomador[]>("/api/emissor/tomadores?q="),
+    select: (lista) => lista.filter((x) => ehExterior(x)),
+  });
+  if (!q.data?.length) return null;
+  return (
+    <Campo rotulo="Tomador do exterior já salvo" className="col-span-6">
+      {(p) => (
+        <Select {...p} value="" onChange={(ev) => { const x = q.data!.find((t) => String(t.id) === ev.target.value); if (x) escolher(x); }}>
+          <option value="">Escolha para preencher, ou digite abaixo…</option>
+          {q.data.map((t) => <option key={t.id} value={t.id}>{t.nome} · {t.pais}{t.nif ? ` · ${t.nif}` : ""}</option>)}
+        </Select>
+      )}
+    </Campo>
   );
 }

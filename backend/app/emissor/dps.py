@@ -93,10 +93,38 @@ class TomadorDps:
     bairro: str | None = None
     telefone: str | None = None
     email: str | None = None
+    # Tomador no exterior: país (ISO 2, nunca BR), NIF ou o motivo de não ter (cNaoNIF 1 ou 2) e endereço
+    pais: str | None = None
+    nif: str | None = None
+    nao_nif: str | None = None
+    cod_postal: str | None = None
+    cidade: str | None = None
+    estado_provincia: str | None = None
+
+    @property
+    def estrangeiro(self) -> bool:
+        return bool(self.pais) and self.pais != "BR"
 
     @property
     def tem_endereco(self) -> bool:
+        if self.estrangeiro:
+            return all([self.cod_postal, self.cidade, self.estado_provincia, self.logradouro, self.numero, self.bairro])
         return all([self.cep, self.cod_municipio, self.logradouro, self.numero, self.bairro])
+
+
+@dataclass
+class ComercioExterior:
+    """Grupo comExt da DPS: obrigatório quando o tomador é do exterior (E0330). Os códigos seguem o leiaute:
+    modo 1 transfronteiriço | 2 consumo no Brasil | 3 presença comercial no exterior | 4 movimento temporário
+    de pessoas físicas; moeda pela tabela do BACEN (220 = dólar dos EUA)."""
+    valor_moeda: Decimal
+    moeda: str = "220"
+    modo: str = "1"
+    vinculo: str = "0"
+    mec_prestador: str = "01"
+    mec_tomador: str = "01"
+    mov_temp_bens: str = "1"
+    mdic: str = "0"
 
 
 @dataclass
@@ -167,6 +195,8 @@ class DadosDps:
     cindop: str | None = None                 # IBS/CBS: indicador da operação (Anexo VII)
     cclasstrib: str | None = None             # IBS/CBS: classificação tributária (CST = 3 primeiros dígitos)
     subst: Substituicao | None = None         # NFS-e substituta
+    comex: ComercioExterior | None = None     # tomador no exterior
+    exportacao: bool = False                  # tribISSQN = 3: exportação de serviço (resultado no país do tomador)
 
     @property
     def id_dps(self) -> str:
@@ -242,6 +272,20 @@ def validar(d: DadosDps) -> None:
         raise DpsInvalida("Informe a descrição do serviço.")
     if r.iss and (d.tomador is None or not d.tomador.tem_endereco):
         raise DpsInvalida("Com ISS retido, informe o tomador com endereço completo (E0237).")
+    estrangeiro = d.tomador is not None and d.tomador.estrangeiro
+    if estrangeiro:
+        t = d.tomador
+        if not (t.nif or t.nao_nif in ("1", "2")):
+            raise DpsInvalida("Tomador no exterior: informe o NIF (número de identificação fiscal do país dele) ou o motivo de não ter.")
+        if not t.tem_endereco:
+            raise DpsInvalida("Tomador no exterior: informe o endereço completo (país, código postal, cidade, estado ou "
+                              "província, logradouro, número e bairro) (E0242).")
+        if d.comex is None or d.comex.valor_moeda <= 0:
+            raise DpsInvalida("Tomador no exterior: informe a moeda e o valor do serviço nessa moeda (comércio exterior, E0330).")
+        if r.iss:
+            raise DpsInvalida("Tomador no exterior não retém ISS: desmarque o ISS retido.")
+    if d.exportacao and not estrangeiro:
+        raise DpsInvalida("Exportação de serviço só com tomador no exterior.")
     if exige_ibscbs(d.prestador) and not codigos_ibscbs_validos(d):
         raise DpsInvalida("Empresa fora do Simples: informe o cIndOp e o cClassTrib (IBS/CBS) no cadastro do serviço. "
                           "O cadastro sugere os códigos pela NBS (Anexo VIII da NFS-e).")
@@ -288,26 +332,7 @@ def montar(d: DadosDps, leiaute: str | None = None) -> etree._Element:
     _e(rt, "regEspTrib", d.prestador.reg_esp_trib)
 
     if d.tomador:
-        t = d.tomador
-        tm = _e(inf, "toma")
-        _e(tm, "CNPJ" if len(t.documento) == 14 else "CPF", t.documento)
-        if t.inscricao_municipal:
-            _e(tm, "IM", t.inscricao_municipal)
-        _e(tm, "xNome", t.nome[:300])
-        if t.tem_endereco:
-            end = _e(tm, "end")
-            nac = _e(end, "endNac")
-            _e(nac, "cMun", t.cod_municipio)
-            _e(nac, "CEP", t.cep)
-            _e(end, "xLgr", t.logradouro[:255])
-            _e(end, "nro", t.numero[:60])
-            if t.complemento:
-                _e(end, "xCpl", t.complemento[:156])
-            _e(end, "xBairro", t.bairro[:60])
-        if t.telefone:
-            _e(tm, "fone", t.telefone)
-        if t.email:
-            _e(tm, "email", t.email[:80])
+        _toma(inf, d.tomador, 300)
 
     s = _e(inf, "serv")
     _e(_e(s, "locPrest"), "cLocPrestacao", d.cod_municipio_prestacao)
@@ -321,6 +346,7 @@ def montar(d: DadosDps, leiaute: str | None = None) -> etree._Element:
     else:
         _e(cs, "xDescServ", d.descricao[:2000])
         _e(cs, "cNBS", d.cnbs)
+    _comex(s, d)
     if d.info_complementar:
         _e(_e(s, "infoCompl"), "xInfComp", d.info_complementar[:2000])
 
@@ -330,7 +356,7 @@ def montar(d: DadosDps, leiaute: str | None = None) -> etree._Element:
         _e(_e(v, "vDescCondIncond"), "vDescIncond", _dec(d.desconto_incondicionado))
     tr = _e(v, "trib")
     tm = _e(tr, "tribMun")
-    _e(tm, "tribISSQN", 1)  # operação tributável
+    _trib_issqn(tm, d)
     _e(tm, "tpRetISSQN", 2 if d.retencoes.iss else 1)  # 2 = retido pelo tomador
     if precisa_aliquota(d.prestador, d.retencoes.iss):
         _e(tm, "pAliq", _dec(d.aliquota_iss))
@@ -359,6 +385,62 @@ def montar(d: DadosDps, leiaute: str | None = None) -> etree._Element:
     if exige_ibscbs(d.prestador):
         _ibscbs(inf, d, nt009)
     return raiz
+
+
+def _toma(inf, t: TomadorDps, max_nome: int) -> None:
+    """Grupo toma: CNPJ/CPF e endereço nacional ou, no exterior, NIF (ou cNaoNIF) e endExt."""
+    tm = _e(inf, "toma")
+    if t.estrangeiro:
+        if t.nif:
+            _e(tm, "NIF", t.nif[:40])
+        else:
+            _e(tm, "cNaoNIF", t.nao_nif)
+    else:
+        _e(tm, "CNPJ" if len(t.documento) == 14 else "CPF", t.documento)
+        if t.inscricao_municipal:
+            _e(tm, "IM", t.inscricao_municipal)
+    _e(tm, "xNome", t.nome[:max_nome])
+    if t.tem_endereco:
+        end = _e(tm, "end")
+        if t.estrangeiro:
+            ext = _e(end, "endExt")
+            _e(ext, "cPais", t.pais)
+            _e(ext, "cEndPost", t.cod_postal[:11])
+            _e(ext, "xCidade", t.cidade[:60])
+            _e(ext, "xEstProvReg", t.estado_provincia[:60])
+        else:
+            nac = _e(end, "endNac")
+            _e(nac, "cMun", t.cod_municipio)
+            _e(nac, "CEP", t.cep)
+        _e(end, "xLgr", t.logradouro[:255])
+        _e(end, "nro", t.numero[:60])
+        if t.complemento:
+            _e(end, "xCpl", t.complemento[:156])
+        _e(end, "xBairro", t.bairro[:60])
+    if t.telefone:
+        _e(tm, "fone", t.telefone)
+    if t.email:
+        _e(tm, "email", t.email[:80])
+
+
+def _comex(s, d: DadosDps) -> None:
+    """Grupo comExt (logo depois de cServ), mesma ordem nos dois leiautes da Sefin e no ISSNet."""
+    c = d.comex
+    if c is None or d.tomador is None or not d.tomador.estrangeiro:
+        return
+    g = _e(s, "comExt")
+    for tag, v in (("mdPrestacao", c.modo), ("vincPrest", c.vinculo), ("tpMoeda", c.moeda), ("vServMoeda", _dec(c.valor_moeda)),
+                   ("mecAFComexP", c.mec_prestador), ("mecAFComexT", c.mec_tomador), ("movTempBens", c.mov_temp_bens),
+                   ("mdic", c.mdic)):
+        _e(g, tag, v)
+
+
+def _trib_issqn(tm, d: DadosDps) -> None:
+    if d.exportacao:
+        _e(tm, "tribISSQN", 3)  # exportação de serviço
+        _e(tm, "cPaisResult", d.tomador.pais)
+    else:
+        _e(tm, "tribISSQN", 1)  # operação tributável
 
 
 def _subst(inf, d: DadosDps) -> None:
@@ -405,7 +487,10 @@ def validar_issnet(d: DadosDps) -> None:
     if not codigos_ibscbs_validos(d):
         raise DpsInvalida("Informe o cIndOp e o cClassTrib (IBS/CBS) no cadastro do serviço: o ISSNet exige o grupo "
                           "IBSCBS desde 01/10/2026.")
-    if d.tomador and len(d.tomador.documento) == 14 and not d.tomador.tem_endereco:
+    if d.comex is not None and d.comex.vinculo == "0" and d.tomador is not None and d.tomador.estrangeiro:
+        raise DpsInvalida("No ISSNet do DF não existe a opção \"sem vínculo\" entre prestador e tomador: escolha o vínculo "
+                          "ou \"Desconhecido\".")
+    if d.tomador and not d.tomador.estrangeiro and len(d.tomador.documento) == 14 and not d.tomador.tem_endereco:
         raise DpsInvalida("No ISSNet do DF, tomador com CNPJ precisa do endereço completo (CEP, município, logradouro, "
                           "número e bairro) (E0235).")
 
@@ -439,26 +524,7 @@ def montar_issnet(d: DadosDps) -> etree._Element:
     _e(rt, "regEspTrib", d.prestador.reg_esp_trib)
 
     if d.tomador:
-        t = d.tomador
-        tm = _e(inf, "toma")
-        _e(tm, "CNPJ" if len(t.documento) == 14 else "CPF", t.documento)
-        if t.inscricao_municipal:
-            _e(tm, "IM", t.inscricao_municipal)
-        _e(tm, "xNome", t.nome[:150])
-        if t.tem_endereco:
-            end = _e(tm, "end")
-            nac = _e(end, "endNac")
-            _e(nac, "cMun", t.cod_municipio)
-            _e(nac, "CEP", t.cep)
-            _e(end, "xLgr", t.logradouro[:255])
-            _e(end, "nro", t.numero[:60])
-            if t.complemento:
-                _e(end, "xCpl", t.complemento[:156])
-            _e(end, "xBairro", t.bairro[:60])
-        if t.telefone:
-            _e(tm, "fone", t.telefone)
-        if t.email:
-            _e(tm, "email", t.email[:80])
+        _toma(inf, d.tomador, 150)
 
     s = _e(inf, "serv")
     _e(_e(s, "locPrest"), "cLocPrestacao", d.cod_municipio_prestacao)
@@ -468,6 +534,7 @@ def montar_issnet(d: DadosDps) -> etree._Element:
     _e(cs, "xDescServ", d.descricao[:2000])
     if d.cnbs:
         _e(cs, "cNBS", d.cnbs)
+    _comex(s, d)
     if d.info_complementar:
         _e(_e(s, "infoCompl"), "xInfComp", d.info_complementar[:2000])
 
@@ -477,7 +544,7 @@ def montar_issnet(d: DadosDps) -> etree._Element:
         _e(_e(v, "vDescCondIncond"), "vDescIncond", _dec(d.desconto_incondicionado))
     tr = _e(v, "trib")
     tm = _e(tr, "tribMun")
-    _e(tm, "tribISSQN", 1)
+    _trib_issqn(tm, d)
     _e(tm, "tpRetISSQN", 2 if d.retencoes.iss else 1)
     # pAliq não vai: "a alíquota do ISS é definida pela legislação municipal e se informada será erro" (manual 5.1)
     r = d.retencoes
