@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api import (
-    admin, auth, buscas, dashboard, emissor, emissor_notas, empresas, exportacoes, importacao, leads, monitoramento, notas,
+    acessos, admin, auth, buscas, dashboard, emissor, emissor_notas, empresas, exportacoes, importacao, leads, monitoramento, notas,
     sistema, uso,
 )
 from app.core import cripto
@@ -81,6 +81,8 @@ def criar_app() -> FastAPI:
     app.include_router(admin.router)
     app.include_router(leads.publico)
     app.include_router(leads.painel)
+    app.include_router(acessos.publico)
+    app.include_router(acessos.painel)
     app.include_router(monitoramento.router)
     app.include_router(uso.router)
     app.include_router(sistema.router)

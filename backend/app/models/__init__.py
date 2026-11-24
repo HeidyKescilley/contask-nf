@@ -94,6 +94,25 @@ class Lead(Base):
     aceita_whatsapp: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))
 
 
+class Visita(Base):
+    """Visualização de página do site de vendas, sem cookie e sem dado pessoal.
+
+    `visitante` é um resumo (HMAC) de IP + navegador + dia: conta pessoas por dia sem guardar o IP e sem
+    permitir seguir alguém de um dia para o outro.
+    """
+    __tablename__ = "visita"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
+    dia: Mapped[date] = mapped_column(Date, index=True)
+    pagina: Mapped[str] = mapped_column(String(120))
+    canal: Mapped[str] = mapped_column(String(60))  # utm_source, site de onde veio ou "direto"
+    meio: Mapped[str | None] = mapped_column(String(60))  # utm_medium
+    campanha: Mapped[str | None] = mapped_column(String(100))  # utm_campaign
+    referencia: Mapped[str | None] = mapped_column(String(120))  # domínio de onde veio
+    dispositivo: Mapped[str] = mapped_column(String(12))  # celular | computador
+    visitante: Mapped[str] = mapped_column(String(16))
+
+
 class Certificado(Base):
     __tablename__ = "certificado"
     __table_args__ = (

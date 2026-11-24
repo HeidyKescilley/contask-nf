@@ -504,6 +504,7 @@
         : "Enviamos o acesso para <b></b>. No primeiro login, o sistema pede uma senha nova.")
         + (ate ? ` O teste vai até ${ate}, com tudo liberado.` : "");
       document.querySelector("#sucesso-texto b").textContent = corpo.email;
+      window.contaskEvento && window.contaskEvento("generate_lead", { formulario: "teste_gratis", segmento: dados.segmento });
       form.hidden = true;
       const ok = document.getElementById("sucesso");
       ok.hidden = false;
@@ -523,5 +524,6 @@
     a.rel = "noopener";
   });
 </script>
+<script src="/medicao.js" defer></script>
 </body>
 </html>

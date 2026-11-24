@@ -17,9 +17,9 @@ from app.core.config import config
 METODOS_ESCRITA = {"POST", "PUT", "PATCH", "DELETE"}
 ROTAS_PUBLICAS = {
     "/api/auth/eu", "/api/auth/entrar", "/api/auth/sair", "/api/auth/cadastrar", "/api/ping", "/api/saude",
-    "/api/publico/teste", "/api/publico/black-friday",
+    "/api/publico/teste", "/api/publico/black-friday", "/api/publico/visita",
 }
-ROTAS_SITE = {"/api/publico/teste", "/api/publico/black-friday"}
+ROTAS_SITE = {"/api/publico/teste", "/api/publico/black-friday", "/api/publico/visita"}
 ROTAS_TROCA_SENHA = ROTAS_PUBLICAS | {"/api/auth/senha"}
 
 

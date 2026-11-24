@@ -153,6 +153,12 @@ Configurações em `/opt/contask/contask.conf` (cadastro, emissão em produção
 
 No UptimeRobot (grátis), crie um monitor HTTP para `https://app.<dominio>/api/ping`. Ele avisa por e-mail se o sistema sair do ar.
 
+## 12. Acessos do site e Google Analytics
+
+- **Contagem própria (sempre ligada):** `site/medicao.js` registra cada página vista em `/api/publico/visita`, sem cookie e sem guardar IP (o visitante vira um resumo de IP + navegador + dia). O painel fica em Administração > **Acessos do site**: pessoas por dia, canais, páginas e quantas viraram lead.
+- **Canal** = `utm_source` do link. Use um link por canal, por exemplo `https://contasknf.com.br/black-friday/?utm_source=linkedin&utm_campaign=bf26`. Sem UTM, vale o site de onde a pessoa veio (google, instagram...) ou "direto".
+- **Google Analytics 4:** crie a propriedade em analytics.google.com (fluxo da Web para `https://contasknf.com.br`), copie o ID `G-XXXXXXXXXX` para `GA_ID` em `site/medicao.js` e publique. O GA só carrega depois que a pessoa aceita o aviso de cookies (LGPD). Eventos enviados: `generate_lead` (formulários), `contato_whatsapp` e `clique_cta`. No GA, marque `generate_lead` como evento-chave para ver a conversão por canal.
+
 ## Segurança: o que já está ligado
 
 - Login obrigatório:

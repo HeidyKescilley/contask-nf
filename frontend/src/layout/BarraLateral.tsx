@@ -3,7 +3,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import { Dica } from "@/components/ui/tooltip";
 import { useContaEmpresa, useSessao } from "@/lib/sessao";
 import { cn, useCelular } from "@/lib/utils";
-import { NAV_ADMIN, NAV_LEADS, NAV_MONITORAMENTO, NAVEGACAO, NAVEGACAO_EMPRESA } from "./navegacao";
+import { NAV_ACESSOS, NAV_ADMIN, NAV_LEADS, NAV_MONITORAMENTO, NAVEGACAO, NAVEGACAO_EMPRESA } from "./navegacao";
 
 export function BarraLateral({ recolhida: recolhidaDesktop, alternar, aberta, fechar }: {
   recolhida: boolean; alternar: () => void; aberta: boolean; fechar: () => void;
@@ -15,7 +15,7 @@ export function BarraLateral({ recolhida: recolhidaDesktop, alternar, aberta, fe
   const { search, pathname } = useLocation();
   const admin = !!useSessao().data?.usuario?.admin_sistema;
   const base = useContaEmpresa() ? NAVEGACAO_EMPRESA : NAVEGACAO;
-  const itens = admin ? [...base, NAV_ADMIN, NAV_LEADS, NAV_MONITORAMENTO] : base;
+  const itens = admin ? [...base, NAV_ADMIN, NAV_LEADS, NAV_ACESSOS, NAV_MONITORAMENTO] : base;
   return (
     <>
     {celular && aberta && <div className="fixed inset-0 z-40 bg-black/40" onClick={fechar} aria-hidden />}

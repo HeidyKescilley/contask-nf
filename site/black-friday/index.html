@@ -433,6 +433,7 @@
         throw new Error(r.status >= 500 ? "Não foi possível enviar agora. Tente de novo em instantes ou chame no WhatsApp." : msg);
       }
       const personalizado = corpo.situacao === "plano_personalizado";
+      window.contaskEvento && window.contaskEvento("generate_lead", { formulario: "black_friday", notas_mes: f.notas_mes.value, currency: "BRL", value: personalizado ? 0 : 29.9 });
       document.getElementById("sucesso-titulo").textContent = personalizado ? "Recebemos seu pedido!" : "Oferta garantida!";
       const p = document.getElementById("sucesso-texto");
       p.textContent = personalizado
@@ -451,5 +452,6 @@
   });
 })();
 </script>
+<script src="/medicao.js" defer></script>
 </body>
 </html>
