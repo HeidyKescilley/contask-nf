@@ -8,7 +8,8 @@
  *    chamam "generate_lead"; cliques em WhatsApp e nos botões principais são contados aqui.
  */
 (() => {
-  const GA_ID = "";
+  const GA_ID = "G-3CKFNT2T9D"; // propriedade GA4, fluxo Web contasknf.com.br
+  const GTM_ID = "GTM-M5K8PHFP"; // contêiner do Google Tag Manager (também só com consentimento)
   const CHAVE = "contask_cookies"; // "aceito" | "recusado"
 
   // --- 1. visitas próprias ---
@@ -26,16 +27,26 @@
   let gaAtivo = false;
 
   function carregarGA() {
-    if (!GA_ID || gaAtivo) return;
+    if (!(GA_ID || GTM_ID) || gaAtivo) return;
     gaAtivo = true;
     window.dataLayer = window.dataLayer || [];
     window.gtag = function () { window.dataLayer.push(arguments); };
     window.gtag("consent", "default", { analytics_storage: "granted", ad_storage: "denied", ad_user_data: "denied", ad_personalization: "denied" });
     window.gtag("js", new Date());
-    window.gtag("config", GA_ID, { anonymize_ip: true });
+    if (GA_ID) {
+      window.gtag("config", GA_ID, { anonymize_ip: true });
+      script("https://www.googletagmanager.com/gtag/js?id=" + encodeURIComponent(GA_ID));
+    }
+    if (GTM_ID) {
+      window.dataLayer.push({ "gtm.start": Date.now(), event: "gtm.js" });
+      script("https://www.googletagmanager.com/gtm.js?id=" + encodeURIComponent(GTM_ID));
+    }
+  }
+
+  function script(src) {
     const s = document.createElement("script");
     s.async = true;
-    s.src = "https://www.googletagmanager.com/gtag/js?id=" + encodeURIComponent(GA_ID);
+    s.src = src;
     document.head.appendChild(s);
   }
 
@@ -69,7 +80,7 @@
     document.body.appendChild(caixa);
   }
 
-  if (GA_ID) {
+  if (GA_ID || GTM_ID) {
     const escolha = ler();
     if (escolha === "aceito") carregarGA();
     else if (escolha !== "recusado") aviso();
