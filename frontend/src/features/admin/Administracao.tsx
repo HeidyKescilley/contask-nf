@@ -17,9 +17,10 @@ import { moeda } from "@/lib/notas";
 import { useSessaoAdmin } from "@/lib/sessaoAdmin";
 import { cn } from "@/lib/utils";
 
-interface UsuarioAdm {
+export interface UsuarioAdm {
   id: number;
-  escritorio_id: number;
+  /** vazio: usuário só da administração */
+  escritorio_id: number | null;
   email: string;
   nome: string;
   ativo: boolean;
@@ -54,7 +55,7 @@ interface EscritorioAdm {
   observacoes: string | null;
   criado_em: string | null;
 }
-interface ComSenha { usuario: UsuarioAdm; senha_inicial: string }
+export interface ComSenha { usuario: UsuarioAdm; senha_inicial: string }
 interface Evento { id: number; momento: string; tipo: string; descricao: string; valor: number | null; por: string | null }
 
 const CHAVE = ["admin", "escritorios"];
@@ -512,8 +513,8 @@ function NovoUsuario({ escritorio, aoFechar, aoCriar }: { escritorio: Escritorio
   );
 }
 
-function SenhaInicial({ dados, aoFechar }: { dados: ComSenha | null; aoFechar: () => void }) {
-  const endereco = window.location.origin;
+export function SenhaInicial({ dados, aoFechar, caminho = "" }: { dados: ComSenha | null; aoFechar: () => void; caminho?: string }) {
+  const endereco = window.location.origin + caminho;
   return (
     <Dialog open={!!dados} onOpenChange={(v) => !v && aoFechar()}>
       <DialogContent titulo="Senha inicial" descricao="Ela aparece só agora. Envie por um canal privado (WhatsApp direto, nunca em grupo). A pessoa troca no primeiro acesso.">

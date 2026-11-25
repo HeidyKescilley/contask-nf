@@ -151,10 +151,10 @@ def entrar(db: Session, email: str, senha: str, ip: str, area: str = "cliente") 
         limitador.falhou(*chaves)
         raise ErroLogin("E-mail ou senha incorretos.")
     limitador.limpar(*chaves)
-    if area == "admin":
-        if u.trocar_senha:
-            raise ErroLogin("Troque a senha provisória no acesso do sistema antes de entrar na administração.")
-    else:
+    # Na administração, a senha inicial é trocada logo depois de entrar (o middleware só libera a troca)
+    if area == "cliente":
+        if u.escritorio_id is None:
+            raise ErroLogin("Este acesso é só da administração. Entre pelo endereço /admin.")
         _exigir_escritorio_liberado(db, u)
     token = secrets.token_urlsafe(32)
     db.execute(delete(SessaoUsuario).where(SessaoUsuario.expira_em < agora()))
@@ -191,7 +191,7 @@ def usuario_da_sessao(db: Session, token: str | None, area: str = "cliente") -> 
             return None  # o papel foi retirado: a sessão da administração deixa de valer na hora
     else:
         from app.core.escritorios import bloqueado
-        if bloqueado(db, u.escritorio_id):
+        if u.escritorio_id is None or bloqueado(db, u.escritorio_id):
             return None  # suspenso: a sessão volta a valer se o escritório for reativado
     # Renova a sessão em uso (no máximo uma escrita por hora)
     novo = agora() + _duracao(area)
@@ -232,9 +232,10 @@ def _escritorio_do_cadastro(db: Session, nome: str, tipo: str = "contador") -> E
 
 def criar_usuario(db: Session, email: str, nome: str, senha: str, *, trocar_senha: bool = True,
                   escritorio_id: int | None = None, novo_escritorio: str | None = None,
-                  tipo: str = "contador") -> Usuario:
+                  tipo: str = "contador", so_administracao: bool = False) -> Usuario:
     """Sem escritorio_id/novo_escritorio: regra do cadastro pela tela (_escritorio_do_cadastro).
-    `tipo` (contador | empresa) só vale para escritório novo."""
+    `tipo` (contador | empresa) só vale para escritório novo.
+    `so_administracao`: sem escritório, administrador do sistema, só entra na administração."""
     if tipo not in ("contador", "empresa"):
         raise ErroLogin("Tipo de conta inválido: use contador ou empresa.")
     email = normalizar_email(email)
@@ -244,6 +245,12 @@ def criar_usuario(db: Session, email: str, nome: str, senha: str, *, trocar_senh
         raise ErroLogin("Já existe um usuário com esse e-mail.")
     validar_nova_senha(senha)
     nome_limpo = (nome or "").strip() or email
+    if so_administracao:
+        u = Usuario(email=email, nome=nome_limpo, senha_hash=gerar_hash(senha), ativo=True, admin_sistema=True,
+                    trocar_senha=trocar_senha, criado_em=agora(), escritorio_id=None)
+        db.add(u)
+        db.flush()
+        return u
     if escritorio_id is not None:
         esc = db.get(Escritorio, escritorio_id)
         if esc is None:

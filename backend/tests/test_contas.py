@@ -122,6 +122,70 @@ def test_administracao_separada_do_sistema(cliente):
     assert cliente.get("/api/auth/eu").json()["usuario"] is not None
 
 
+def test_usuarios_so_da_administracao(app_teste, cliente):
+    """A administração cria usuários próprios: sem escritório, trocam a senha no primeiro login
+    e nunca entram no sistema."""
+    from app.core import autenticacao as auth
+    from tests.conftest import entrar_admin
+    entrar_admin(cliente)
+    r = cliente.post("/api/admin/administradores", json={"email": "Gestao@Contask.local", "nome": "Gestão"})
+    assert r.status_code == 201, r.text
+    novo, senha = r.json()["usuario"], r.json()["senha_inicial"]
+    assert novo["so_administracao"] and novo["escritorio_id"] is None and novo["trocar_senha"]
+    assert cliente.post("/api/admin/administradores", json={"email": "gestao@contask.local"}).status_code == 409
+    lista = cliente.get("/api/admin/administradores").json()
+    assert {u["email"] for u in lista} == {"teste@contask.local", "gestao@contask.local"}
+    assert next(u for u in lista if u["email"] == "teste@contask.local")["escritorio"]
+    # Não aparece como usuário de nenhum escritório nos Clientes
+    assert all(u["email"] != "gestao@contask.local" for e in cliente.get("/api/admin/escritorios").json() for u in e["usuarios"])
+
+    g = TestClient(app_teste, base_url="http://127.0.0.1:8765")
+    # O sistema recusa (acesso só da administração), sem criar sessão
+    r = g.post("/api/auth/entrar", json={"email": "gestao@contask.local", "senha": senha})
+    assert r.status_code == 401 and "/admin" in r.json()["detail"] and not g.cookies.get(auth.COOKIE)
+    # Na administração entra, mas só troca a senha até trocar
+    r = g.post("/api/admin/auth/entrar", json={"email": "gestao@contask.local", "senha": senha})
+    assert r.status_code == 200 and r.json()["usuario"]["trocar_senha"]
+    r = g.get("/api/admin/escritorios")
+    assert r.status_code == 403 and r.json()["detail"].startswith("Troque a senha")
+    assert g.post("/api/admin/auth/senha", json={"senha_atual": "errada", "senha_nova": "Nova-Senha-123"}).status_code == 400
+    r = g.post("/api/admin/auth/senha", json={"senha_atual": senha, "senha_nova": "Nova-Senha-123"})
+    assert r.status_code == 200 and not r.json()["usuario"]["trocar_senha"]
+    assert g.get("/api/admin/escritorios").status_code == 200
+    # Mesmo com o token da administração no cookie do sistema, o sistema não abre
+    g.cookies.set(auth.COOKIE, g.cookies.get(auth.COOKIE_ADMIN))
+    assert g.get("/api/auth/eu").json()["usuario"] is None and g.get("/api/empresas").status_code == 401
+    assert g.post("/api/auth/entrar", json={"email": "gestao@contask.local", "senha": "Nova-Senha-123"}).status_code == 401
+
+    # Só da administração: não perde o papel, é desativado (e sai na hora)
+    assert cliente.delete(f"/api/admin/administradores/{novo['id']}").status_code == 409
+    assert cliente.put(f"/api/admin/usuarios/{novo['id']}/ativo", json={"ativo": False}).status_code == 200
+    assert g.get("/api/admin/escritorios").status_code == 401
+    # Ninguém tira o próprio acesso
+    eu = next(u for u in lista if u["email"] == "teste@contask.local")
+    assert cliente.delete(f"/api/admin/administradores/{eu['id']}").status_code == 409
+
+
+def test_tirar_administracao_de_quem_usa_o_sistema(app_teste, cliente):
+    """Quem também usa o sistema perde só a administração: a sessão de lá cai, o sistema continua."""
+    from app.core.db import nova_sessao
+    from app.models import Usuario
+    from tests.conftest import entrar_admin
+    entrar_admin(cliente)
+    r = cliente.post("/api/admin/administradores", json={"email": "gestao@contask.local"})
+    senha = r.json()["senha_inicial"]
+    g = TestClient(app_teste, base_url="http://127.0.0.1:8765")
+    g.post("/api/admin/auth/entrar", json={"email": "gestao@contask.local", "senha": senha})
+    g.post("/api/admin/auth/senha", json={"senha_atual": senha, "senha_nova": "Nova-Senha-123"})
+    teste = next(u for u in g.get("/api/admin/administradores").json() if u["email"] == "teste@contask.local")
+    r = g.delete(f"/api/admin/administradores/{teste['id']}")
+    assert r.status_code == 200 and not r.json()["admin_sistema"]
+    assert cliente.get("/api/admin/escritorios").status_code == 401  # a sessão da administração caiu
+    assert cliente.get("/api/empresas").status_code == 200  # o sistema continua
+    with nova_sessao() as db:
+        assert not db.get(Usuario, teste["id"]).admin_sistema
+
+
 def _admin_com_escritorio(cliente, **plano):
     from app.tools import usuarios
     from tests.conftest import entrar_admin; entrar_admin(cliente)

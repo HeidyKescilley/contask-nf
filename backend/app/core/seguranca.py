@@ -24,6 +24,7 @@ ROTAS_TROCA_SENHA = ROTAS_PUBLICAS | {"/api/auth/senha"}
 # Administração: área separada, com login e cookie próprios (core/autenticacao.COOKIE_ADMIN)
 PREFIXO_ADMIN = "/api/admin/"
 ROTAS_PUBLICAS_ADMIN = {"/api/admin/auth/eu", "/api/admin/auth/entrar", "/api/admin/auth/sair"}
+ROTAS_TROCA_SENHA_ADMIN = ROTAS_PUBLICAS_ADMIN | {"/api/admin/auth/senha"}
 
 
 def _usuario(token: str | None, area: str = "cliente"):
@@ -61,6 +62,8 @@ class ProtecaoLocalMiddleware(BaseHTTPMiddleware):
                 u = await run_in_threadpool(_usuario, request.cookies.get(COOKIE_ADMIN), "admin")
                 if u is None:
                     return JSONResponse({"detail": "Entre na administração com seu e-mail e senha."}, status_code=401)
+                if u.trocar_senha and caminho not in ROTAS_TROCA_SENHA_ADMIN:
+                    return JSONResponse({"detail": "Troque a senha para continuar."}, status_code=403)
                 request.state.usuario = u
                 request.state.area = "admin"
         elif caminho.startswith("/api/") and caminho not in ROTAS_PUBLICAS:

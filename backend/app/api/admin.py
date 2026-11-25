@@ -1,8 +1,9 @@
 """Painel do administrador do sistema (suporte do Contask): escritórios e usuários de todos os clientes.
 
 Só quem tem `usuario.admin_sistema` entra aqui, e só pelo login da administração (/admin/entrar),
-que cria uma sessão separada da do sistema. Esse papel não é concedido pela tela: só no servidor,
-por SSH (`contask.sh usuario admin EMAIL`). O painel não mostra dados fiscais dos escritórios
+que cria uma sessão separada da do sistema. O papel vem do servidor, por SSH
+(`contask.sh usuario admin EMAIL`), ou da própria administração, que cria usuários só dela (sem
+escritório: nunca entram no sistema). O painel não mostra dados fiscais dos escritórios
 (empresas, notas, certificados): só contas e contagens.
 """
 from __future__ import annotations
@@ -12,7 +13,7 @@ from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.core import autenticacao as auth
@@ -20,7 +21,8 @@ from app.core import escritorios as regras
 from app.core.config import config
 from app.core.db import sessao
 from app.core.uso import xmls_no_mes
-from app.models import Empresa, Escritorio, EscritorioEvento, Usuario
+from app.api.auth import TrocaSenha
+from app.models import Empresa, Escritorio, EscritorioEvento, SessaoUsuario, Usuario
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -41,7 +43,8 @@ class EntradaAdmin(BaseModel):
 
 
 def _adm_json(u: Usuario | None) -> dict:
-    return {"usuario": None if u is None else {"id": u.id, "email": u.email, "nome": u.nome}}
+    return {"usuario": None if u is None else {"id": u.id, "email": u.email, "nome": u.nome,
+                                                "trocar_senha": u.trocar_senha}}
 
 
 @router.get("/auth/eu")
@@ -59,6 +62,18 @@ def entrar_admin(d: EntradaAdmin, request: Request, response: Response, db: Sess
     cfg = config()
     response.set_cookie(auth.COOKIE_ADMIN, token, max_age=int(auth.DURACAO_ADMIN.total_seconds()), httponly=True,
                         secure=cfg.cookie_secure, samesite="strict", path="/")
+    return _adm_json(u)
+
+
+@router.post("/auth/senha")
+def senha_admin(d: TrocaSenha, request: Request, db: Session = Depends(sessao)):
+    """Troca a própria senha (também a senha inicial, logo depois do primeiro login)."""
+    from app.api.auth import aplicar_troca
+    token = request.cookies.get(auth.COOKIE_ADMIN)
+    u = auth.usuario_da_sessao(db, token, "admin")
+    if u is None:
+        raise HTTPException(401, "Entre de novo para trocar a senha.")
+    aplicar_troca(db, u, d, request, token)
     return _adm_json(u)
 
 
@@ -312,5 +327,44 @@ def definir_ativo(usuario_id: int, d: Ativo, db: Session = Depends(sessao), adm:
     u.ativo = d.ativo
     if not d.ativo:
         auth.encerrar_sessoes(db, u.id)
+    db.commit()
+    return _usuario_out(u)
+
+
+# --- usuários da administração --------------------------------------------------
+
+def _administrador_out(db: Session, u: Usuario, nomes_esc: dict[int, str]) -> dict:
+    return {**_usuario_out(u), "so_administracao": u.escritorio_id is None,
+            "escritorio": nomes_esc.get(u.escritorio_id) if u.escritorio_id else None}
+
+
+@router.get("/administradores")
+def listar_administradores(db: Session = Depends(sessao), _adm: Usuario = Depends(exigir_admin)):
+    nomes = dict(db.execute(select(Escritorio.id, Escritorio.nome)).all())
+    return [_administrador_out(db, u, nomes)
+            for u in db.scalars(select(Usuario).where(Usuario.admin_sistema).order_by(Usuario.nome, Usuario.email))]
+
+
+@router.post("/administradores", status_code=201)
+def criar_administrador(d: NovoUsuario, db: Session = Depends(sessao), _adm: Usuario = Depends(exigir_admin)):
+    """Usuário só da administração: sem escritório, nunca entra no sistema. Troca a senha no primeiro login."""
+    r = _criar(db, d.email, d.nome, so_administracao=True)
+    r["usuario"] = _administrador_out(db, db.get(Usuario, r["usuario"]["id"]), {})
+    return r
+
+
+@router.delete("/administradores/{usuario_id}")
+def remover_administrador(usuario_id: int, db: Session = Depends(sessao), adm: Usuario = Depends(exigir_admin)):
+    """Tira o acesso à administração de quem também usa o sistema (o acesso ao sistema continua).
+    Usuário só da administração não perde o papel: é desativado (Desativar)."""
+    u = _usuario(db, usuario_id)
+    if not u.admin_sistema:
+        raise HTTPException(409, "Esta pessoa não tem acesso à administração.")
+    if u.id == adm.id:
+        raise HTTPException(409, "Você não pode tirar o próprio acesso à administração.")
+    if u.escritorio_id is None:
+        raise HTTPException(409, "Este usuário é só da administração: use Desativar.")
+    u.admin_sistema = False
+    db.execute(delete(SessaoUsuario).where(SessaoUsuario.usuario_id == u.id, SessaoUsuario.area == "admin"))
     db.commit()
     return _usuario_out(u)

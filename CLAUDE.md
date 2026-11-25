@@ -16,7 +16,7 @@
 - Toda tela deve funcionar nos dois temas e ter estados de carregamento, vazio e erro.
 - Dois tipos de conta (`escritorio.tipo`): `contador` (várias empresas) e `empresa` (um CNPJ só, foco no emissor). Toda rota que cadastra empresa chama `exigir_conta_contador`.
 - Vários escritórios no mesmo SQLite; o escritório vem da sessão. Toda rota /api nova exige login automaticamente (middleware em core/seguranca.py); rota pública precisa entrar em ROTAS_PUBLICAS de propósito.
-- Administração separada do sistema: telas em /admin (layout próprio), login em /admin/entrar com sessão e cookie próprios (`contask_admin`, área "admin"). Toda rota /api/admin/* só aceita essa sessão (middleware); a sessão do cliente nunca abre a administração, e vice-versa.
+- Administração separada do sistema: telas em /admin (layout próprio), login em /admin/entrar com sessão e cookie próprios (`contask_admin`, área "admin"). Toda rota /api/admin/* só aceita essa sessão (middleware); a sessão do cliente nunca abre a administração, e vice-versa. Usuário só da administração (Administração > Administradores) não tem escritório (`escritorio_id` vazio) e nunca entra no sistema.
 - A chave-mestra é CONTASK_CHAVE_MESTRA. Sem ela a API não sobe. Testes com dados reais: use uma instância isolada (CONTASK_DADOS_DIR próprio), nunca o banco real.
 
 ## Comandos

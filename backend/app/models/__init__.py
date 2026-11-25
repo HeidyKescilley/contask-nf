@@ -479,17 +479,20 @@ class Exportacao(Base):
 
 
 class Usuario(Base):
-    """Pessoa do escritório. Nesta etapa não há papéis: vê todas as empresas do escritório."""
+    """Pessoa do escritório. Nesta etapa não há papéis: vê todas as empresas do escritório.
+    Sem escritório (escritorio_id vazio): usuário só da administração, que nunca entra no sistema."""
     __tablename__ = "usuario"
     id: Mapped[int] = mapped_column(primary_key=True)
-    escritorio_id: Mapped[int] = mapped_column(ForeignKey("escritorio.id", ondelete="CASCADE"), index=True)
+    escritorio_id: Mapped[int | None] = mapped_column(ForeignKey("escritorio.id", ondelete="CASCADE"), index=True,
+                                                      nullable=True)
     email: Mapped[str] = mapped_column(String(200), unique=True)
     nome: Mapped[str] = mapped_column(String(200))
     senha_hash: Mapped[str] = mapped_column(String(300))
     ativo: Mapped[bool] = mapped_column(Boolean, default=True)
     trocar_senha: Mapped[bool] = mapped_column(Boolean, default=False)
-    # Administrador do sistema (suporte do Contask): cria escritórios e usuários pelo painel.
-    # Só é concedido no servidor: python -m app.tools.usuarios admin EMAIL
+    # Administrador do sistema (suporte do Contask): entra na administração (/admin).
+    # Concedido no servidor (python -m app.tools.usuarios admin EMAIL) ou ao criar, na própria
+    # administração, um usuário só da administração.
     admin_sistema: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
     ultimo_acesso_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

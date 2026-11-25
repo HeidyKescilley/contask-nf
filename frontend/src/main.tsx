@@ -22,11 +22,12 @@ import { Administracao } from "@/features/admin/Administracao";
 import { Acessos } from "@/features/admin/Acessos";
 import { Leads } from "@/features/admin/Leads";
 import { Monitoramento } from "@/features/admin/Monitoramento";
+import { Administradores } from "@/features/admin/Administradores";
 import { Notificacoes } from "@/layout/Notificacoes";
 import { Cadastrar, Entrar, TrocarSenha } from "@/features/acesso/Acesso";
 import { Protegido } from "@/lib/sessao";
 import { ProtegidoAdmin } from "@/lib/sessaoAdmin";
-import { EntrarAdmin, EstruturaAdmin } from "@/layout/EstruturaAdmin";
+import { EntrarAdmin, EstruturaAdmin, TrocarSenhaAdmin } from "@/layout/EstruturaAdmin";
 import { TemaProvider } from "@/lib/tema";
 import {
   Configuracoes, NaoEncontrada,
@@ -44,6 +45,7 @@ const rotas = createBrowserRouter([
   { path: "trocar-senha", element: <TrocarSenha /> },
   // Administração: ambiente separado do sistema, com login, sessão e menu próprios
   { path: "admin/entrar", element: <EntrarAdmin /> },
+  { path: "admin/senha", element: <ProtegidoAdmin><TrocarSenhaAdmin /></ProtegidoAdmin> },
   {
     path: "admin",
     element: <ProtegidoAdmin><EstruturaAdmin /></ProtegidoAdmin>,
@@ -52,6 +54,7 @@ const rotas = createBrowserRouter([
       { path: "leads", element: <Leads /> },
       { path: "acessos", element: <Acessos /> },
       { path: "monitoramento", element: <Monitoramento /> },
+      { path: "administradores", element: <Administradores /> },
       { path: "*", element: <NaoEncontrada /> },
     ],
   },

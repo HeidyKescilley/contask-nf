@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, LogIn, LogOut, Menu, ShieldCheck, UserRound } from "lucide-react";
+import { KeyRound, Loader2, LogIn, LogOut, Menu, ShieldCheck, UserRound } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -69,6 +69,51 @@ export function EntrarAdmin() {
   );
 }
 
+/** Troca da própria senha na administração; obrigatória com a senha inicial, antes de qualquer tela. */
+export function TrocarSenhaAdmin() {
+  const sessao = useSessaoAdmin();
+  const qc = useQueryClient();
+  const navegar = useNavigate();
+  const [atual, setAtual] = useState("");
+  const [nova, setNova] = useState("");
+  const [confirma, setConfirma] = useState("");
+  const trocar = useMutation({
+    mutationFn: () => api<SessaoAdmin>("/api/admin/auth/senha", {
+      method: "POST", body: JSON.stringify({ senha_atual: atual, senha_nova: nova }),
+    }),
+    onSuccess: (r) => {
+      qc.setQueryData(CHAVE_SESSAO_ADMIN, r);
+      toast.success("Senha salva.");
+      navegar("/admin", { replace: true });
+    },
+  });
+  const obrigatoria = !!sessao.data?.usuario?.trocar_senha;
+  const diferentes = confirma.length > 0 && confirma !== nova;
+  const enviar = (e: FormEvent) => {
+    e.preventDefault();
+    if (!diferentes) trocar.mutate();
+  };
+  return (
+    <Moldura area="Administração" titulo={obrigatoria ? "Crie sua senha" : "Trocar senha"}
+      descricao={obrigatoria ? "Primeiro acesso: troque a senha inicial por uma que só você conheça."
+        : "As outras sessões abertas com a senha antiga serão encerradas (inclusive no sistema, se você também usa)."}>
+      <form onSubmit={enviar} className="space-y-4">
+        {trocar.isError && <Aviso tom="erro">{(trocar.error as Error).message}</Aviso>}
+        <CampoSenha rotulo={obrigatoria ? "Senha inicial" : "Senha atual"} valor={atual} mudar={setAtual} autoComplete="current-password" autoFocus />
+        <CampoSenha rotulo="Nova senha" valor={nova} mudar={setNova} autoComplete="new-password"
+          ajuda="Pelo menos 10 caracteres, com maiúsculas, minúsculas e número." />
+        <Campo rotulo="Repita a nova senha" erro={diferentes ? "As senhas não são iguais." : undefined}>
+          {(p) => <Input {...p} type="password" value={confirma} onChange={(e) => setConfirma(e.target.value)} autoComplete="new-password" required />}
+        </Campo>
+        <Button type="submit" variante="primario" className="w-full" disabled={trocar.isPending || !atual || !nova || !confirma || diferentes}>
+          {trocar.isPending ? <Loader2 className="animate-spin" /> : <ShieldCheck />} Salvar nova senha
+        </Button>
+        {!obrigatoria && <Button type="button" variante="fantasma" className="w-full" onClick={() => navegar(-1)}>Cancelar</Button>}
+      </form>
+    </Moldura>
+  );
+}
+
 function MenuAdmin() {
   const { data } = useSessaoAdmin();
   const qc = useQueryClient();
@@ -95,6 +140,7 @@ function MenuAdmin() {
           <div className="truncate text-xs font-normal text-texto-2">{u.email}</div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => navegar("/admin/senha")}><KeyRound /> Trocar senha</DropdownMenuItem>
         <DropdownMenuItem onSelect={() => sair.mutate()} disabled={sair.isPending}><LogOut /> Sair da administração</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -113,6 +159,8 @@ export function EstruturaAdmin() {
     document.title = "Administração · Contask NF";
     return () => { document.title = antes; };
   }, []);
+  // Senha inicial: nada da administração abre antes da troca
+  if (useSessaoAdmin().data?.usuario?.trocar_senha) return <Navigate to="/admin/senha" replace />;
 
   return (
     <div className="flex min-h-screen">

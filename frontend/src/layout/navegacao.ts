@@ -1,4 +1,4 @@
-import { Activity, BarChart3, ArrowDownToLine, Inbox, ArrowUpFromLine, Building2, FileArchive, LayoutDashboard, ReceiptText, Settings, ShieldCheck, type LucideIcon } from "lucide-react";
+import { Activity, BarChart3, ArrowDownToLine, Inbox, ArrowUpFromLine, Building2, FileArchive, LayoutDashboard, ReceiptText, Settings, ShieldCheck, UserCog, type LucideIcon } from "lucide-react";
 
 export interface ItemNav {
   rota: string;
@@ -34,4 +34,5 @@ export const NAVEGACAO_ADMIN: ItemNav[] = [
   { rota: "/admin/leads", rotulo: "Leads", icone: Inbox, descricao: "Pedidos de teste grátis do site" },
   { rota: "/admin/acessos", rotulo: "Acessos do site", icone: BarChart3, descricao: "Visitas, canais e conversão do site" },
   { rota: "/admin/monitoramento", rotulo: "Monitoramento", icone: Activity, descricao: "Uso da plataforma, gravações e suporte" },
+  { rota: "/admin/administradores", rotulo: "Administradores", icone: UserCog, descricao: "Quem entra na administração" },
 ];

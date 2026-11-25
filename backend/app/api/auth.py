@@ -133,6 +133,12 @@ def trocar_senha(dados: TrocaSenha, request: Request, db: Session = Depends(sess
     u = auth.usuario_da_sessao(db, token)
     if u is None:
         raise HTTPException(401, "Entre de novo para trocar a senha.")
+    aplicar_troca(db, u, dados, request, token)
+    return {"usuario": _usuario_json(u)}
+
+
+def aplicar_troca(db: Session, u, dados: TrocaSenha, request: Request, token: str | None) -> None:
+    """Troca a própria senha (sistema ou administração) e encerra as outras sessões dessa pessoa."""
     chaves = (f"ip:{ip_cliente(request)}", f"email:{u.email}")
     if auth.limitador.bloqueado(*chaves):
         raise HTTPException(429, "Muitas tentativas. Aguarde 15 minutos e tente de novo.")
@@ -149,4 +155,3 @@ def trocar_senha(dados: TrocaSenha, request: Request, db: Session = Depends(sess
     u.trocar_senha = False
     auth.encerrar_sessoes(db, u.id, exceto_token=token)
     db.commit()
-    return {"usuario": _usuario_json(u)}

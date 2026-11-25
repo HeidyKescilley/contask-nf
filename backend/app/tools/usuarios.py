@@ -41,8 +41,8 @@ def _criar(db, email: str, nome: str, **kw) -> None:
     except auth.ErroLogin as e:
         sys.exit(str(e))
     db.commit()
-    esc = db.get(Escritorio, u.escritorio_id)
-    print(f"Escritório: {esc.nome} (id {esc.id})\nUsuário: {u.email}\n"
+    esc = db.get(Escritorio, u.escritorio_id) if u.escritorio_id else None
+    print(f"Escritório: {f'{esc.nome} (id {esc.id})' if esc else 'nenhum (só administração)'}\nUsuário: {u.email}\n"
           f"Senha inicial (troca obrigatória no primeiro acesso): {senha}")
 
 
@@ -109,7 +109,7 @@ def main(argv=None) -> None:
             for u in db.scalars(select(Usuario).order_by(Usuario.escritorio_id, Usuario.email)):
                 acesso = f"{u.ultimo_acesso_em:%d/%m/%Y %H:%M}" if u.ultimo_acesso_em else "nunca"
                 adm = " [admin]" if u.admin_sistema else ""
-                print(f"esc {u.escritorio_id:>3}  {u.email:40} {'ativo' if u.ativo else 'inativo':8} último acesso: {acesso}  {u.nome}{adm}")
+                print(f"esc {u.escritorio_id or '-':>3}{u.email:40} {'ativo' if u.ativo else 'inativo':8} último acesso: {acesso}  {u.nome}{adm}")
         elif a.cmd == "admin":
             u = _buscar(db, a.email)
             u.admin_sistema = not a.remover

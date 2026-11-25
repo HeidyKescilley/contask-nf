@@ -9,7 +9,8 @@ import { api } from "./api";
  * Estar logado no sistema não abre a administração, e vice-versa.
  */
 export interface SessaoAdmin {
-  usuario: { id: number; email: string; nome: string } | null;
+  /** trocar_senha: senha inicial, troca obrigatória antes de usar a administração */
+  usuario: { id: number; email: string; nome: string; trocar_senha: boolean } | null;
 }
 
 /** Disparado pelo cliente da API quando uma rota /api/admin responde 401. */
