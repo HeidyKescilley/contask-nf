@@ -42,7 +42,7 @@ def test_conta_de_contador_continua_com_varias_empresas(cliente):
 
 def test_admin_cria_e_muda_o_tipo_de_conta(cliente):
     from app.tools import usuarios
-    usuarios.main(["admin", "teste@contask.local"])
+    from tests.conftest import entrar_admin; entrar_admin(cliente)
     r = cliente.post("/api/admin/escritorios", json={"nome": "Clínica X", "email": "bia@clinicax.com", "tipo": "empresa"})
     assert r.status_code == 201, r.text
     esc_id = r.json()["usuario"]["escritorio_id"]

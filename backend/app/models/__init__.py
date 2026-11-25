@@ -502,6 +502,8 @@ class SessaoUsuario(Base):
     usuario_id: Mapped[int] = mapped_column(ForeignKey("usuario.id", ondelete="CASCADE"), index=True)
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
     expira_em: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    # cliente = o sistema (cookie contask_sessao); admin = a administração, separada (cookie contask_admin)
+    area: Mapped[str] = mapped_column(String(10), default="cliente", server_default="cliente")
 
 
 # ---------------------------------------------------------------------------

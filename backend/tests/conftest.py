@@ -59,3 +59,11 @@ def _sem_rede_ibge(monkeypatch):
     monkeypatch.setattr(ibge, "_baixar", lambda uf, cliente=None: {"DF": {"BRASILIA": "5300108"},
                                                                     "SP": {"SAO PAULO": "3550308"}}.get(uf))
     monkeypatch.setattr(municipio, "_consultar_cnpj", lambda e: None)
+
+
+def entrar_admin(c, email: str = "teste@contask.local", senha: str = SENHA_TESTE) -> None:
+    """Concede o papel pelo servidor e entra na administração (login e cookie separados do sistema)."""
+    from app.tools import usuarios
+    usuarios.main(["admin", email])
+    r = c.post("/api/admin/auth/entrar", json={"email": email, "senha": senha})
+    assert r.status_code == 200, r.text

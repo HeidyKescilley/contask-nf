@@ -14,7 +14,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
 import { formatarDataHora } from "@/lib/formato";
 import { moeda } from "@/lib/notas";
-import { useSessao } from "@/lib/sessao";
+import { useSessaoAdmin } from "@/lib/sessaoAdmin";
 import { cn } from "@/lib/utils";
 
 interface UsuarioAdm {
@@ -73,8 +73,8 @@ function SeloSituacao({ e }: { e: EscritorioAdm }) {
 
 /** Painel do suporte do Contask: escritórios, usuários, situação e mensalidade. Não mostra dados fiscais. */
 export function Administracao() {
-  const sessao = useSessao();
-  const admin = !!sessao.data?.usuario?.admin_sistema;
+  const sessao = useSessaoAdmin();
+  const admin = !!sessao.data?.usuario;
   const lista = useQuery({ queryKey: CHAVE, queryFn: () => api<EscritorioAdm[]>("/api/admin/escritorios"), enabled: admin });
   const [novoEsc, setNovoEsc] = useState(false);
   const [novoUsu, setNovoUsu] = useState<EscritorioAdm | null>(null);
@@ -96,7 +96,7 @@ export function Administracao() {
 
   return (
     <>
-      <Cabecalho titulo="Administração" descricao="Escritórios, usuários, situação e mensalidade. A senha inicial aparece uma única vez: envie por um canal privado."
+      <Cabecalho titulo="Clientes" descricao="Escritórios, usuários, situação e mensalidade. A senha inicial aparece uma única vez: envie por um canal privado."
         acoes={<Button variante="primario" onClick={() => setNovoEsc(true)}><Plus /> Nova conta</Button>} />
       {lista.isLoading && <Esqueleto className="h-64 w-full" />}
       {lista.isError && <EstadoErro mensagem={(lista.error as Error).message} tentarDeNovo={() => lista.refetch()} />}

@@ -111,7 +111,7 @@ def test_sem_email_configurado_o_lead_fica_para_a_equipe(monkeypatch, cliente):
 
 def _admin(cliente):
     from app.tools import usuarios
-    usuarios.main(["admin", "teste@contask.local"])
+    from tests.conftest import entrar_admin; entrar_admin(cliente)
 
 
 def test_painel_lista_edita_exporta_e_reenvia(site, cliente):
@@ -119,7 +119,7 @@ def test_painel_lista_edita_exporta_e_reenvia(site, cliente):
     cliente.cookies.clear()
     from tests.conftest import SENHA_TESTE
     assert cliente.post("/api/auth/entrar", json={"email": "teste@contask.local", "senha": SENHA_TESTE}).status_code == 200
-    assert cliente.get("/api/admin/leads").status_code == 403  # só admin do sistema
+    assert cliente.get("/api/admin/leads").status_code == 401  # só a sessão da administração
     _admin(cliente)
     dados = cliente.get("/api/admin/leads").json()
     assert dados["email_configurado"] is True

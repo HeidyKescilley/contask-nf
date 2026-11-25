@@ -62,11 +62,11 @@ def test_ferramenta_cria_escritorios_separados(app_teste, monkeypatch, capsys):
 
 def test_painel_de_administracao(cliente, capsys):
     from app.tools import usuarios
-    # Usuário comum não entra no painel
-    assert cliente.get("/api/admin/escritorios").status_code == 403
+    # Sem a sessão da administração, ninguém entra no painel
+    assert cliente.get("/api/admin/escritorios").status_code == 401
     assert cliente.get("/api/auth/eu").json()["usuario"]["admin_sistema"] is False
     # O papel só é concedido pelo servidor
-    usuarios.main(["admin", "teste@contask.local"])
+    from tests.conftest import entrar_admin; entrar_admin(cliente)
     assert cliente.get("/api/auth/eu").json()["usuario"]["admin_sistema"] is True
     r = cliente.post("/api/admin/escritorios", json={"nome": "Contábil Silva", "email": "ana@silva.com", "nome_usuario": "Ana"})
     assert r.status_code == 201, r.text
@@ -86,12 +86,45 @@ def test_painel_de_administracao(cliente, capsys):
     assert cliente.put(f"/api/admin/usuarios/{eu}/ativo", json={"ativo": False}).status_code == 409
     # O escritório novo não enxerga as empresas do admin, e vice-versa (isolamento continua pelo login)
     usuarios.main(["admin", "teste@contask.local", "--remover"])
-    assert cliente.get("/api/admin/escritorios").status_code == 403
+    assert cliente.get("/api/admin/escritorios").status_code == 401
+
+
+def test_administracao_separada_do_sistema(cliente):
+    """Login, cookie e sessão próprios: a sessão do sistema não abre a administração, e vice-versa."""
+    from app.core import autenticacao as auth
+    from app.tools import usuarios
+    # Quem não é administrador recebe a mesma resposta de senha errada
+    r = cliente.post("/api/admin/auth/entrar", json={"email": "teste@contask.local", "senha": SENHA_TESTE})
+    assert r.status_code == 401 and r.json()["detail"] == "E-mail ou senha incorretos."
+    usuarios.main(["admin", "teste@contask.local"])
+    # Logado no sistema, mas sem entrar na administração: o painel não abre
+    assert cliente.get("/api/auth/eu").json()["usuario"] is not None
+    assert cliente.get("/api/admin/auth/eu").json()["usuario"] is None
+    assert cliente.get("/api/admin/escritorios").status_code == 401
+    r = cliente.post("/api/admin/auth/entrar", json={"email": "teste@contask.local", "senha": SENHA_TESTE})
+    assert r.status_code == 200 and r.json()["usuario"]["email"] == "teste@contask.local"
+    assert cliente.cookies.get(auth.COOKIE_ADMIN) and cliente.get("/api/admin/escritorios").status_code == 200
+    # Só com o cookie da administração: o sistema (empresas, notas) não abre
+    adm = cliente.cookies.get(auth.COOKIE_ADMIN)
+    cliente.cookies.clear()
+    cliente.cookies.set(auth.COOKIE_ADMIN, adm)
+    assert cliente.get("/api/empresas").status_code == 401
+    assert cliente.get("/api/admin/escritorios").status_code == 200
+    # O token da administração no cookie do sistema também não vale
+    cliente.cookies.set(auth.COOKIE, adm)
+    assert cliente.get("/api/auth/eu").json()["usuario"] is None
+    # Sair da administração não derruba o sistema
+    cliente.cookies.clear()
+    assert cliente.post("/api/auth/entrar", json={"email": "teste@contask.local", "senha": SENHA_TESTE}).status_code == 200
+    assert cliente.post("/api/admin/auth/entrar", json={"email": "teste@contask.local", "senha": SENHA_TESTE}).status_code == 200
+    assert cliente.post("/api/admin/auth/sair").status_code == 204
+    assert cliente.get("/api/admin/escritorios").status_code == 401
+    assert cliente.get("/api/auth/eu").json()["usuario"] is not None
 
 
 def _admin_com_escritorio(cliente, **plano):
     from app.tools import usuarios
-    usuarios.main(["admin", "teste@contask.local"])
+    from tests.conftest import entrar_admin; entrar_admin(cliente)
     r = cliente.post("/api/admin/escritorios", json={"nome": "Contábil Silva", "email": "ana@silva.com", "nome_usuario": "Ana", **plano})
     assert r.status_code == 201, r.text
     return r.json()

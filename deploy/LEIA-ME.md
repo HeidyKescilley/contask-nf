@@ -7,7 +7,7 @@ Internet ──443──> Caddy (HTTPS automático) ─┬─> site de vendas   
                                             └─> contask-app      https://app.<dominio>
 ```
 
-- **Contas e teste grátis:** o teste vem do formulário do site (`/30-dias-gratis/`). Cada pedido vira um lead (painel **Leads**, só para administradores), a conta de teste é criada na hora com `LEAD_TESTE_DIAS` dias (padrão 30) e tudo liberado (`TESTE_COMPLETO=true`), e o acesso vai por e-mail com senha provisória. No fim do teste o acesso trava até o escritório virar "ativo" no **painel de Administração**. O Caddy repassa só `/api/publico/*` do domínio do site para o sistema; no máximo 3 pedidos por IP por hora. O cadastro pela tela (`/cadastrar`) fica fechado (`CADASTRO=fechado`); com `CADASTRO=aberto` ele também cria contas de teste (`CADASTRO_TESTE_DIAS`). O painel de administração só aparece para quem é administrador do sistema, e esse papel só é dado pelo servidor (`contask.sh usuario admin <email>`), que aceita SSH apenas com chave (Heidy e Vit).
+- **Contas e teste grátis:** o teste vem do formulário do site (`/30-dias-gratis/`). Cada pedido vira um lead (painel **Leads**, só para administradores), a conta de teste é criada na hora com `LEAD_TESTE_DIAS` dias (padrão 30) e tudo liberado (`TESTE_COMPLETO=true`), e o acesso vai por e-mail com senha provisória. No fim do teste o acesso trava até o escritório virar "ativo" no **painel de Administração**. O Caddy repassa só `/api/publico/*` do domínio do site para o sistema; no máximo 3 pedidos por IP por hora. O cadastro pela tela (`/cadastrar`) fica fechado (`CADASTRO=fechado`); com `CADASTRO=aberto` ele também cria contas de teste (`CADASTRO_TESTE_DIAS`). A administração é um ambiente separado do sistema, em `https://app.<dominio>/admin`, com login próprio (sessão de 12 horas, cookie `contask_admin`): a sessão do sistema não abre a administração, e vice-versa. Só entra quem é administrador do sistema, e esse papel só é dado pelo servidor (`contask.sh usuario admin <email>`), que aceita SSH apenas com chave (Heidy e Vit).
 - **E-mail do sistema:** caixa `notas@<domínio>` da Hostinger (`smtp.hostinger.com`, porta 465, SSL; troque em `contask.conf` com `SMTP_HOST`, `SMTP_PORTA` e `EMAIL_REMETENTE`). A senha da caixa fica só em `segredos/email.env` (`CONTASK_SMTP_SENHA=...`, dono root, permissão 600) e entra no sistema na reinicialização. Sem ela, as contas são criadas, mas o acesso não sai: o painel Leads avisa e permite reenviar depois.
 - **Emissor de NFS-e:** a produção está ligada no servidor (`EMISSOR_PRODUCAO=true` no `contask.conf`, desde 11/11/2026). Desde 12/11/2026, toda empresa começa em produção (inclusive no teste grátis), e o escritório pode passar uma empresa para a homologação no Ambiente de emissão. Para desligar para todos: `EMISSOR_PRODUCAO=false` e `bash contask.sh reiniciar`.
 - **Leiaute da DPS em produção:** NT 004 até a Sefin trocar para a NT 009 (anunciada para depois de 30/11/2026). Quando a produção recusar o XML por esquema (E1235), o sistema troca sozinho e grava o leiaute em `/opt/contask/dados/leiaute_producao.txt`. Para forçar: escreva `nt004` ou `nt009` nesse arquivo (vale na hora) ou use `LEIAUTE_PRODUCAO` no `contask.conf` e `bash contask.sh reiniciar`.
@@ -81,7 +81,7 @@ bash contask.sh escritorio novo "CONTELB" seu@email.com "Seu Nome"
 bash contask.sh usuario admin seu@email.com
 ```
 
-A senha inicial aparece **uma única vez**. Entre em `https://app.<dominio>` e troque a senha. O item **Administração** aparece no menu lateral: é lá que você cria os escritórios e usuários do teste. Para o Vit, crie o usuário dele no seu escritório pelo painel e rode `bash contask.sh usuario admin <email do Vit>`.
+A senha inicial aparece **uma única vez**. Entre em `https://app.<dominio>` e troque a senha. A administração fica em `https://app.<dominio>/admin` (login separado, com o mesmo e-mail e senha): é lá que você cria os escritórios e usuários do teste. No sistema, o seu escritório aparece como o de qualquer cliente. Para o Vit, crie o usuário dele no seu escritório pelo painel e rode `bash contask.sh usuario admin <email do Vit>`.
 
 ## 6. Teste do ADN e da Sefin a partir da VPS (antes de chamar os escritórios)
 
@@ -101,7 +101,7 @@ Envie o endereço `https://app.<dominio>`, o e-mail e a senha inicial por um can
 
 ## 8. Dia a dia
 
-**Pelo painel de Administração** (menu lateral do sistema):
+**Pela Administração** (`/admin`, login separado do sistema):
 
 | Tarefa | Onde |
 |---|---|

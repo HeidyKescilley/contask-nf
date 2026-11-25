@@ -9,7 +9,7 @@
 #   bash contask.sh usuario lista
 #   bash contask.sh usuario senha ana@silva.com          # nova senha inicial (esqueceu a senha)
 #   bash contask.sh usuario desativar ana@silva.com | reativar ana@silva.com
-#   bash contask.sh usuario admin voce@email.com         # libera o painel de administração (admin-remover tira)
+#   bash contask.sh usuario admin voce@email.com         # libera a administração (/admin, login separado; admin-remover tira)
 #
 # Sistema:
 #   bash contask.sh estado | logs [linhas] | reiniciar | parar | iniciar

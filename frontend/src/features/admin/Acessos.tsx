@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Cabecalho, EstadoErro, EstadoVazio, Esqueleto } from "@/components/estados";
 import { Select } from "@/components/ui/campos";
 import { api } from "@/lib/api";
-import { useSessao } from "@/lib/sessao";
+import { useSessaoAdmin } from "@/lib/sessaoAdmin";
 
 interface Linha { visitas: number; pessoas: number; leads: number; taxa: number | null }
 interface Resumo {
@@ -25,8 +25,8 @@ const NOME_CANAL: Record<string, string> = { direto: "Direto" };
 const NOME_PAGINA: Record<string, string> = { "/": "Página inicial", "/emissor/": "Emissor", "/30-dias-gratis/": "30 dias grátis", "/black-friday/": "Black Friday" };
 
 export function Acessos() {
-  const sessao = useSessao();
-  const admin = !!sessao.data?.usuario?.admin_sistema;
+  const sessao = useSessaoAdmin();
+  const admin = !!sessao.data?.usuario;
   const [dias, setDias] = useState(30);
   const q = useQuery({ queryKey: ["admin", "acessos", dias], queryFn: () => api<Resumo>(`/api/admin/acessos?dias=${dias}`), enabled: admin });
 

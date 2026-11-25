@@ -28,8 +28,10 @@ export const NAVEGACAO_EMPRESA: ItemNav[] = [
   { rota: "/configuracoes", rotulo: "Configurações", icone: Settings, descricao: "Sistema e preferências" },
 ];
 
-/** Só para o administrador do sistema. */
-export const NAV_ADMIN: ItemNav = { rota: "/admin", rotulo: "Administração", icone: ShieldCheck, descricao: "Escritórios e usuários do sistema" };
-export const NAV_LEADS: ItemNav = { rota: "/admin/leads", rotulo: "Leads", icone: Inbox, descricao: "Pedidos de teste grátis do site" };
-export const NAV_ACESSOS: ItemNav = { rota: "/admin/acessos", rotulo: "Acessos do site", icone: BarChart3, descricao: "Visitas, canais e conversão do site" };
-export const NAV_MONITORAMENTO: ItemNav = { rota: "/admin/monitoramento", rotulo: "Monitoramento", icone: Activity, descricao: "Uso da plataforma, gravações e suporte" };
+/** Administração (ambiente separado, em /admin): gestão dos clientes, sem as telas do sistema. */
+export const NAVEGACAO_ADMIN: ItemNav[] = [
+  { rota: "/admin", rotulo: "Clientes", icone: ShieldCheck, descricao: "Escritórios, usuários, plano e mensalidade" },
+  { rota: "/admin/leads", rotulo: "Leads", icone: Inbox, descricao: "Pedidos de teste grátis do site" },
+  { rota: "/admin/acessos", rotulo: "Acessos do site", icone: BarChart3, descricao: "Visitas, canais e conversão do site" },
+  { rota: "/admin/monitoramento", rotulo: "Monitoramento", icone: Activity, descricao: "Uso da plataforma, gravações e suporte" },
+];

@@ -18,8 +18,11 @@ async function tratar<T>(r: Response): Promise<T> {
     } catch {
       /* corpo sem JSON */
     }
-    const rotaLogin = new URL(r.url, window.location.origin).pathname.startsWith("/api/auth/");
-    if (!rotaLogin && (r.status === 401 || (r.status === 403 && msg.startsWith("Troque a senha"))))
+    const caminho = new URL(r.url, window.location.origin).pathname;
+    if (caminho.startsWith("/api/admin/")) {
+      // Administração: sessão própria, separada da do sistema
+      if (!caminho.startsWith("/api/admin/auth/") && r.status === 401) window.dispatchEvent(new Event("contask:sessao-admin"));
+    } else if (!caminho.startsWith("/api/auth/") && (r.status === 401 || (r.status === 403 && msg.startsWith("Troque a senha"))))
       window.dispatchEvent(new Event("contask:sessao"));
     throw new ErroApi(r.status, msg);
   }

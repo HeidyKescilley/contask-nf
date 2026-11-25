@@ -5,7 +5,7 @@
   Com CONTASK_TESTE_COMPLETO (servidor online), tudo liberado no período. Sem ele, o teste limitado:
   contabilidade e mais 1 empresa, busca completa, XML avulso fechado, 1 exportação de até 30 dias e 1 emissão.
 - ativo: uso normal, com o limite de XMLs do escritório (ou o padrão do sistema).
-O administrador do sistema nunca é bloqueado, para não perder o acesso ao painel.
+O bloqueio vale para o sistema (área do cliente). A administração tem login próprio e não depende dele.
 """
 from __future__ import annotations
 

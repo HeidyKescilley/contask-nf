@@ -21,6 +21,11 @@ from app.core.config import config
 from app.models import Escritorio, SessaoUsuario, Usuario
 
 COOKIE = "contask_sessao"
+# Administração separada do sistema: login próprio, cookie próprio e sessão curta.
+# Uma sessão de cliente nunca abre a administração, e a da administração nunca abre o sistema.
+COOKIE_ADMIN = "contask_admin"
+AREAS = {"cliente", "admin"}
+DURACAO_ADMIN = timedelta(hours=12)
 SENHA_MINIMA = 10
 _N, _R, _P = 2**14, 8, 1
 
@@ -128,41 +133,50 @@ def _utc(d: datetime) -> datetime:
     return d if d.tzinfo else d.replace(tzinfo=timezone.utc)
 
 
-def entrar(db: Session, email: str, senha: str, ip: str) -> tuple[Usuario, str]:
+def _duracao(area: str) -> timedelta:
+    return DURACAO_ADMIN if area == "admin" else timedelta(days=config().sessao_dias)
+
+
+def entrar(db: Session, email: str, senha: str, ip: str, area: str = "cliente") -> tuple[Usuario, str]:
+    if area not in AREAS:
+        raise ValueError(area)
     email = normalizar_email(email)
     chaves = (f"ip:{ip}", f"email:{email}")
     if limitador.bloqueado(*chaves):
         raise ErroLogin("Muitas tentativas. Aguarde 15 minutos e tente de novo.")
     u = db.scalar(select(Usuario).where(func.lower(Usuario.email) == email))
     ok = conferir_senha(senha or "", u.senha_hash if u else _HASH_FALSO)
-    if not (u and ok and u.ativo):
+    # Na administração, quem não é administrador recebe a mesma resposta de senha errada
+    if not (u and ok and u.ativo) or (area == "admin" and not u.admin_sistema):
         limitador.falhou(*chaves)
         raise ErroLogin("E-mail ou senha incorretos.")
     limitador.limpar(*chaves)
-    _exigir_escritorio_liberado(db, u)
+    if area == "admin":
+        if u.trocar_senha:
+            raise ErroLogin("Troque a senha provisória no acesso do sistema antes de entrar na administração.")
+    else:
+        _exigir_escritorio_liberado(db, u)
     token = secrets.token_urlsafe(32)
     db.execute(delete(SessaoUsuario).where(SessaoUsuario.expira_em < agora()))
     db.add(SessaoUsuario(token_hash=_hash_token(token), usuario_id=u.id, criado_em=agora(),
-                         expira_em=agora() + timedelta(days=config().sessao_dias)))
+                         expira_em=agora() + _duracao(area), area=area))
     u.ultimo_acesso_em = agora()
     db.commit()
     return u, token
 
 
 def _exigir_escritorio_liberado(db: Session, u: Usuario) -> None:
-    if u.admin_sistema:
-        return
     from app.core.escritorios import motivo_bloqueio
     motivo = motivo_bloqueio(db.get(Escritorio, u.escritorio_id))
     if motivo:
         raise ErroLogin(motivo)
 
 
-def usuario_da_sessao(db: Session, token: str | None) -> Usuario | None:
+def usuario_da_sessao(db: Session, token: str | None, area: str = "cliente") -> Usuario | None:
     if not token:
         return None
     s = db.get(SessaoUsuario, _hash_token(token))
-    if s is None:
+    if s is None or (s.area or "cliente") != area:
         return None
     exp = _utc(s.expira_em)
     if exp <= agora():
@@ -172,12 +186,15 @@ def usuario_da_sessao(db: Session, token: str | None) -> Usuario | None:
     u = db.get(Usuario, s.usuario_id)
     if u is None or not u.ativo:
         return None
-    if not u.admin_sistema:
+    if area == "admin":
+        if not u.admin_sistema:
+            return None  # o papel foi retirado: a sessão da administração deixa de valer na hora
+    else:
         from app.core.escritorios import bloqueado
         if bloqueado(db, u.escritorio_id):
             return None  # suspenso: a sessão volta a valer se o escritório for reativado
     # Renova a sessão em uso (no máximo uma escrita por hora)
-    novo = agora() + timedelta(days=config().sessao_dias)
+    novo = agora() + _duracao(area)
     if novo - exp > timedelta(hours=1):
         s.expira_em = novo
         db.commit()

@@ -1,6 +1,7 @@
 """Painel do administrador do sistema (suporte do Contask): escritórios e usuários de todos os clientes.
 
-Só quem tem `usuario.admin_sistema` entra aqui. Esse papel não é concedido pela tela: só no servidor,
+Só quem tem `usuario.admin_sistema` entra aqui, e só pelo login da administração (/admin/entrar),
+que cria uma sessão separada da do sistema. Esse papel não é concedido pela tela: só no servidor,
 por SSH (`contask.sh usuario admin EMAIL`). O painel não mostra dados fiscais dos escritórios
 (empresas, notas, certificados): só contas e contagens.
 """
@@ -9,13 +10,14 @@ from __future__ import annotations
 from datetime import date, timezone
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core import autenticacao as auth
 from app.core import escritorios as regras
+from app.core.config import config
 from app.core.db import sessao
 from app.core.uso import xmls_no_mes
 from app.models import Empresa, Escritorio, EscritorioEvento, Usuario
@@ -24,10 +26,48 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 
 def exigir_admin(request: Request) -> Usuario:
+    """Só a sessão da administração (cookie próprio) passa; a sessão do sistema nunca."""
     u = getattr(request.state, "usuario", None)
-    if u is None or not u.admin_sistema:
+    if u is None or not u.admin_sistema or getattr(request.state, "area", None) != "admin":
         raise HTTPException(403, "Área restrita ao administrador do sistema.")
     return u
+
+
+# --- login da administração (separado do login do sistema) ---------------------
+
+class EntradaAdmin(BaseModel):
+    email: str
+    senha: str
+
+
+def _adm_json(u: Usuario | None) -> dict:
+    return {"usuario": None if u is None else {"id": u.id, "email": u.email, "nome": u.nome}}
+
+
+@router.get("/auth/eu")
+def eu_admin(request: Request, db: Session = Depends(sessao)):
+    return _adm_json(auth.usuario_da_sessao(db, request.cookies.get(auth.COOKIE_ADMIN), "admin"))
+
+
+@router.post("/auth/entrar")
+def entrar_admin(d: EntradaAdmin, request: Request, response: Response, db: Session = Depends(sessao)):
+    from app.api.auth import ip_cliente
+    try:
+        u, token = auth.entrar(db, d.email, d.senha, ip_cliente(request), area="admin")
+    except auth.ErroLogin as e:
+        raise HTTPException(401, str(e)) from None
+    cfg = config()
+    response.set_cookie(auth.COOKIE_ADMIN, token, max_age=int(auth.DURACAO_ADMIN.total_seconds()), httponly=True,
+                        secure=cfg.cookie_secure, samesite="strict", path="/")
+    return _adm_json(u)
+
+
+@router.post("/auth/sair", status_code=204)
+def sair_admin(request: Request, response: Response, db: Session = Depends(sessao)):
+    auth.sair(db, request.cookies.get(auth.COOKIE_ADMIN))
+    response.delete_cookie(auth.COOKIE_ADMIN, path="/")
+    response.status_code = 204
+    return response
 
 
 def _utc(dt):

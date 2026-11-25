@@ -13,7 +13,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Dica } from "@/components/ui/tooltip";
 import { api } from "@/lib/api";
 import { formatarDataHora } from "@/lib/formato";
-import { useSessao } from "@/lib/sessao";
+import { useSessaoAdmin } from "@/lib/sessaoAdmin";
 
 type Etapa = "novo" | "em_contato" | "cliente" | "perdido";
 const ETAPAS: { valor: Etapa; rotulo: string }[] = [
@@ -87,8 +87,8 @@ function SeloEmail({ l }: { l: Lead }) {
 }
 
 export function Leads() {
-  const sessao = useSessao();
-  const admin = !!sessao.data?.usuario?.admin_sistema;
+  const sessao = useSessaoAdmin();
+  const admin = !!sessao.data?.usuario;
   const lista = useQuery({ queryKey: CHAVE, queryFn: () => api<{ leads: Lead[]; email_configurado: boolean }>("/api/admin/leads"), enabled: admin });
   const [busca, setBusca] = useState("");
   const [etapa, setEtapa] = useState<"" | Etapa>("");

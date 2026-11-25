@@ -1,21 +1,24 @@
 import { PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { Dica } from "@/components/ui/tooltip";
-import { useContaEmpresa, useSessao } from "@/lib/sessao";
+import { useContaEmpresa } from "@/lib/sessao";
 import { cn, useCelular } from "@/lib/utils";
-import { NAV_ACESSOS, NAV_ADMIN, NAV_LEADS, NAV_MONITORAMENTO, NAVEGACAO, NAVEGACAO_EMPRESA } from "./navegacao";
+import { type ItemNav, NAVEGACAO, NAVEGACAO_EMPRESA } from "./navegacao";
 
-export function BarraLateral({ recolhida: recolhidaDesktop, alternar, aberta, fechar }: {
+export function BarraLateral({ recolhida: recolhidaDesktop, alternar, aberta, fechar, itens: itensFixos, area }: {
   recolhida: boolean; alternar: () => void; aberta: boolean; fechar: () => void;
+  /** itens do menu da administração; sem eles, o menu do tipo de conta */
+  itens?: ItemNav[];
+  /** nome do ambiente abaixo da marca (ex.: Administração) */
+  area?: string;
 }) {
   // No celular o menu é uma gaveta (sempre com os nomes); no computador, recolhe para os ícones
   const celular = useCelular();
   const recolhida = recolhidaDesktop && !celular;
   // Rota ativa calculada aqui: o Slot do tooltip não aceita className em forma de função.
   const { search, pathname } = useLocation();
-  const admin = !!useSessao().data?.usuario?.admin_sistema;
   const base = useContaEmpresa() ? NAVEGACAO_EMPRESA : NAVEGACAO;
-  const itens = admin ? [...base, NAV_ADMIN, NAV_LEADS, NAV_ACESSOS, NAV_MONITORAMENTO] : base;
+  const itens = itensFixos ?? base;
   return (
     <>
     {celular && aberta && <div className="fixed inset-0 z-40 bg-black/40" onClick={fechar} aria-hidden />}
@@ -37,8 +40,11 @@ export function BarraLateral({ recolhida: recolhidaDesktop, alternar, aberta, fe
           <path d="M12 17l3 3 5-6" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
         {!recolhida && (
-          <span className="text-[15px] font-semibold tracking-tight">
-            Contask <span className="text-destaque">NF</span>
+          <span className="min-w-0 leading-tight">
+            <span className="block text-[15px] font-semibold tracking-tight">
+              Contask <span className="text-destaque">NF</span>
+            </span>
+            {area && <span className="block truncate text-[11px] font-medium uppercase tracking-wide text-texto-2">{area}</span>}
           </span>
         )}
         {celular && (
@@ -51,7 +57,7 @@ export function BarraLateral({ recolhida: recolhidaDesktop, alternar, aberta, fe
       <nav className="flex-1 space-y-0.5 overflow-y-auto p-2">
         {itens.map(({ rota, rotulo, icone: Icone }) => {
           const casa = (r: string) => pathname === r || pathname.startsWith(`${r}/`);
-          // /admin/leads e /admin/monitoramento acendem só o próprio item, não a Administração
+          // /admin/leads e /admin/monitoramento acendem só o próprio item, não o de /admin
           const ativa = casa(rota) && !itens.some((o) => o.rota.length > rota.length && o.rota.startsWith(rota) && casa(o.rota));
           return (
           <Dica key={rota} texto={rotulo} ativo={recolhida}>

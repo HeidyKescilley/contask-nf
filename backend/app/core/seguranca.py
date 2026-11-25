@@ -21,14 +21,17 @@ ROTAS_PUBLICAS = {
 }
 ROTAS_SITE = {"/api/publico/teste", "/api/publico/black-friday", "/api/publico/visita"}
 ROTAS_TROCA_SENHA = ROTAS_PUBLICAS | {"/api/auth/senha"}
+# Administração: área separada, com login e cookie próprios (core/autenticacao.COOKIE_ADMIN)
+PREFIXO_ADMIN = "/api/admin/"
+ROTAS_PUBLICAS_ADMIN = {"/api/admin/auth/eu", "/api/admin/auth/entrar", "/api/admin/auth/sair"}
 
 
-def _usuario(token: str | None):
+def _usuario(token: str | None, area: str = "cliente"):
     from app.core import autenticacao
     from app.core.db import nova_sessao
 
     with nova_sessao() as db:
-        u = autenticacao.usuario_da_sessao(db, token)
+        u = autenticacao.usuario_da_sessao(db, token, area)
         if u is not None:
             db.expunge(u)
         return u
@@ -51,7 +54,16 @@ class ProtecaoLocalMiddleware(BaseHTTPMiddleware):
             return JSONResponse({"detail": "Origem não permitida."}, status_code=403)
 
         caminho = request.url.path
-        if caminho.startswith("/api/") and caminho not in ROTAS_PUBLICAS:
+        if caminho.startswith(PREFIXO_ADMIN):
+            if caminho not in ROTAS_PUBLICAS_ADMIN:
+                from app.core.autenticacao import COOKIE_ADMIN
+
+                u = await run_in_threadpool(_usuario, request.cookies.get(COOKIE_ADMIN), "admin")
+                if u is None:
+                    return JSONResponse({"detail": "Entre na administração com seu e-mail e senha."}, status_code=401)
+                request.state.usuario = u
+                request.state.area = "admin"
+        elif caminho.startswith("/api/") and caminho not in ROTAS_PUBLICAS:
             from app.core.autenticacao import COOKIE
 
             u = await run_in_threadpool(_usuario, request.cookies.get(COOKIE))
@@ -63,7 +75,7 @@ class ProtecaoLocalMiddleware(BaseHTTPMiddleware):
 
         resposta = await call_next(request)
         u = getattr(request.state, "usuario", None)
-        if u is not None and resposta.status_code < 400:
+        if u is not None and resposta.status_code < 400 and getattr(request.state, "area", "cliente") == "cliente":
             from app.api.uso import acao_da_rota, gravar_acao
             acao = acao_da_rota(request.method, caminho)
             if acao:

@@ -10,7 +10,7 @@ import { type TipoConta, type Usuario, useSessao } from "@/lib/sessao";
 import { MenuTema } from "@/layout/MenuTema";
 import { useCorDaConta } from "@/lib/tema";
 
-function Moldura({ titulo, descricao, children }: { titulo: string; descricao: string; children: ReactNode }) {
+export function Moldura({ titulo, descricao, children, area }: { titulo: string; descricao: string; children: ReactNode; area?: string }) {
   return (
     <div className="flex min-h-screen flex-col bg-fundo">
       <div className="flex justify-end p-4">
@@ -21,6 +21,7 @@ function Moldura({ titulo, descricao, children }: { titulo: string; descricao: s
           <div className="text-xl font-semibold tracking-tight">
             Contask <span className="text-destaque">NF</span>
           </div>
+          {area && <div className="mt-1 text-xs font-medium uppercase tracking-wide text-texto-2">{area}</div>}
         </div>
         <section className="rounded-2xl border border-borda bg-superficie p-6 shadow-sm">
           <h1 className="text-lg font-semibold">{titulo}</h1>
@@ -38,7 +39,7 @@ function usePerfil(): TipoConta {
   return params.get("perfil") === "empresa" ? "empresa" : "contador";
 }
 
-function CampoSenha({ rotulo, valor, mudar, autoComplete, ajuda, autoFocus }: {
+export function CampoSenha({ rotulo, valor, mudar, autoComplete, ajuda, autoFocus }: {
   rotulo: string;
   valor: string;
   mudar: (v: string) => void;

@@ -12,7 +12,7 @@ import { Dica } from "@/components/ui/tooltip";
 import { Painel } from "@/features/empresas/Passos";
 import { api } from "@/lib/api";
 import { formatarData, formatarDataHora } from "@/lib/formato";
-import { useSessao } from "@/lib/sessao";
+import { useSessaoAdmin } from "@/lib/sessaoAdmin";
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
@@ -179,8 +179,8 @@ function Tabela({ cabecalho, linhas, vazio = "Nada no período." }: { cabecalho:
 // ---------------------------------------------------------------------------
 
 export function Monitoramento() {
-  const sessao = useSessao();
-  const admin = !!sessao.data?.usuario?.admin_sistema;
+  const sessao = useSessaoAdmin();
+  const admin = !!sessao.data?.usuario;
   const [aba, setAba] = useState<Aba>("geral");
   const [dias, setDias] = useState(30);
   const resumo = useQuery({ queryKey: ["monitoramento", "resumo", dias], queryFn: () => api<Resumo>(`/api/admin/monitoramento/resumo?dias=${dias}`), enabled: admin });

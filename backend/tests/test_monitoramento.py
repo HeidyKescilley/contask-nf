@@ -17,7 +17,7 @@ def _lote(*eventos, sessao=SESSAO):
 def _cliente_ana(app_teste, cliente):
     """teste@contask.local vira admin; Ana (outro escritório, usuária comum) entra num cliente próprio."""
     from app.tools import usuarios
-    usuarios.main(["admin", "teste@contask.local"])
+    from tests.conftest import entrar_admin; entrar_admin(cliente)
     r = cliente.post("/api/admin/escritorios", json={"nome": "Contábil Silva", "email": "ana@silva.com", "nome_usuario": "Ana"})
     assert r.status_code == 201, r.text
     senha = r.json()["senha_inicial"]
@@ -84,10 +84,10 @@ def test_pesquisa_so_depois_de_uso(cliente):
 
 
 def test_painel_so_para_admin_e_sem_o_proprio_admin(app_teste, cliente):
-    assert cliente.get("/api/admin/monitoramento/resumo").status_code == 403
+    assert cliente.get("/api/admin/monitoramento/resumo").status_code == 401
     cliente.post("/api/uso/eventos", json=_lote({"tipo": "pagina", "nome": "/dashboard"}))  # vira admin: fica de fora
     ana = _cliente_ana(app_teste, cliente)
-    assert ana.get("/api/admin/monitoramento/resumo").status_code == 403
+    assert ana.get("/api/admin/monitoramento/resumo").status_code == 401
     ana.post("/api/uso/eventos", json=_lote(
         {"tipo": "pagina", "nome": "/dashboard"}, {"tipo": "tempo", "nome": "/dashboard", "dados": {"s": 120}},
         {"tipo": "pagina", "nome": "/exportacoes"},

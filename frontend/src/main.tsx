@@ -25,6 +25,8 @@ import { Monitoramento } from "@/features/admin/Monitoramento";
 import { Notificacoes } from "@/layout/Notificacoes";
 import { Cadastrar, Entrar, TrocarSenha } from "@/features/acesso/Acesso";
 import { Protegido } from "@/lib/sessao";
+import { ProtegidoAdmin } from "@/lib/sessaoAdmin";
+import { EntrarAdmin, EstruturaAdmin } from "@/layout/EstruturaAdmin";
 import { TemaProvider } from "@/lib/tema";
 import {
   Configuracoes, NaoEncontrada,
@@ -40,6 +42,19 @@ const rotas = createBrowserRouter([
   { path: "entrar", element: <Entrar /> },
   { path: "cadastrar", element: <Cadastrar /> },
   { path: "trocar-senha", element: <TrocarSenha /> },
+  // Administração: ambiente separado do sistema, com login, sessão e menu próprios
+  { path: "admin/entrar", element: <EntrarAdmin /> },
+  {
+    path: "admin",
+    element: <ProtegidoAdmin><EstruturaAdmin /></ProtegidoAdmin>,
+    children: [
+      { index: true, element: <Administracao /> },
+      { path: "leads", element: <Leads /> },
+      { path: "acessos", element: <Acessos /> },
+      { path: "monitoramento", element: <Monitoramento /> },
+      { path: "*", element: <NaoEncontrada /> },
+    ],
+  },
   {
     element: <Protegido><Estrutura /></Protegido>,
     children: [
@@ -63,10 +78,6 @@ const rotas = createBrowserRouter([
       { path: "contabilidade", element: <AssistenteContabilidade /> },
       { path: "minha-empresa", element: <MinhaEmpresa /> },
       { path: "configuracoes", element: <Configuracoes /> },
-      { path: "admin", element: <Administracao /> },
-      { path: "admin/leads", element: <Leads /> },
-      { path: "admin/acessos", element: <Acessos /> },
-      { path: "admin/monitoramento", element: <Monitoramento /> },
       { path: "*", element: <NaoEncontrada /> },
     ],
   },

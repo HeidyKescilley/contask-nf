@@ -26,7 +26,7 @@ def _admin(cliente):
     from tests.conftest import SENHA_TESTE
     cliente.cookies.clear()
     assert cliente.post("/api/auth/entrar", json={"email": "teste@contask.local", "senha": SENHA_TESTE}).status_code == 200
-    usuarios.main(["admin", "teste@contask.local"])
+    from tests.conftest import entrar_admin; entrar_admin(cliente)
 
 
 def test_registra_visita_com_canal_sem_guardar_ip(site, cliente):
