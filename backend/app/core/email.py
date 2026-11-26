@@ -25,18 +25,25 @@ def configurado() -> bool:
     return bool(c.smtp_host and c.email_remetente and c.smtp_senha is not None)
 
 
-def enviar(para: str, assunto: str, texto: str, html: str | None = None) -> None:
+def enviar(para: str | list[str], assunto: str, texto: str, html: str | None = None, *,
+           anexos: list[tuple[str, bytes, str]] | None = None, responder_para: str | None = None) -> None:
+    """anexos: (nome do arquivo, conteúdo, tipo MIME, ex.: application/pdf)."""
     c = config()
     if not configurado():
         raise ErroEmail("O e-mail do sistema não está configurado.")
     msg = EmailMessage()
     msg["From"] = formataddr((c.email_nome, c.email_remetente))
-    msg["To"] = para
+    msg["To"] = ", ".join(para) if isinstance(para, list) else para
+    if responder_para:
+        msg["Reply-To"] = responder_para
     msg["Subject"] = assunto
     msg["Message-ID"] = make_msgid(domain=c.email_remetente.split("@")[-1])
     msg.set_content(texto)
     if html:
         msg.add_alternative(html, subtype="html")
+    for nome, conteudo, tipo in anexos or []:
+        principal, sub_tipo = tipo.split("/", 1)
+        msg.add_attachment(conteudo, maintype=principal, subtype=sub_tipo, filename=nome)
     try:
         with smtplib.SMTP_SSL(c.smtp_host, c.smtp_porta, context=ssl.create_default_context(), timeout=20) as s:
             s.login(c.smtp_usuario or c.email_remetente, c.smtp_senha.get_secret_value())

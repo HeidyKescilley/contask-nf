@@ -143,6 +143,15 @@ def parse_nfse(xml: bytes) -> DadosNfse:
     )
 
 
+def email_tomador(xml: bytes) -> str | None:
+    """E-mail do tomador informado na DPS (sugestão de destinatário ao enviar a nota)."""
+    try:
+        raiz = _raiz(xml)
+    except XmlInvalido:
+        return None
+    return _t(raiz, "n:infNFSe/n:DPS/n:infDPS/n:toma/n:email")
+
+
 @dataclass
 class DadosEvento:
     chave: str

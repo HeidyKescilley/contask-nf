@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { AlertTriangle, ArrowLeft, BadgeCheck, Building2, Lock, Pause, Pencil, Play, Plus, Repeat, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowLeft, BadgeCheck, Building2, Lock, Mail, Pause, Pencil, Play, Plus, Repeat, Trash2 } from "lucide-react";
 import { useMemo } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -86,7 +86,8 @@ export function Recorrentes() {
 }
 
 function corpoParaPausa(r: Recorrente, ativa: boolean) {
-  return JSON.stringify({ empresa_id: r.empresa_id, nome: r.nome, dia: r.dia, competencia: r.competencia, ativa, dados: r.dados });
+  return JSON.stringify({ empresa_id: r.empresa_id, nome: r.nome, dia: r.dia, competencia: r.competencia, ativa, dados: r.dados,
+    email_enviar: r.email_enviar, email_para: r.email_para, email_mensagem: r.email_mensagem });
 }
 
 function Item({ r, empresa }: { r: Recorrente; empresa: EmpresaEmissora }) {
@@ -120,6 +121,11 @@ function Item({ r, empresa }: { r: Recorrente; empresa: EmpresaEmissora }) {
             Todo dia <strong className="text-texto">{r.dia}</strong>{r.dia > 28 && " (ou o último dia do mês)"} · competência {r.competencia === "anterior" ? "no último dia do mês anterior" : "no dia da emissão"}
             {r.ativa && r.proxima_em && <> · próxima em <strong className="text-texto">{dataBR(r.proxima_em)}</strong></>}
           </p>
+          {r.email_enviar && (
+            <p className="mt-1 flex items-center gap-1.5 text-sm text-texto-2">
+              <Mail className="size-4 shrink-0" aria-hidden /> Envia por e-mail para <span className="break-all text-texto">{r.email_para || r.email_tomador || "o tomador"}</span>
+            </p>
+          )}
           {r.previa && r.ativa && (
             <p className="mt-2 rounded-lg bg-superficie-2 px-3 py-2 text-sm"><span className="text-texto-2">Descrição na próxima: </span>{r.previa.descricao}</p>
           )}
@@ -185,8 +191,9 @@ export function EditarRecorrente() {
     return vazio();
   }, [existente.data, nota.data, modelo.data]);
   const dados: DadosRecorrencia = existente.data
-    ? { nome: existente.data.nome, dia: String(existente.data.dia), competencia: existente.data.competencia, ativa: existente.data.ativa }
-    : { nome: "", dia: String(new Date().getDate()), competencia: "atual", ativa: true };
+    ? { nome: existente.data.nome, dia: String(existente.data.dia), competencia: existente.data.competencia, ativa: existente.data.ativa,
+        email_enviar: existente.data.email_enviar, email_para: existente.data.email_para ?? "", email_mensagem: existente.data.email_mensagem ?? "" }
+    : { nome: "", dia: String(new Date().getDate()), competencia: "atual", ativa: true, email_enviar: false, email_para: "", email_mensagem: "" };
 
   return (
     <>

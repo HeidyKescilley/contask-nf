@@ -1,8 +1,9 @@
 import { useMutation } from "@tanstack/react-query";
 import {
   AlertTriangle, BadgeCheck, Ban, Building2, ChevronLeft, ChevronRight, Clock, Copy, Download, FilePen, FileSearch, FileText, Loader2, ShieldCheck,
-  Lock, MoreHorizontal, Plus, ReceiptText, RefreshCw, Repeat, Replace, RotateCcw, Search, Trash2, X, XCircle,
+  Lock, Mail, MoreHorizontal, Plus, ReceiptText, RefreshCw, Repeat, Replace, RotateCcw, Search, Trash2, X, XCircle,
 } from "lucide-react";
+import { type AlvoEmail, EnviarEmailDialog } from "@/features/notas/EnviarEmail";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -121,6 +122,7 @@ export function NotasEmitidas() {
   const notas = useNotasEmpresa(pronta ? empresa!.id : null, filtros);
   const rascunhos = useRascunhos(pronta ? empresa!.id : null);
   const [cancelando, setCancelando] = useState<NotaEmitida | null>(null);
+  const [enviando, setEnviando] = useState<AlvoEmail>(null);
   const navegar = useNavigate();
 
   const nomeMes = nomeDoMes(filtros.inicio, filtros.fim);
@@ -233,7 +235,7 @@ export function NotasEmitidas() {
                 </thead>
                 <tbody>
                   {notas.data.notas.map((n) => (
-                    <Linha key={`${n.origem}-${n.id}`} n={n} comEmpresa={comEmpresa} navegar={navegar} aoCancelar={setCancelando} />
+                    <Linha key={`${n.origem}-${n.id}`} n={n} comEmpresa={comEmpresa} navegar={navegar} aoCancelar={setCancelando} aoEnviar={setEnviando} />
                   ))}
                 </tbody>
               </table>
@@ -242,12 +244,14 @@ export function NotasEmitidas() {
         </div>
       )}
       <CancelarDialog nota={cancelando} aoFechar={() => setCancelando(null)} />
+      <EnviarEmailDialog alvo={enviando} aoFechar={() => setEnviando(null)} />
     </>
   );
 }
 
-function Linha({ n, comEmpresa, navegar, aoCancelar }: {
+function Linha({ n, comEmpresa, navegar, aoCancelar, aoEnviar }: {
   n: ItemNota; comEmpresa: (r: string) => string; navegar: (r: string) => void; aoCancelar: (n: NotaEmitida) => void;
+  aoEnviar: (a: AlvoEmail) => void;
 }) {
   const { emTeste } = useTesteGratis();
   const adn = n.origem === "adn";
@@ -296,6 +300,10 @@ function Linha({ n, comEmpresa, navegar, aoCancelar }: {
             {temXml && (
               <>
                 <DropdownMenuItem asChild><a href={danfse} target="_blank" rel="noreferrer"><FileText /> Abrir DANFSe</a></DropdownMenuItem>
+                {emTeste
+                  ? <DropdownMenuItem disabled title={CONTRATE}><Lock /> E-mail: contrate um plano</DropdownMenuItem>
+                  : <DropdownMenuItem onSelect={() => aoEnviar({ origem: adn ? "adn" : "emitida", id: n.id,
+                      rotulo: `NFS-e ${n.numero_nfse ? `nº ${n.numero_nfse}` : ""}${n.tomador?.nome ? ` para ${n.tomador.nome}` : ""}` })}><Mail /> Enviar por e-mail</DropdownMenuItem>}
                 {emTeste
                   ? <DropdownMenuItem disabled title={CONTRATE}><Lock /> XML: contrate um plano</DropdownMenuItem>
                   : <DropdownMenuItem asChild><a href={xml}><Download /> Baixar XML da NFS-e</a></DropdownMenuItem>}

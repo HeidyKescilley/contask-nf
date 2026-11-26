@@ -247,6 +247,8 @@ class NotaEmitida(Base):
     subst_motivo: Mapped[str | None] = mapped_column(String(2))
     subst_justificativa: Mapped[str | None] = mapped_column(Text)
     substituida_por_id: Mapped[int | None] = mapped_column(ForeignKey("nota_emitida.id", ondelete="SET NULL"))
+    # Envio automático por e-mail (nota recorrente), aguardando a autorização: {para, mensagem, tentativas}
+    email_pendente: Mapped[dict | None] = mapped_column(JSON)
 
 
 class RpsDisponivel(Base):
@@ -309,8 +311,31 @@ class NotaRecorrente(Base):
     ultima_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     ultima_nota_id: Mapped[int | None] = mapped_column(ForeignKey("nota_emitida.id", ondelete="SET NULL", use_alter=True))
     ultimo_erro: Mapped[str | None] = mapped_column(Text)
+    # Envia a nota por e-mail assim que for autorizada. email_para vazio = e-mail do tomador da nota
+    email_enviar: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
+    email_para: Mapped[str | None] = mapped_column(Text)
+    email_mensagem: Mapped[str | None] = mapped_column(Text)
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
     atualizado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora, onupdate=agora)
+
+
+class NotaEnvio(Base):
+    """Envio de uma NFS-e por e-mail (DANFSe + XML), pela caixa do sistema. Guarda só destinatários e resultado."""
+    __tablename__ = "nota_envio"
+    __table_args__ = (Index("ix_nota_envio_escritorio_criado", "escritorio_id", "criado_em"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    escritorio_id: Mapped[int] = mapped_column(ForeignKey("escritorio.id", ondelete="CASCADE"))
+    empresa_id: Mapped[int] = mapped_column(ForeignKey("empresa.id", ondelete="CASCADE"), index=True)
+    chave: Mapped[str] = mapped_column(String(50), index=True)
+    nota_id: Mapped[int | None] = mapped_column(ForeignKey("nota.id", ondelete="SET NULL"))
+    nota_emitida_id: Mapped[int | None] = mapped_column(ForeignKey("nota_emitida.id", ondelete="SET NULL"))
+    recorrente_id: Mapped[int | None] = mapped_column(ForeignKey("nota_recorrente.id", ondelete="SET NULL"))
+    usuario_id: Mapped[int | None] = mapped_column(ForeignKey("usuario.id", ondelete="SET NULL"))
+    para: Mapped[str] = mapped_column(Text)  # destinatários separados por vírgula
+    situacao: Mapped[str] = mapped_column(String(10))  # enviado | erro
+    erro: Mapped[str | None] = mapped_column(Text)
+    automatico: Mapped[bool] = mapped_column(Boolean, default=False)
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
 
 
 class ServicoEmissor(Base):

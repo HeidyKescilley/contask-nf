@@ -438,6 +438,11 @@ export interface Recorrente {
   proxima_em: string | null;
   ultima_em: string | null;
   ultimo_erro: string | null;
+  /** envia a nota por e-mail assim que for autorizada; email_para vazio = e-mail do tomador */
+  email_enviar: boolean;
+  email_para: string | null;
+  email_mensagem: string | null;
+  email_tomador: string | null;
   tomador_nome: string | null;
   tomador_documento: string | null;
   valor: string | null;

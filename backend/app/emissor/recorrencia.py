@@ -97,7 +97,12 @@ def executar(db: Session, rec: NotaRecorrente, hoje: date) -> NotaEmitida | None
         return None
     rec.ultima_nota_id = nota.id
     rec.ultimo_erro = None if nota.situacao == "autorizada" else (nota.mensagem or "A nota não foi autorizada.")
+    from app.emissor import envio_email
+    envio_email.preparar_automatico(rec, nota)
     db.commit()
+    if nota.email_pendente:
+        envio_email.processar_pendentes(db, [nota.id])  # autorizada na hora: o e-mail sai já
+        db.refresh(nota)
     return nota
 
 
@@ -125,6 +130,9 @@ def executar_pendentes(db: Session, hoje: date | None = None) -> list[int]:
             nota = executar(db, rec, hoje)
             if nota is not None:
                 criadas.append(nota.id)
+        # Notas que ficaram pendentes e foram autorizadas depois: o e-mail automático sai agora
+        from app.emissor import envio_email
+        envio_email.processar_pendentes(db)
     return criadas
 
 

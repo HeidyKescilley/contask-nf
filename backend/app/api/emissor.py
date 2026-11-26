@@ -11,6 +11,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.api.escopo import escritorio_atual
+from app.api.notas import EnvioEmailIn, enviar_pacote
 from app.core import brasilapi
 from app.core.certificados import situacao_validade
 from app.core.db import sessao
@@ -989,3 +990,21 @@ def danfse_nota(nota_id: int, download: int = 0, db: Session = Depends(sessao), 
     return Response(pdf, media_type="application/pdf",
                     headers={"Content-Disposition": f'{disp}; filename="DANFSe_{n.numero_nfse or n.id}_{n.chave}.pdf"',
                              "Cache-Control": "no-cache"})
+
+
+@router.get("/notas/{nota_id}/email")
+def envio_email_info(nota_id: int, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
+    from app.api.notas import info_envio
+    from app.emissor import envio_email
+    n = _nota(db, nota_id, esc)
+    if not n.chave:
+        raise HTTPException(409, "Só dá para enviar nota autorizada.")
+    return info_envio(db, esc, n.empresa_id, n.chave, envio_email.sugestao_emitida(n))
+
+
+@router.post("/notas/{nota_id}/email")
+def enviar_por_email(nota_id: int, d: EnvioEmailIn, request: Request, db: Session = Depends(sessao),
+                     esc: int = Depends(escritorio_atual)):
+    from app.emissor import envio_email
+    n = _nota(db, nota_id, esc)
+    return enviar_pacote(db, request, lambda: envio_email.pacote_emitida(db, n), d)

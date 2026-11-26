@@ -46,7 +46,11 @@ type IdRet = (typeof RETENCOES)[number]["id"];
 const TOMADOR_VAZIO: Tomador = { documento: "", nome: "", inscricao_municipal: "", cep: "", cod_municipio: "", municipio: "",
   uf: "", logradouro: "", numero: "", complemento: "", bairro: "", telefone: "", email: "" };
 
-export interface DadosRecorrencia { nome: string; dia: string; competencia: "atual" | "anterior"; ativa: boolean }
+export interface DadosRecorrencia {
+  nome: string; dia: string; competencia: "atual" | "anterior"; ativa: boolean;
+  /** envio por e-mail assim que a nota for autorizada */
+  email_enviar: boolean; email_para: string; email_mensagem: string;
+}
 
 export interface Form {
   servicoId: number | null;
@@ -435,7 +439,8 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
   const salvarRecorrencia = useMutation({
     mutationFn: () => {
       const { empresa_id, competencia: _c, ...dados } = corpo();
-      const body = JSON.stringify({ empresa_id, nome: rec!.nome.trim(), dia: diaRec, competencia: rec!.competencia, ativa: rec!.ativa, dados });
+      const body = JSON.stringify({ empresa_id, nome: rec!.nome.trim(), dia: diaRec, competencia: rec!.competencia, ativa: rec!.ativa, dados,
+        email_enviar: rec!.email_enviar, email_para: rec!.email_para.trim() || null, email_mensagem: rec!.email_mensagem.trim() || null });
       const id = recorrencia?.existente?.id;
       return id ? api<Recorrente>(`/api/emissor/recorrentes/${id}`, { method: "PUT", body })
         : api<Recorrente>("/api/emissor/recorrentes", { method: "POST", body });
@@ -589,6 +594,26 @@ export function Formulario({ empresa, inicial, notaInicial = null, rascunhoId = 
                 </label>
                 {proxima && rec.ativa && (
                   <span className="text-texto-2">Próxima emissão: <strong className="text-texto">{dataBR(proxima)}</strong>{diaRec > 28 && " (em meses mais curtos, no último dia)"}</span>
+                )}
+              </div>
+              <div className="col-span-6 border-t border-borda pt-3">
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" className="size-4 accent-destaque" checked={rec.email_enviar} onChange={(ev) => setRec({ ...rec, email_enviar: ev.target.checked })} />
+                  Enviar a nota por e-mail assim que for autorizada
+                </label>
+                {rec.email_enviar && (
+                  <div className="mt-3 grid grid-cols-6 gap-3">
+                    <Campo rotulo="Para" className="col-span-6"
+                      ajuda={t.email ? `Vazio: vai para o e-mail do tomador (${t.email}). Até 5 e-mails, separados por vírgula.`
+                        : "Até 5 e-mails, separados por vírgula. Vazio: vai para o e-mail do tomador (preencha no tomador abaixo)."}>
+                      {(p) => <Input {...p} value={rec.email_para} maxLength={1200} placeholder={t.email || "financeiro@cliente.com.br"}
+                        onChange={(ev) => setRec({ ...rec, email_para: ev.target.value })} />}
+                    </Campo>
+                    <Campo rotulo="Mensagem (opcional)" className="col-span-6" ajuda="Vai no corpo do e-mail, junto com os dados da nota. O DANFSe (PDF) e o XML seguem em anexo.">
+                      {(p) => <textarea {...p} rows={2} maxLength={2000} value={rec.email_mensagem} className={CLASSE_TEXTO}
+                        onChange={(ev) => setRec({ ...rec, email_mensagem: ev.target.value })} />}
+                    </Campo>
+                  </div>
                 )}
               </div>
             </div>

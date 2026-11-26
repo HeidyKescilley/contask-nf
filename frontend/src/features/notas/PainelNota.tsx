@@ -1,6 +1,6 @@
 import * as D from "@radix-ui/react-dialog";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, Download, ExternalLink, FileCode2, FileText, Loader2, Lock, RefreshCw, X } from "lucide-react";
+import { AlertTriangle, Download, ExternalLink, FileCode2, FileText, Loader2, Lock, Mail, RefreshCw, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Copiar } from "@/components/Copiar";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { formatarDoc } from "@/lib/formato";
 import { dataHoraXml, dataXml, moeda, useDetalheNota } from "@/lib/notas";
 import { CONTRATE, useTesteGratis } from "@/lib/sessao";
 import { cn } from "@/lib/utils";
+import { type AlvoEmail, EnviarEmailDialog } from "./EnviarEmail";
 import { SeloNota } from "./SeloNota";
 
 export type ModoPainel = { tipo: "pdf" | "detalhe"; id: number } | null;
@@ -56,6 +57,7 @@ export function PainelNota({ modo, aoFechar, aoTrocar }: { modo: ModoPainel; aoF
   const [carregouIframe, setCarregouIframe] = useState(false);
   useEffect(() => setCarregouIframe(false), [pdf.data]);
   const n = det.data;
+  const [email, setEmail] = useState<AlvoEmail>(null);
 
   return (
     <D.Root open={!!modo} onOpenChange={(a) => !a && aoFechar()}>
@@ -82,7 +84,7 @@ export function PainelNota({ modo, aoFechar, aoTrocar }: { modo: ModoPainel; aoF
             <D.Close className="rounded-lg p-1.5 text-texto-2 hover:bg-superficie-2" aria-label="Fechar"><X className="size-4" /></D.Close>
           </div>
 
-          <div className="flex items-center gap-2 border-b border-borda bg-superficie px-5 py-2">
+          <div className="flex flex-wrap items-center gap-2 border-b border-borda bg-superficie px-5 py-2">
             {id && (
               <>
                 {emTeste ? (
@@ -91,6 +93,8 @@ export function PainelNota({ modo, aoFechar, aoTrocar }: { modo: ModoPainel; aoF
                   <>
                     <Button tamanho="pequeno" asChild><a href={`/api/notas/${id}/pdf?download=1`}><Download /> Baixar PDF</a></Button>
                     <Button tamanho="pequeno" asChild><a href={`/api/notas/${id}/xml`}><FileCode2 /> Baixar XML</a></Button>
+                    <Button tamanho="pequeno" variante="fantasma" onClick={() => setEmail({ origem: "adn", id,
+                      rotulo: `NFS-e ${n?.numero ? `nº ${n.numero}` : ""}${n?.emitente_nome ? ` de ${n.emitente_nome}` : ""}` })}><Mail /> Enviar por e-mail</Button>
                   </>
                 )}
                 {!emTeste && modo?.tipo === "pdf" && pdf.data && (
@@ -171,6 +175,7 @@ export function PainelNota({ modo, aoFechar, aoTrocar }: { modo: ModoPainel; aoF
           )}
         </D.Content>
       </D.Portal>
+      <EnviarEmailDialog alvo={email} aoFechar={() => setEmail(null)} />
     </D.Root>
   );
 }

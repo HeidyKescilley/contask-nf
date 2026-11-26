@@ -7,8 +7,9 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse, Response
+from pydantic import BaseModel, Field
 from sqlalchemy import Integer, and_, cast, func, or_, select
 from sqlalchemy.orm import Session
 
@@ -195,6 +196,14 @@ def danfse(nota_id: int, download: int = 0, db: Session = Depends(sessao), esc: 
         from app.core.escritorios import exigir_plano
         exigir_plano(db, esc)  # no teste, o PDF só abre para ver
     n = obter_nota(db, nota_id, esc)
+    disp = "attachment" if download else "inline"
+    return Response(pdf_da_nota(db, n), media_type="application/pdf",
+                    headers={"Content-Disposition": f'{disp}; filename="DANFSe_{n.numero or n.chave}_{n.chave}.pdf"',
+                             "Cache-Control": "no-cache"})
+
+
+def pdf_da_nota(db: Session, n: Nota) -> bytes:
+    """DANFSe da nota do ADN, gerado do XML e guardado para os próximos acessos."""
     xml_path = _arquivo_xml(n)
     marca = marca_dagua(n)
     sufixo = "" if marca is None else ("-substituida" if marca == "SUBSTITUÍDA" else "-cancelada")
@@ -220,7 +229,47 @@ def danfse(nota_id: int, download: int = 0, db: Session = Depends(sessao), esc: 
         if n.pdf_path != rel:
             n.pdf_path = rel
             db.commit()
-    disp = "attachment" if download else "inline"
-    return Response(destino.read_bytes(), media_type="application/pdf",
-                    headers={"Content-Disposition": f'{disp}; filename="DANFSe_{n.numero or n.chave}_{n.chave}.pdf"',
-                             "Cache-Control": "no-cache"})
+    return destino.read_bytes()
+
+
+# --- envio por e-mail (qualquer nota do escritório, emitida ou não pelo Contask) ---------------------
+
+class EnvioEmailIn(BaseModel):
+    para: str = Field(max_length=1200)
+    mensagem: str | None = Field(None, max_length=2000)
+
+
+def info_envio(db: Session, esc: int, empresa_id: int, chave: str, sugestao: str | None) -> dict:
+    from app.core import email as email_sistema
+    from app.emissor import envio_email
+    return {"sugestao": sugestao, "configurado": email_sistema.configurado(),
+            "limite_destinatarios": envio_email.LIMITE_DESTINATARIOS,
+            "envios": envio_email.historico(db, esc, empresa_id, chave)}
+
+
+def enviar_pacote(db: Session, request: Request, montar, d: EnvioEmailIn) -> dict:
+    from app.core.escritorios import CONTRATE, exigir_plano
+    from app.emissor import envio_email
+    u = request.state.usuario
+    exigir_plano(db, u.escritorio_id, f"O envio da nota por e-mail não faz parte do teste grátis. {CONTRATE}")
+    try:
+        para = envio_email.destinatarios(d.para)
+        r = envio_email.enviar(db, montar(), para, d.mensagem, u.id)
+    except envio_email.ErroEnvio as ex:
+        raise HTTPException(ex.status, str(ex)) from None
+    return envio_email.envio_out(r, {u.id: u.nome or u.email})
+
+
+@router.get("/notas/{nota_id}/email")
+def envio_email_info(nota_id: int, db: Session = Depends(sessao), esc: int = Depends(escritorio_atual)):
+    from app.emissor import envio_email
+    n = obter_nota(db, nota_id, esc)
+    return info_envio(db, esc, n.empresa_id, n.chave, envio_email.sugestao_adn(n))
+
+
+@router.post("/notas/{nota_id}/email")
+def enviar_por_email(nota_id: int, d: EnvioEmailIn, request: Request, db: Session = Depends(sessao),
+                     esc: int = Depends(escritorio_atual)):
+    from app.emissor import envio_email
+    n = obter_nota(db, nota_id, esc)
+    return enviar_pacote(db, request, lambda: envio_email.pacote_adn(db, n), d)

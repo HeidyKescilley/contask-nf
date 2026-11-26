@@ -387,6 +387,24 @@ class RecorrenteIn(BaseModel):
     competencia: str = "atual"
     ativa: bool = True
     dados: dict
+    # Envio da nota por e-mail assim que for autorizada (vazio = e-mail do tomador)
+    email_enviar: bool = False
+    email_para: str | None = Field(None, max_length=1200)
+    email_mensagem: str | None = Field(None, max_length=2000)
+
+
+def _validar_email_recorrente(d: RecorrenteIn, dados: dict) -> tuple[bool, str | None, str | None]:
+    from app.emissor import envio_email
+    if not d.email_enviar:
+        return False, (d.email_para or "").strip() or None, (d.email_mensagem or "").strip() or None
+    para = (d.email_para or "").strip()
+    try:
+        envio_email.destinatarios(para or ((dados.get("tomador") or {}).get("email") or ""))
+    except envio_email.ErroEnvio as ex:
+        if not para:
+            raise HTTPException(422, "Para enviar por e-mail, informe o destinatário ou cadastre o e-mail do tomador.") from None
+        raise HTTPException(422, str(ex)) from None
+    return True, para or None, (d.email_mensagem or "").strip() or None
 
 
 @router.get("/variaveis")
@@ -435,6 +453,8 @@ def _recorrente_out(db: Session, r: NotaRecorrente) -> dict:
     return {
         "id": r.id, "empresa_id": r.empresa_id, "nome": r.nome, "dia": r.dia, "competencia": r.competencia,
         "ativa": r.ativa, "dados": d, "proxima_em": prox, "ultima_em": _com_fuso(r.ultima_em, timezone.utc), "ultimo_erro": r.ultimo_erro,
+        "email_enviar": bool(r.email_enviar), "email_para": r.email_para, "email_mensagem": r.email_mensagem,
+        "email_tomador": t.get("email") or None,
         "tomador_nome": t.get("nome") or None, "tomador_documento": t.get("documento") or None, "valor": d.get("valor"),
         "previa": None if prox is None else {
             "data": prox, "competencia": competencia_para(r, prox), "descricao": textos.aplicar(d.get("descricao"), prox),
@@ -470,6 +490,7 @@ def criar_recorrente(d: RecorrenteIn, request: Request, db: Session = Depends(se
     u = getattr(request.state, "usuario", None)
     r = NotaRecorrente(escritorio_id=esc, empresa_id=d.empresa_id, usuario_id=u.id if u else None, nome=d.nome.strip(),
                        dados=dados, dia=d.dia, competencia=d.competencia, ativa=d.ativa)
+    r.email_enviar, r.email_para, r.email_mensagem = _validar_email_recorrente(d, dados)
     r.proxima_em = calcular_proxima(r, hoje_brasilia()) if d.ativa else None
     db.add(r)
     db.commit()
@@ -483,6 +504,7 @@ def editar_recorrente(recorrente_id: int, d: RecorrenteIn, db: Session = Depends
     if d.empresa_id != r.empresa_id:
         raise HTTPException(422, "A recorrência é de outra empresa.")
     r.dados = _validar_recorrente(db, d)
+    r.email_enviar, r.email_para, r.email_mensagem = _validar_email_recorrente(d, r.dados)
     r.nome, r.dia, r.competencia, r.ativa = d.nome.strip(), d.dia, d.competencia, d.ativa
     r.proxima_em = calcular_proxima(r, hoje_brasilia()) if d.ativa else None
     r.ultimo_erro = None
